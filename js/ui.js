@@ -949,7 +949,19 @@ function abrirModalPremium() {
     });
   }
 }
+function renderAll() {
+  if (typeof renderTab === "function") {
+    renderTab();
+  }
 
+  if (typeof actualizarMetrics === "function") {
+    actualizarMetrics();
+  }
+
+  if (typeof bindTabEvents === "function") {
+    bindTabEvents();
+  }
+}
 // Namespace unico — app.js llama window.CredizonaUI.X()
 window.CredizonaUI = {
   renderAll:          renderAll,
