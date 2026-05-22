@@ -1,6 +1,6 @@
 // =============================================================================
-// app.js — Inicialización, estado global, navegación y controladores dinámicos
-// Depende de: todos los archivos anteriores del ecosistema
+// app.js — Inicializacion, estado global, navegacion y event listeners
+// Depende de: todos los archivos anteriores
 // =============================================================================
 
 // =============================================================================
@@ -13,23 +13,23 @@ window.CZState = {
   diag:       null,
   snap:       null,
   saldoIni:   0,
-  tab:        "situacion",
+  tab:        "plan",
   plusEstado: "sin_pago",
   iaRes:      null,
   herr: {
-    ingresos:     { formal: 0, extras: [], total: 0 },
-    gastos_cls:   {},
-    gestiones:    {},
-    compromisos:  {},
-    semaforo:     {},
-    habitos:      {},
-    atrasos:      {},
-    vencimientos: {},
+    ingresos:    { formal: 0, extras: [], total: 0 },
+    gastos_cls:  {},
+    gestiones:   {},
+    compromisos: {},
+    semaforo:    {},
+    habitos:     {},
+    atrasos:     {},
+    vencimientos:{},
   },
 };
 
 // =============================================================================
-// STORAGE INTERNO
+// STORAGE
 // =============================================================================
 window.guardarLocal = function(extra) {
   extra = extra || {};
@@ -59,58 +59,38 @@ function cargarLocal() {
 }
 
 // =============================================================================
-// FLUJO DE NAVEGACIÓN CONTINUA
+// NAVEGACION
 // =============================================================================
 function next() {
   var st = window.CZState;
-
-  // Step 0 inicial (solo segmento 1 con encuesta conductual)
   if (st.step === 0 && SEGMENTO === 1) {
     st.step = 1;
-    track(typeof EVENTOS !== 'undefined' ? EVENTOS.DEBT_STARTED : "debt_started");
+    track("click_continue_analysis");
     window.CredizonaUI.renderAll();
     return;
   }
-
-  // Validación obligatoria de deudas para continuar
   if (st.step === 0 || st.step === 1) {
-    if (st.deudas.length === 0) {
-      alert("Por favor, agregá al menos una deuda para continuar.");
-      return;
-    }
-    
-    // Validar que los campos críticos no estén vacíos antes de saltar
-    var tieneCamposVacios = st.deudas.some(function(d) { return !d.tipo || !d.monto; });
-    if (tieneCamposVacios) {
-      alert("Por favor completá el Tipo y Monto de las deudas agregadas.");
-      return;
-    }
-
-    if (st.deudas.length === 1) {
-      track(typeof EVENTOS !== 'undefined' ? EVENTOS.FIRST_DEBT_ADDED : "first_debt_added", { acreedor: st.deudas[0].acreedor });
-    }
+    var total = Object.values(st.gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0);
+    if (total === 0) { alert("Completa al menos un gasto para continuar."); return; }
     st.step = 2;
-    track(typeof EVENTOS !== 'undefined' ? EVENTOS.EXPENSES_STARTED : "expenses_started");
     window.CredizonaUI.renderAll();
     return;
   }
-
-  // Step 2 final: Procesamiento matemático y despacho al Dashboard
   if (st.step === 2) {
-    st.diag     = calcularMotor();
-    st.saldoIni = st.deudas.reduce(function(s, d) { return s + (parseFloat(d.monto) || 0); }, 0);
-    st.snap     = {
-      fecha_inicio:  new Date().toISOString(),
-      score_miplan:  st.diag.scoreReset,
-      nivel:         st.diag.nivelR,
-      plan_titulo:   st.diag.plan.titulo,
-      saldo_inicial: st.saldoIni,
+    if (st.deudas.length === 0) { alert("Agrega al menos una deuda para continuar."); return; }
+    st.diag      = calcularMotor();
+    st.saldoIni  = st.deudas.reduce(function(s, d) { return s + (parseFloat(d.monto) || 0); }, 0);
+    st.snap      = {
+      fecha_inicio: new Date().toISOString(),
+      score_reset:  st.diag.scoreReset,
+      nivel:        st.diag.nivelR,
+      plan_id:      st.diag.planId,
+      saldo_inicial:st.saldoIni,
     };
     window.guardarLocal();
-    enviarCRM(typeof EVENTOS !== 'undefined' ? EVENTOS.FINAL_DIAGNOSIS_GENERATED : "final_diagnosis_generated", st.diag);
+    enviarCRM("reset_plan_generated", st.diag);
     st.step = 3;
-    st.tab  = "situacion";
-    track(typeof EVENTOS !== 'undefined' ? EVENTOS.PLAN_VIEWED : "plan_viewed", { plan: st.diag.planId, nivel: st.diag.nivelR });
+    st.tab  = "plan";
     window.CredizonaUI.renderAll();
   }
 }
@@ -120,20 +100,114 @@ function prev() {
   if (st.step > 0 && st.step < 3) { st.step--; window.CredizonaUI.renderAll(); }
 }
 
-function saltarGastos() {
-  var st = window.CZState;
-  if (st.step !== 2) return;
-  track(typeof EVENTOS !== 'undefined' ? EVENTOS.EXPENSES_COMPLETED : "expenses_completed", { saltado: true });
-  st.diag     = calcularMotor();
-  st.saldoIni = st.deudas.reduce(function(s, d) { return s + (parseFloat(d.monto) || 0); }, 0);
-  st.snap     = {
-    fecha_inicio:  new Date().toISOString(),
-    score_miplan:  st.diag.scoreReset,
-    nivel:         st.diag.nivelR,
-    plan_titulo:   st.diag.plan.titulo,
-    saldo_inicial: st.saldoIni,
+function resetear() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  window.CZState = {
+    step: 0, gastos: {}, deudas: [], diag: null, snap: null,
+    saldoIni: 0, tab: "plan", plusEstado: "sin_pago", iaRes: null,
+    herr: { ingresos: { formal: 0, extras: [], total: 0 }, gastos_cls: {}, gestiones: {}, compromisos: {}, semaforo: {}, habitos: {}, atrasos: {}, vencimientos: {} },
   };
+  document.getElementById("modal-nuevo").classList.add("hidden");
+  window.CredizonaUI.renderAll();
+}
+
+// =============================================================================
+// TABS
+// =============================================================================
+function switchTab(id) {
+  window.CZState.tab = id;
+  document.querySelectorAll(".tab-btn").forEach(function(b) {
+    b.classList.toggle("active", b.getAttribute("data-tab") === id);
+  });
+  window.CredizonaUI.renderTab();
   window.guardarLocal();
-  enviarCRM(typeof EVENTOS !== 'undefined' ? EVENTOS.FINAL_DIAGNOSIS_GENERATED : "final_diagnosis_generated", st.diag);
-  st.step = 3;
-  st
+}
+
+// =============================================================================
+// INIT
+// =============================================================================
+function init() {
+  var sesion = cargarLocal();
+  if (sesion && sesion.diag) {
+    var st = window.CZState;
+    st.step       = 3;
+    st.gastos     = sesion.gastos     || {};
+    st.deudas     = sesion.deudas     || [];
+    st.diag       = sesion.diag;
+    st.snap       = sesion.snap       || null;
+    st.saldoIni   = sesion.saldoIni   || 0;
+    st.tab        = sesion.tab        || "plan";
+    st.plusEstado = sesion.plusEstado || "sin_pago";
+    st.iaRes      = sesion.iaRes      || null;
+    if (sesion.herr) st.herr = sesion.herr;
+  }
+  window.CredizonaUI.renderAll();
+  track("reset_started", { segmento: SEGMENTO });
+}
+
+// =============================================================================
+// EVENT LISTENERS ESTATICOS
+// (elementos que existen en el DOM desde el inicio, no generados por JS)
+// =============================================================================
+document.addEventListener("DOMContentLoaded", function() {
+
+  // Sticky CTA
+  document.getElementById("sticky-cta").addEventListener("click", function() {
+    var step = window.CZState.step;
+    if (step === 3) { window.CredizonaUI.abrirModalPremium(); } else { next(); }
+  });
+
+  // Boton Nuevo (header)
+  document.getElementById("btn-nuevo").addEventListener("click", function() {
+    document.getElementById("modal-nuevo").classList.remove("hidden");
+  });
+
+  // Modal Nuevo — Cancelar
+  document.getElementById("btn-cancelar-nuevo").addEventListener("click", function() {
+    document.getElementById("modal-nuevo").classList.add("hidden");
+  });
+
+  // Modal Nuevo — Confirmar
+  document.getElementById("btn-confirmar-nuevo").addEventListener("click", resetear);
+
+  // Tabs (delegacion sobre el contenedor de tabs)
+  document.getElementById("main-content").addEventListener("click", function(e) {
+    // Tabs
+    var tabBtn = e.target.closest(".tab-btn");
+    if (tabBtn) {
+      var id     = tabBtn.getAttribute("data-tab");
+      var locked = tabBtn.classList.contains("locked");
+      if (locked) { window.CredizonaUI.abrirModalPremium(); return; }
+      if (id) switchTab(id);
+    }
+
+    // Back buttons
+    if (e.target.id === "btn-back-diag")   { window.CZState.step = 0; window.CredizonaUI.renderAll(); return; }
+    if (e.target.id === "btn-back-gastos") { prev(); return; }
+
+    // Agregar deuda
+    if (e.target.id === "btn-agregar-deuda") {
+      window.CZState.deudas.push({ tipo: "", acreedor: "", monto: "", pago: "" });
+      var cont = document.getElementById("deudas-container");
+      if (cont) cont.innerHTML = window.CZState.deudas.map(window.CredizonaUI.renderDeudaCard).join("");
+      window.CredizonaUI.actualizarMetrics();
+      window.CredizonaUI.bindTabEvents();
+      track("add_debt");
+      return;
+    }
+  });
+
+  // Cerrar premium con Escape
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") {
+      var premium = document.getElementById("modal-premium");
+      if (premium && !premium.classList.contains("hidden")) {
+        premium.classList.add("hidden");
+        document.body.classList.remove("modal-open");
+      }
+    }
+  });
+
+  // Iniciar la app
+  init();
+});
