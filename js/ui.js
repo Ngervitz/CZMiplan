@@ -950,37 +950,46 @@ function abrirModalPremium() {
   }
 }
 function bindTabEvents() {
-  // No-op: los eventos ya están inline en esta versión.
+  // No-op por ahora. Los eventos principales están delegados desde app.js.
 }
+
 function renderAll() {
-  if (typeof renderTab === "function") {
+  var st = _st();
+  var main = document.getElementById("main-content");
+  if (!main) return;
+
+  updateHeader();
+
+  var html = "";
+
+  if (st.step === 0 && SEGMENTO === 1) {
+    html = renderDiagInicial();
+  } else if (st.step === 0 || st.step === 1) {
+    html = renderGastos();
+  } else if (st.step === 2) {
+    html = renderDeudas();
+  } else if (st.step === 3) {
+    html = renderDashboard();
+  }
+
+  main.innerHTML = '<div class="fade">' + html + '</div>';
+
+  if (st.step === 3) {
     renderTab();
   }
 
-  if (typeof actualizarMetrics === "function") {
-    actualizarMetrics();
-  }
-
-  if (typeof bindTabEvents === "function") {
-    bindTabEvents();
-  }
+  updateSticky();
 }
-// Namespace unico — app.js llama window.CredizonaUI.X()
+
 window.CredizonaUI = {
-  renderAll:          renderAll,
-  renderTab:          renderTab,
-  renderDeudaCard:    renderDeudaCard,
-  actualizarMetrics:  actualizarMetrics,
-  bindTabEvents:      bindTabEvents,
-  abrirModalPremium:  abrirModalPremium,
+  renderAll: renderAll,
+  renderTab: renderTab,
+  renderDeudaCard: renderDeudaCard,
+  actualizarMetrics: actualizarMetrics,
+  bindTabEvents: bindTabEvents,
+  abrirModalPremium: abrirModalPremium,
   abrirModalInformeCompleto: abrirModalPremium,
-  mostrarEvaluacion:  mostrarEvaluacion,
-  
-};
-window.CredizonaUI.renderAll = function () {
-  if (typeof render === "function") {
-    render();
-  }
+  mostrarEvaluacion: mostrarEvaluacion
 };
 
-window.renderAll = window.CredizonaUI.renderAll;
+window.renderAll = renderAll;
