@@ -960,4 +960,12 @@ window.CredizonaUI = {
   abrirModalPremium:  abrirModalPremium,
   abrirModalInformeCompleto: abrirModalPremium,
   mostrarEvaluacion:  mostrarEvaluacion,
+  
 };
+window.CredizonaUI.renderAll = function () {
+  if (typeof render === "function") {
+    render();
+  }
+};
+
+window.renderAll = window.CredizonaUI.renderAll;
