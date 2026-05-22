@@ -949,6 +949,9 @@ function abrirModalPremium() {
     });
   }
 }
+function bindTabEvents() {
+  // No-op: los eventos ya están inline en esta versión.
+}
 function renderAll() {
   if (typeof renderTab === "function") {
     renderTab();
