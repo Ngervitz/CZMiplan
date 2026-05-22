@@ -144,7 +144,6 @@ function init() {
   if (typeof render === "function") {
   render();
 }
-}
   track("reset_started", { segmento: SEGMENTO });
 }
 
