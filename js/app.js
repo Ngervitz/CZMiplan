@@ -66,7 +66,7 @@ function next() {
   if (st.step === 0 && SEGMENTO === 1) {
     st.step = 1;
     track("click_continue_analysis");
-    window.CredizonaUI.renderAll();
+    renderAll();
     return;
   }
   if (st.step === 0 || st.step === 1) {
