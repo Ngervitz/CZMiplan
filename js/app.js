@@ -141,8 +141,8 @@ function init() {
     st.iaRes      = sesion.iaRes      || null;
     if (sesion.herr) st.herr = sesion.herr;
   }
-  if (typeof render === "function") {
-  render();
+ if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
+  window.CredizonaUI.renderAll();
 }
   track("reset_started", { segmento: SEGMENTO });
 }
