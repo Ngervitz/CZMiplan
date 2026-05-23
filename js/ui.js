@@ -38,7 +38,7 @@ function updateSticky() {
   } else {
     lbl.textContent  = (diag && diag.plan && diag.plan.cta) || "Tu plan";
     stEl.textContent = "Entende exactamente que ve el banco sobre vos";
-cta.textContent = "Ver informe real";
+cta.textContent = "Ver informe completo";
     cta.className    = "sticky-btn premium";
   }
 }
