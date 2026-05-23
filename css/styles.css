@@ -107,7 +107,7 @@ h1{font-size:74px;line-height:.93;letter-spacing:-4px;margin-bottom:28px;}
 .steps{display:grid;grid-template-columns:1fr;gap:18px;margin-bottom:28px;}
 .step{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:26px;padding:28px;}
 .step-num{font-size:54px;color:#40d7ff;font-weight:900;margin-bottom:12px;}
-.step-title{font-size:32px;font-weight:800;margin-bottom:8px;}
+.step-title{font-size:26px;font-weight:800;margin-bottom:8px;}
 .step-text{color:#b4c0da;font-size:23px;}
 
 /* SECTION */
@@ -163,14 +163,14 @@ select option{background:#0a1026;}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px;}
 .metric{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:22px;padding:22px;}
 .metric small{display:block;color:#8390b5;margin-bottom:10px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
-.metric strong{font-size:40px;line-height:1;font-weight:900;}
+.metric strong{font-size:28px;line-height:1;font-weight:900;}
 
 /* RESULT */
 .result{
   margin-top:22px;background:linear-gradient(180deg,#111d44,#0a1738);
   border:1px solid rgba(64,215,255,.2);border-radius:26px;padding:26px;
 }
-.result h3{font-size:36px;margin-bottom:16px;font-weight:800;line-height:1.1;}
+.result h3{font-size:28px;margin-bottom:16px;font-weight:800;line-height:1.1;}
 .result p{color:#d8e3ff;line-height:1.7;font-size:20px;}
 
 /* TABS */
@@ -297,7 +297,7 @@ select option{background:#0a1026;}
   font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;
   padding:4px 14px;border-radius:20px;white-space:nowrap;
 }
-.price-amount{font-size:42px;font-weight:900;color:#40d7ff;line-height:1;margin:10px 0 4px;}
+.price-amount{font-size:34px;font-weight:900;color:#40d7ff;line-height:1;margin:10px 0 4px;}
 .price-label{font-size:13px;color:#8390b5;margin-bottom:12px;}
 .price-desc{font-size:15px;color:#8390b5;line-height:1.5;}
 
