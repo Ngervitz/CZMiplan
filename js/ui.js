@@ -37,8 +37,8 @@ function updateSticky() {
     cta.className    = "sticky-btn";
   } else {
     lbl.textContent  = (diag && diag.plan && diag.plan.cta) || "Tu plan";
-    stEl.textContent = "Profundiza el analisis con Reset Plus";
-    cta.textContent  = "Reset Plus";
+    stEl.textContent = "Profundiza el analisis con Mi Plan Plus";
+    cta.textContent  = "Mi Plan Plus";
     cta.className    = "sticky-btn premium";
   }
 }
@@ -299,7 +299,7 @@ function renderDashboard() {
     { id: "plan",   l: "Mi plan",     icon: "🎯" },
     { id: "deudas", l: "Mis deudas",  icon: "✏️" },
     { id: "ia",     l: "Asistente IA", icon: "🤖", lock: true },
-    { id: "plus",   l: "Reset Plus",  icon: "⭐", lock: true },
+    { id: "plus",   l: "Mi Plan Plus",  icon: "⭐", lock: true },
   ];
 
   return '<div class="tabs">'
@@ -408,9 +408,9 @@ function renderTabPlan() {
 
     + '<div class="premium-card">'
     + '<div class="premium-badge">Opcional · siguiente nivel</div>'
-    + '<div class="premium-title">Reset Plus</div>'
+    + '<div class="premium-title">Mi Plan Plus</div>'
     + '<div class="premium-text">Si queres profundizar el analisis, accede a tu informe Clearing interpretado con inteligencia artificial y un plan basado en tus datos reales.</div>'
-    + '<button class="btn btn-secondary" style="height:68px;font-size:20px;" id="btn-conocer-plus">Conocer Reset Plus</button>'
+    + '<button class="btn btn-secondary" style="height:68px;font-size:20px;" id="btn-conocer-plus">Conocer Mi Plan Plus</button>'
     + '</div></div>';
 }
 
@@ -483,7 +483,7 @@ function renderRadiografia() {
           + '<div style="font-size:16px;color:rgba(255,255,255,.8);font-weight:700;margin-bottom:8px;">Aproximadamente ' + r.mesCalifica + '</div>'
           + '<div style="font-size:14px;color:#8390b5;line-height:1.6;">Siguiendo el plan asignado y sin tomar nuevas deudas. Esta es una proyeccion basada en los datos que declaraste.</div>')
     + '<div style="margin-top:14px;padding:12px 14px;background:rgba(61,220,255,.08);border:1px solid rgba(61,220,255,.15);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
-    + '<strong style="color:#40d7ff;">Para confirmar esta proyeccion</strong> necesitas saber exactamente que ve el banco sobre vos. Eso es lo que incluye Reset Plus.'
+    + '<strong style="color:#40d7ff;">Para confirmar esta proyeccion</strong> necesitas saber exactamente que ve el banco sobre vos. Eso es lo que incluye Mi Plan Plus.'
     + '</div></div>'
     + '</div>';
 }
@@ -534,7 +534,7 @@ function renderTabIA() {
       + '<div class="locked-blur" style="height:280px;background:rgba(255,255,255,.03);border-radius:22px;"></div>'
       + '<div class="locked-gate"><div class="locked-icon">🤖</div><div class="locked-title">Asistente IA</div>'
       + '<div class="locked-text">El asistente analiza tu informe Clearing con inteligencia artificial y te da recomendaciones especificas para tu caso.</div>'
-      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-ia">Conocer Reset Plus</button>'
+      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-ia">Conocer Mi Plan Plus</button>'
       + '</div></div></div>';
   }
   if (!ia) return '<div class="fade"><div class="result"><h3>Generando tu analisis...</h3><p>El asistente esta procesando tu informe Clearing.</p></div></div>';
@@ -545,7 +545,7 @@ function renderTabIA() {
 }
 
 // =============================================================================
-// TAB: RESET PLUS
+// TAB: Mi Plan PLUS
 // =============================================================================
 function renderTabPlus() {
   var plus = (_st().plusEstado || "sin_pago");
@@ -554,7 +554,7 @@ function renderTabPlus() {
       + '<div class="locked-blur" style="height:260px;background:rgba(255,255,255,.03);border-radius:22px;"></div>'
       + '<div class="locked-gate"><div class="locked-icon">📊</div><div class="locked-title">Informe Clearing</div>'
       + '<div class="locked-text">Mira exactamente que informacion tiene registrada el sistema financiero sobre vos.</div>'
-      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-tab">Conocer Reset Plus</button>'
+      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-tab">Conocer Mi Plan Plus</button>'
       + '<div style="margin-top:12px;font-size:16px;color:#8390b5;">Desde UYU 990 · Garantia 7 dias</div>'
       + '</div></div></div>';
   }
@@ -709,7 +709,7 @@ function renderHerramientasPlan2() {
           + '<div style="font-size:18px;font-weight:800;margin-bottom:10px;">' + (d.acreedor || (DEBT_TYPES.find(function(t) { return t.v === d.tipo; }) || {}).l || "Deuda #" + (i + 1)) + '</div>'
           + '<select data-gestion-key="' + key + '">' + RESS.map(function(r) { return '<option value="' + r.v + '"' + (g.resultado === r.v ? " selected" : "") + '>' + r.l + '</option>'; }).join("") + '</select>'
           + (g.resultado === "sin_respuesta" ? '<div class="micro-insight micro-warn" style="margin-top:8px;">Vamos a ayudarte a intentarlo de nuevo. Anotamos que no pudiste contactarlos.</div>' : "")
-          + (g.resultado === "ofrecieron_plan" ? '<div class="micro-insight" style="margin-top:8px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);color:#34ffaf;">Excelente! Queres que te ayudemos a evaluar si el plan conviene? Eso lo podes hacer con Reset Plus.</div>' : "")
+          + (g.resultado === "ofrecieron_plan" ? '<div class="micro-insight" style="margin-top:8px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);color:#34ffaf;">Excelente! Queres que te ayudemos a evaluar si el plan conviene? Eso lo podes hacer con Mi Plan Plus.</div>' : "")
           + (g.resultado === "negociado" ? '<div class="micro-insight" style="margin-top:8px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);color:#34ffaf;">Muy bien! Eso mejora tu perfil directamente.</div>' : "")
           + '</div>';
       }).join("")
@@ -894,7 +894,7 @@ function renderModalPremium() {
     + '<div style="font-size:32px;font-weight:900;line-height:1.1;margin-top:6px;">Entende exactamente<br>que ve el banco sobre vos.</div></div>'
     + '<button id="btn-cerrar-premium" class="modal-close-btn" type="button">&#215;</button>'
     + '</div>'
-    + '<div class="premium-text">Tu diagnostico actual esta basado en lo que vos declaraste. Reset Plus accede a tu historial real en el sistema financiero y lo interpreta con inteligencia artificial.</div>'
+    + '<div class="premium-text">Tu diagnostico actual esta basado en lo que vos declaraste. Mi Plan Plus accede a tu historial real en el sistema financiero y lo interpreta con inteligencia artificial.</div>'
     + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:22px;margin-bottom:18px;">'
     + '<div style="font-size:13px;color:#8390b5;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px;">Lo que vas a recibir</div>'
     + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);"><span style="font-size:22px;flex-shrink:0;">🔍</span><div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Tu historial real</div><div style="font-size:15px;color:#8390b5;line-height:1.5;">Deudas, atrasos y consultas que el banco ve sobre vos</div></div></div>'
