@@ -37,8 +37,8 @@ function updateSticky() {
     cta.className    = "sticky-btn";
   } else {
     lbl.textContent  = (diag && diag.plan && diag.plan.cta) || "Tu plan";
-    stEl.textContent = "Profundiza el analisis con Mi Plan Plus";
-    cta.textContent  = "Mi Plan Plus";
+    stEl.textContent = "Entende exactamente que ve el banco sobre vos";
+cta.textContent = "Ver informe real";
     cta.className    = "sticky-btn premium";
   }
 }
