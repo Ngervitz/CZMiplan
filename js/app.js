@@ -80,7 +80,7 @@ function next() {
     }, 0);
 
     if (total === 0) {
-      alert("Completa al menos un gasto para continuar.");
+      showToast("Agrega aunque sea una estimacion de gastos para continuar.");
       return;
     }
 
@@ -91,7 +91,7 @@ function next() {
 
   if (st.step === 2) {
     if (st.deudas.length === 0) {
-      alert("Agrega al menos una deuda para continuar.");
+      showToast("Agrega al menos una deuda para que podamos analizar tu perfil.");
       return;
     }
 
@@ -323,10 +323,9 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Sliders liberador
-      var cat = e.target.getAttribute("data-cat");
-      if (cat) {
-        actualizarLiberadorLocal();
+      // Simulador de flujo libre (slider general + ingreso complementario)
+      if (e.target.hasAttribute("data-liberar-monto") || e.target.hasAttribute("data-ingreso-comp")) {
+        actualizarSimuladorFlujo();
         return;
       }
     });
@@ -624,6 +623,41 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // =============================================================================
+// TOAST NOTIFICATION
+// =============================================================================
+function showToast(msg) {
+  var existing = document.getElementById("cz-toast");
+  if (existing) existing.remove();
+
+  var el = document.createElement("div");
+  el.id = "cz-toast";
+  el.style.cssText = [
+    "position:fixed",
+    "bottom:90px",
+    "left:50%",
+    "transform:translateX(-50%)",
+    "background:rgba(15,23,56,.97)",
+    "border:1px solid rgba(255,211,111,.3)",
+    "color:#ffd36f",
+    "padding:14px 22px",
+    "border-radius:14px",
+    "font-size:16px",
+    "font-weight:700",
+    "z-index:9999",
+    "text-align:center",
+    "max-width:320px",
+    "width:calc(100% - 48px)",
+    "line-height:1.4",
+    "box-shadow:0 8px 24px rgba(0,0,0,.4)",
+    "animation:fadeUp .2s ease both",
+    "pointer-events:none",
+  ].join(";");
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(function() { if (el.parentNode) el.remove(); }, 3000);
+}
+
+// =============================================================================
 // HELPERS LOCALES
 // =============================================================================
 function recalcularIngresosLocal() {
@@ -649,19 +683,25 @@ function recalcularIngresosLocal() {
   window.guardarLocal();
 }
 
-function actualizarLiberadorLocal() {
-  var st = window.CZState;
-  var total = 0;
+function actualizarSimuladorFlujo() {
+  var diag = window.CZState ? window.CZState.diag : null;
+  if (!diag) return;
 
-  EXPENSE_CATS.filter(function(c) {
-    return parseFloat(st.gastos[c.k]) > 0;
-  }).forEach(function(c) {
-    var slider = document.querySelector("input[data-cat='" + c.k + "']");
-    if (slider) {
-      total += (parseFloat(st.gastos[c.k]) || 0) - (parseFloat(slider.value) || 0);
-    }
-  });
+  var slider   = document.querySelector("input[data-liberar-monto]");
+  var ingComp  = document.getElementById("ing-complementario");
+  var montoLib = slider   ? (parseFloat(slider.value)   || 0) : 0;
+  var montoComp = ingComp ? (parseFloat(ingComp.value)  || 0) : 0;
 
-  var el = document.getElementById("total-liberado");
-  if (el) el.textContent = fmt(Math.round(total));
+  // Update slider label
+  var lvEl = document.getElementById("lv-liberar");
+  if (lvEl) lvEl.textContent = fmt(montoLib);
+
+  // Simulate projected cash flow — does NOT modify score, risk, horizon or blockers
+  var flujoBase = diag.fin.flujoLibre;
+  var flujoSim  = flujoBase + montoLib + montoComp;
+  var flujoEl   = document.getElementById("flujo-simulado");
+  if (flujoEl) {
+    flujoEl.textContent = fmt(flujoSim);
+    flujoEl.style.color = flujoSim >= 0 ? "#34ffaf" : "#ff4e72";
+  }
 }

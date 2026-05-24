@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
 <title>Credizona Mi Plan</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css"/>
@@ -15,11 +16,11 @@
 <div class="modal-overlay hidden" id="modal-nuevo">
   <div class="modal-box" style="max-width:500px;">
     <div style="text-align:center;font-size:36px;margin-bottom:16px;">↺</div>
-    <div style="font-size:28px;font-weight:900;text-align:center;margin-bottom:10px;">Empezar de nuevo?</div>
-    <p style="font-size:18px;color:#8390b5;text-align:center;line-height:1.6;margin-bottom:24px;">Se va a borrar tu diagnostico actual. Esta accion no se puede deshacer.</p>
+    <div style="font-size:28px;font-weight:900;text-align:center;margin-bottom:10px;">Borrar tu diagnostico?</div>
+    <p style="font-size:18px;color:#8390b5;text-align:center;line-height:1.6;margin-bottom:24px;">Se pierden el plan y los datos que ya cargaste. Esta accion no se puede deshacer.</p>
     <div style="display:flex;gap:12px;">
-      <button class="btn btn-secondary" id="btn-cancelar-nuevo" style="flex:1;height:64px;font-size:20px;">Cancelar</button>
-      <button class="btn" id="btn-confirmar-nuevo" style="flex:1;height:64px;font-size:20px;background:rgba(255,78,114,.2);border:1px solid rgba(255,78,114,.3);color:#ff4e72;">Si, borrar</button>
+      <button class="btn btn-secondary" id="btn-cancelar-nuevo" style="flex:1;height:64px;font-size:20px;">Volver a mi plan</button>
+      <button class="btn" id="btn-confirmar-nuevo" style="flex:1;height:64px;font-size:20px;background:rgba(255,78,114,.2);border:1px solid rgba(255,78,114,.3);color:#ff4e72;">Si, borrar todo</button>
     </div>
   </div>
 </div>
@@ -63,5 +64,6 @@
 <script src="js/events.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/app.js"></script>
+<script>if (location.search.includes("czdev=true")) { var _s = document.createElement("script"); _s.src = "js/czDebug.js"; document.body.appendChild(_s); }</script>
 </body>
 </html>

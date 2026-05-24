@@ -18,27 +18,32 @@ function updateSticky() {
   var lbl  = document.getElementById("sticky-lbl");
   var stEl = document.getElementById("sticky-step");
   var cta  = document.getElementById("sticky-cta");
+  var bar  = document.getElementById("sticky-bar");
   if (!lbl || !stEl || !cta) return;
 
   if (step === 0 && SEGMENTO === 1) {
+    if (bar) bar.classList.remove("dashboard");
     lbl.textContent  = "Evaluacion inicial";
     stEl.textContent = "Ver mi evaluacion y continuar";
     cta.textContent  = "Ver evaluacion";
     cta.className    = "sticky-btn";
   } else if (step === 0 || step === 1) {
+    if (bar) bar.classList.remove("dashboard");
     lbl.textContent  = "Paso " + (SEGMENTO === 1 ? 2 : 1) + " de " + (SEGMENTO === 1 ? 3 : 2);
     stEl.textContent = "Completa tus gastos mensuales";
     cta.textContent  = "Continuar";
     cta.className    = "sticky-btn";
   } else if (step === 2) {
+    if (bar) bar.classList.remove("dashboard");
     lbl.textContent  = "Ultimo paso";
     stEl.textContent = "Genera tu diagnostico completo";
     cta.textContent  = "Ver mi plan";
     cta.className    = "sticky-btn";
   } else {
-    lbl.textContent  = (diag && diag.plan && diag.plan.cta) || "Tu plan";
-    stEl.textContent = "Descubri por que hoy te rechazan";
-cta.textContent = "Ver informe completo";
+    if (bar) bar.classList.add("dashboard");
+    lbl.textContent  = "Que esta frenando tu perfil?";
+    stEl.textContent = "Entende mejor tu situacion financiera";
+    cta.textContent  = "Ver diagnostico completo";
     cta.className    = "sticky-btn premium";
   }
 }
@@ -151,6 +156,10 @@ function renderGastos() {
 
   var html = renderStepPills(SEGMENTO === 1 ? 1 : 0, SEGMENTO === 1 ? 3 : 2);
 
+  html += '<div style="font-size:15px;color:#8390b5;line-height:1.6;margin-bottom:20px;padding:0 4px;">'
+    + 'El banco ya tiene informacion sobre vos. Este diagnostico te ayuda a entenderla.'
+    + '</div>';
+
   if (SEGMENTO <= 2) {
     html += '<div class="card"><div class="card-label" style="margin-bottom:18px;">Datos de tu solicitud</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;">'
@@ -247,10 +256,10 @@ function renderDeudaCard(d, i) {
 
 function getMicroInsight(tipo) {
   var m = {
-    tarjeta:    { cls: "warn",   txt: "⚠️ Las tarjetas de credito acumulan el interes mas rapido. Son prioridad." },
-    informal:   { cls: "danger", txt: "⚠️ Los prestamos informales destruyen el flujo financiero muy rapido." },
-    mora:       { cls: "danger", txt: "⚠️ Las deudas en mora tienen el impacto mas fuerte sobre tu perfil." },
-    financiera: { cls: "warn",   txt: "⚠️ Las financieras tienen tasas altas. Considera refinanciar si es posible." },
+    tarjeta:    { cls: "warn",   txt: "⚠️ Las tarjetas de credito acumulan interes muy rapido. Son prioridad en cualquier plan de reduccion." },
+    informal:   { cls: "warn",   txt: "Este tipo de deuda no siempre figura en el sistema financiero formal, pero puede generar presion significativa sobre el flujo mensual." },
+    mora:       { cls: "danger", txt: "⚠️ Las deudas en mora tienen impacto directo y fuerte sobre el historial financiero. Son prioridad inmediata." },
+    financiera: { cls: "warn",   txt: "⚠️ Las financieras suelen tener tasas elevadas. Puede valer la pena explorar opciones de refinanciacion." },
   };
   return m[tipo] || null;
 }
@@ -259,7 +268,7 @@ function renderMetricsLive() {
   var fin = calcularFinanciero();
   return '<div class="metric"><small>Deuda total</small><strong style="color:#ff4e72;">' + fmt(fin.totalDeuda) + '</strong></div>'
     + '<div class="metric"><small>Pago mensual</small><strong style="color:#ffd36f;">' + fmt(fin.totalPago) + '</strong></div>'
-    + '<div class="metric"><small>Interes promedio</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';">' + fin.interesProm + '%</strong></div>'
+    + '<div class="metric"><small>Costo financiero est.</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';font-size:18px;">~' + fin.interesProm + '% TEA</strong></div>'
     + '<div class="metric"><small>Nivel de riesgo</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';">' + fin.nivelRiesgo + '</strong></div>';
 }
 
@@ -323,6 +332,70 @@ function renderTab() {
 }
 
 // =============================================================================
+// SPRINT 2 — HELPERS DE RECUPERACION
+// =============================================================================
+
+function renderBloqueadores(diag) {
+  var bl = diag.bloqueadores;
+  if (!bl || bl.length === 0) {
+    return '<div class="plan-card" style="border-color:rgba(52,255,175,.2);">'
+      + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
+      + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(52,255,175,.06);border:1px solid rgba(52,255,175,.15);border-radius:12px;">'
+      + '<div style="font-size:18px;color:#34ffaf;">✓</div>'
+      + '<div style="font-size:15px;color:rgba(255,255,255,.8);line-height:1.5;">Sin factores criticos detectados en los datos declarados. Puede haber condiciones para intentar una solicitud.</div>'
+      + '</div></div>';
+  }
+  return '<div class="plan-card">'
+    + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
+    + bl.map(function(b) {
+        var isAlto = b.impacto === "alto";
+        var bc   = isAlto ? "rgba(255,78,114,.09)"  : "rgba(255,211,111,.07)";
+        var bord = isAlto ? "rgba(255,78,114,.22)"  : "rgba(255,211,111,.18)";
+        var col  = isAlto ? "#ff4e72"               : "#ffd36f";
+        return '<div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:' + bc + ';border:1px solid ' + bord + ';border-radius:12px;margin-bottom:8px;">'
+          + '<div style="width:8px;height:8px;border-radius:50%;background:' + col + ';flex-shrink:0;margin-top:6px;"></div>'
+          + '<div>'
+          + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.9);line-height:1.4;">' + b.etiqueta + '</div>'
+          + '<div style="font-size:13px;color:#8390b5;margin-top:3px;">' + (b.tipo === "informal" ? 'Puede generar presion financiera aunque no aparezca directamente en Clearing o BCU.' : isAlto ? 'Dificulta directamente la aprobacion de credito.' : 'Puede dificultar la aprobacion segun el criterio del banco.') + '</div>'
+          + '</div></div>';
+      }).join("")
+    + '</div>';
+}
+
+function renderHorizonteRecalificacion(diag) {
+  var h = diag.horizonte;
+  var col  = (h.banda === "inmediato" || h.banda === "corto") ? "#34ffaf" : h.banda === "medio" ? "#ffd36f" : "#8390b5";
+  var bg   = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.06)"  : h.banda === "medio" ? "rgba(255,211,111,.06)"  : "rgba(255,255,255,.03)";
+  var bord = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.2)"   : h.banda === "medio" ? "rgba(255,211,111,.18)"  : "rgba(255,255,255,.08)";
+  return '<div class="plan-card" style="border-color:' + bord + ';background:' + bg + ';">'
+    + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
+    + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + h.label + '</div>'
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Basado en los datos declarados, sin nuevas deudas, siguiendo el plan. El historial real del sistema financiero puede incluir otros elementos que modifiquen este calculo.</div>'
+    + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
+    + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye Mi Plan Plus.'
+    + '</div></div>';
+}
+
+function renderAccionPrioritaria(diag) {
+  var pc   = diag.plan.color;
+  var int_ = diag.interpretacion;
+  return '<div class="plan-card" style="border-color:' + pc + '40;">'
+    + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Accion prioritaria</div>'
+    + '<div style="display:flex;align-items:flex-start;gap:14px;padding:16px;background:' + pc + '12;border:1px solid ' + pc + '30;border-radius:14px;margin-bottom:' + (int_.secundaria ? '12' : '16') + 'px;">'
+    + '<div style="min-width:28px;height:28px;border-radius:50%;background:' + pc + '30;color:' + pc + ';font-size:15px;font-weight:900;display:flex;align-items:center;justify-content:center;">1</div>'
+    + '<div style="font-size:16px;color:rgba(255,255,255,.9);line-height:1.55;font-weight:600;">' + int_.principal + '</div>'
+    + '</div>'
+    + (int_.secundaria
+        ? '<div style="font-size:14px;color:#8390b5;line-height:1.65;padding:0 4px;margin-bottom:16px;">' + int_.secundaria + '</div>'
+        : "")
+    + '<div style="font-size:13px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Acciones del plan</div>'
+    + diag.plan.prioridades.map(function(p, i) {
+        return '<div class="prioridad-item"><div class="prioridad-num" style="background:' + pc + '20;color:' + pc + ';">' + (i + 1) + '</div><div class="prioridad-text" style="font-size:14px;">' + p + '</div></div>';
+      }).join("")
+    + '</div>';
+}
+
+// =============================================================================
 // TAB: MI PLAN
 // =============================================================================
 function renderTabPlan() {
@@ -334,6 +407,8 @@ function renderTabPlan() {
   var prog   = st.saldoIni > 0 ? Math.max(0, (st.saldoIni - fin.totalDeuda) / st.saldoIni * 100) : 0;
 
   return '<div class="fade">'
+
+    // 1. Plan card — situacion actual
     + '<div class="plan-card" style="border-color:' + pc + '33;">'
     + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;">'
     + '<div><div class="plan-badge" style="background:' + pc + '20;color:' + pc + ';">Plan #' + diag.planId + ' · ' + diag.plan.titulo + '</div>'
@@ -345,40 +420,73 @@ function renderTabPlan() {
     + '<div style="font-size:14px;font-weight:800;color:' + colorNivel(diag.nivelR) + ';margin-top:6px;">' + nivelTexto(diag.nivelR) + '</div>'
     + '</div></div>'
     + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;">'
-    + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Objetivo</div>'
+    + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Que busca este plan</div>'
     + '<div style="font-size:19px;color:rgba(255,255,255,.9);line-height:1.6;">' + diag.plan.objetivo + '</div>'
     + '</div></div>'
 
-    // Scores descompuestos
+    // 2. Bloqueadores activos
+    + renderBloqueadores(diag)
+
+    // 3. Horizonte estimado para recalificar
+    + renderHorizonteRecalificacion(diag)
+
+    // 4. Accion prioritaria (direccion estrategica)
+    + renderAccionPrioritaria(diag)
+
+    // 5. Por donde empezar (deuda especifica — ejecucion tactica)
+    + (prio
+        ? '<div class="priority-card">'
+          + '<div style="font-size:13px;font-weight:800;color:#ffd36f;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Por donde empezar</div>'
+          + '<div style="font-size:28px;font-weight:900;margin-bottom:14px;">' + (prio.acreedor || DEBT_TYPES.find(function(t) { return t.v === prio.tipo; })?.l || "Sin nombre") + '</div>'
+          + '<div class="grid">'
+          + [["Monto", fmt(parseFloat(prio.monto)||0), "#ff4e72"], ["Pago mensual", fmt(parseFloat(prio.pago)||0), "#ffd36f"], ["Costo estimado", "~" + (TASAS[prio.tipo]||62) + "% TEA", "#8390b5"], ["Interes/mes", fmt(Math.round((parseFloat(prio.monto)||0)*(TASAS[prio.tipo]||62)/100/12)), "#ffd36f"]]
+            .map(function(x) { return '<div><small style="color:#8390b5;display:block;margin-bottom:6px;">' + x[0] + '</small><strong style="font-size:' + (x[2] === "#8390b5" ? "20" : "32") + 'px;color:' + x[2] + ';">' + x[1] + '</strong></div>'; }).join("")
+          + '</div>'
+          + (prio.tipo === "informal"
+              ? '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,211,111,.06);border:1px solid rgba(255,211,111,.15);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">Este tipo de deuda no siempre figura en el historial financiero formal, pero puede generar presion significativa sobre el flujo mensual y dificultar la estabilidad general.</div>'
+              : "")
+          + '</div>'
+        : "")
+
+    // 6. Herramientas del plan
+    + renderHerramientas()
+
+    // 7. Metricas de apoyo
+    + '<div class="metrics">'
+    + [
+        { l: "Plata que te sobra/mes",   v: fmt(fin.flujoLibre),               c: fin.flujoLibre < 0 ? "#ff4e72" : "#34ffaf", s: fin.flujoLibre < 0 ? "deficit" : "disponible" },
+        { l: "Total de deudas",           v: fmt(fin.totalDeuda),               c: "#ffd36f",                                   s: (_st().deudas||[]).length + " deuda" + ((_st().deudas||[]).length !== 1 ? "s" : "") },
+        { l: "De tu sueldo va a deudas",  v: Math.round(fin.ratio * 100) + "%", c: fin.ratio > 0.5 ? "#ff4e72" : fin.ratio > 0.35 ? "#ffd36f" : "#34ffaf", s: "meta: menos del 30%" },
+        { l: "Pagas en cuotas por mes",   v: fmt(fin.totalPago),                c: "rgba(255,255,255,.7)",                      s: "suma de minimos" },
+      ].map(function(m) { return '<div class="metric"><small>' + m.l + '</small><strong style="color:' + m.c + ';">' + m.v + '</strong><div style="font-size:14px;color:#8390b5;margin-top:6px;">' + m.s + '</div></div>'; }).join("")
+    + '</div>'
+
+    // 8. Analisis financiero detallado (radiografia — bloques 1 a 4)
+    + renderRadiografia()
+
+    // 9. Composicion del perfil + progreso (contexto analitico)
     + '<div class="plan-card">'
-    + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;">Como se calcula tu puntaje</div>'
+    + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;">Composicion de tu perfil</div>'
     + '<div class="grid">'
     + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
     + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Situacion financiera</div>'
     + '<div style="font-size:52px;font-weight:900;color:' + colorScore(fin.scoreFinanciero) + ';line-height:1;letter-spacing:-2px;">' + fin.scoreFinanciero + '</div>'
     + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">gastos y deudas · max 30</div></div>'
     + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
-    + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Habitos financieros</div>'
-    + '<div style="font-size:52px;font-weight:900;color:' + colorScore(diag.enc.score) + ';line-height:1;letter-spacing:-2px;">' + (TIENE_ENCUESTA ? diag.enc.score : "—") + '</div>'
-    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">encuesta conductual · max 30</div></div>'
+    + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Perfil conductual</div>'
+    + '<div style="font-size:52px;font-weight:900;color:' + (TIENE_ENCUESTA ? colorScore(diag.enc.score) : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + (TIENE_ENCUESTA ? diag.enc.score : "—") + '</div>'
+    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">' + (TIENE_ENCUESTA ? "analisis conductual · max 30" : "sin datos adicionales") + '</div></div>'
     + '</div>'
     + '<div style="margin-top:14px;font-size:15px;color:#8390b5;text-align:center;">Revision sugerida en <strong style="color:rgba(255,255,255,.8);">' + diag.plan.reevaluacion + '</strong></div>'
+    + (!TIENE_ENCUESTA
+        ? '<div style="margin-top:18px;padding:16px 18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;">'
+          + '<div style="font-size:14px;font-weight:800;color:rgba(255,255,255,.7);margin-bottom:8px;">Refinar diagnostico financiero</div>'
+          + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">El analisis actual esta basado en ingresos, gastos y deudas declaradas. Responder algunas preguntas adicionales puede mejorar la precision del diagnostico.</div>'
+          + '<button class="btn btn-secondary" style="height:52px;font-size:15px;" id="btn-refinar-diagnostico">Completar analisis conductual</button>'
+          + '</div>'
+        : "")
     + '</div>'
 
-    // Radiografia
-    + renderRadiografia()
-
-    // Metricas
-    + '<div class="metrics">'
-    + [
-        { l: "Plata que te sobra/mes",   v: fmt(fin.flujoLibre),           c: fin.flujoLibre < 0 ? "#ff4e72" : "#34ffaf", s: fin.flujoLibre < 0 ? "deficit" : "disponible" },
-        { l: "Total de deudas",           v: fmt(fin.totalDeuda),           c: "#ffd36f",                                   s: (_st().deudas||[]).length + " deuda" + ((_st().deudas||[]).length !== 1 ? "s" : "") },
-        { l: "De tu sueldo va a deudas",  v: Math.round(fin.ratio * 100) + "%", c: fin.ratio > 0.5 ? "#ff4e72" : fin.ratio > 0.35 ? "#ffd36f" : "#34ffaf", s: "meta: menos del 30%" },
-        { l: "Pagas en cuotas por mes",   v: fmt(fin.totalPago),            c: "rgba(255,255,255,.7)",                      s: "suma de minimos" },
-      ].map(function(m) { return '<div class="metric"><small>' + m.l + '</small><strong style="color:' + m.c + ';">' + m.v + '</strong><div style="font-size:14px;color:#8390b5;margin-top:6px;">' + m.s + '</div></div>'; }).join("")
-    + '</div>'
-
-    // Progreso
     + (st.saldoIni > 0
         ? '<div class="plan-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><div style="font-size:20px;font-weight:800;">Tu progreso</div><div style="font-size:15px;color:#8390b5;margin-top:4px;">Dia ' + diag.diasRec + ' de recuperacion</div></div>'
           + '<div style="text-align:right;"><div style="font-size:52px;font-weight:900;color:' + (prog > 0 ? "#34ffaf" : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + Math.round(prog) + '%</div><div style="font-size:14px;color:#8390b5;">reducido</div></div></div>'
@@ -386,31 +494,12 @@ function renderTabPlan() {
           + '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:15px;color:#8390b5;"><span>Inicio: ' + fmt(st.saldoIni) + '</span><span>Hoy: ' + fmt(fin.totalDeuda) + '</span></div></div>'
         : "")
 
-    // Prioridades
-    + '<div class="plan-card"><div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;">Que hacer primero</div>'
-    + diag.plan.prioridades.map(function(p, i) {
-        return '<div class="prioridad-item"><div class="prioridad-num" style="background:' + pc + '20;color:' + pc + ';">' + (i + 1) + '</div><div class="prioridad-text">' + p + '</div></div>';
-      }).join("")
-    + '</div>'
-
-    // Deuda prioritaria
-    + (prio
-        ? '<div class="priority-card">'
-          + '<div style="font-size:13px;font-weight:800;color:#ff4e72;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">⚠ Deuda prioritaria</div>'
-          + '<div style="font-size:28px;font-weight:900;margin-bottom:14px;">' + (prio.acreedor || DEBT_TYPES.find(function(t) { return t.v === prio.tipo; })?.l || "Sin nombre") + '</div>'
-          + '<div class="grid">'
-          + [["Monto", fmt(parseFloat(prio.monto)||0), "#ff4e72"], ["Pago mensual", fmt(parseFloat(prio.pago)||0), "#ffd36f"], ["Tasa estimada", "~" + (TASAS[prio.tipo]||62) + "% TNA", "#ff4e72"], ["Interes/mes", fmt(Math.round((parseFloat(prio.monto)||0)*(TASAS[prio.tipo]||62)/100/12)), "#ffd36f"]]
-            .map(function(x) { return '<div><small style="color:#8390b5;display:block;margin-bottom:6px;">' + x[0] + '</small><strong style="font-size:32px;color:' + x[2] + ';">' + x[1] + '</strong></div>'; }).join("")
-          + '</div></div>'
-        : "")
-
-    + renderHerramientas()
-
+    // 10. Premium
     + '<div class="premium-card">'
-    + '<div class="premium-badge">Opcional · siguiente nivel</div>'
+    + '<div class="premium-badge">Recomendado para tu caso</div>'
     + '<div class="premium-title">Mi Plan Plus</div>'
-    + '<div class="premium-text">Si queres profundizar el analisis, accede a tu informe Clearing interpretado con inteligencia artificial y un plan basado en tus datos reales.</div>'
-    + '<button class="btn btn-secondary" style="height:68px;font-size:20px;" id="btn-conocer-plus">Conocer Mi Plan Plus</button>'
+    + '<div class="premium-text">Tu diagnostico usa los datos que declaraste. El informe Clearing muestra lo que el banco ya tiene registrado sobre vos — y la IA te dice que cambiar primero.</div>'
+    + '<button class="btn btn-secondary" style="height:68px;font-size:20px;" id="btn-conocer-plus">Ver que incluye para mi caso</button>'
     + '</div></div>';
 }
 
@@ -474,17 +563,6 @@ function renderRadiografia() {
     + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8390b5;"><span>Comprometido: ' + fmt(Math.round(r.comprometido)) + '</span><span>Libre: ' + fmt(Math.max(0, PRE.ingreso - r.comprometido)) + '</span></div>'
     + '</div>'
 
-    // 5. Cuando calificar
-    + '<div style="background:linear-gradient(135deg,rgba(91,124,255,.12),rgba(61,220,255,.08));border:1px solid rgba(91,124,255,.3);border-radius:18px;padding:20px;">'
-    + '<div style="font-size:13px;font-weight:800;color:#5b7cff;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">🎯 Cuando podrias volver a calificar</div>'
-    + (r.mesesParaCalificar === 1
-        ? '<div style="font-size:28px;font-weight:900;color:#34ffaf;margin-bottom:8px;">Muy pronto — menos de 1 mes</div><div style="font-size:15px;color:#8390b5;line-height:1.6;">Tu perfil esta cerca del umbral de aprobacion. Con algunos ajustes menores podes intentarlo.</div>'
-        : '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;"><div style="font-size:52px;font-weight:900;color:#40d7ff;line-height:1;letter-spacing:-2px;">' + r.mesesParaCalificar + '</div><div style="font-size:20px;font-weight:700;color:#8390b5;">meses</div></div>'
-          + '<div style="font-size:16px;color:rgba(255,255,255,.8);font-weight:700;margin-bottom:8px;">Aproximadamente ' + r.mesCalifica + '</div>'
-          + '<div style="font-size:14px;color:#8390b5;line-height:1.6;">Siguiendo el plan asignado y sin tomar nuevas deudas. Esta es una proyeccion basada en los datos que declaraste.</div>')
-    + '<div style="margin-top:14px;padding:12px 14px;background:rgba(61,220,255,.08);border:1px solid rgba(61,220,255,.15);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
-    + '<strong style="color:#40d7ff;">Para confirmar esta proyeccion</strong> necesitas saber exactamente que ve el banco sobre vos. Eso es lo que incluye Mi Plan Plus.'
-    + '</div></div>'
     + '</div>';
 }
 
@@ -532,9 +610,9 @@ function renderTabIA() {
   if (plus === "sin_pago") {
     return '<div class="fade"><div class="locked-overlay">'
       + '<div class="locked-blur" style="height:280px;background:rgba(255,255,255,.03);border-radius:22px;"></div>'
-      + '<div class="locked-gate"><div class="locked-icon">🤖</div><div class="locked-title">Asistente IA</div>'
-      + '<div class="locked-text">El asistente analiza tu informe Clearing con inteligencia artificial y te da recomendaciones especificas para tu caso.</div>'
-      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-ia">Conocer Mi Plan Plus</button>'
+      + '<div class="locked-gate"><div class="locked-icon">🤖</div><div class="locked-title">Tu analisis esta casi listo</div>'
+      + '<div class="locked-text">En cuanto tengamos tu informe Clearing real, la IA te dice exactamente que esta bloqueando tu aprobacion y cual es el primer paso concreto para tu caso.</div>'
+      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-ia">Ver que incluye para mi caso</button>'
       + '</div></div></div>';
   }
   if (!ia) return '<div class="fade"><div class="result"><h3>Generando tu analisis...</h3><p>El asistente esta procesando tu informe Clearing.</p></div></div>';
@@ -552,10 +630,10 @@ function renderTabPlus() {
   if (plus === "sin_pago") {
     return '<div class="fade"><div class="locked-overlay">'
       + '<div class="locked-blur" style="height:260px;background:rgba(255,255,255,.03);border-radius:22px;"></div>'
-      + '<div class="locked-gate"><div class="locked-icon">📊</div><div class="locked-title">Informe Clearing</div>'
-      + '<div class="locked-text">Mira exactamente que informacion tiene registrada el sistema financiero sobre vos.</div>'
-      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-tab">Conocer Mi Plan Plus</button>'
-      + '<div style="margin-top:12px;font-size:16px;color:#8390b5;">Desde UYU 990 · Garantia 7 dias</div>'
+      + '<div class="locked-gate"><div class="locked-icon">📊</div><div class="locked-title">Tu historial en el sistema</div>'
+      + '<div class="locked-text">Hasta ahora solo el banco lo veia. Aca te lo mostramos a vos — y te decimos exactamente que significa para tu caso.</div>'
+      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-tab">Ver que incluye para mi caso</button>'
+      + '<div style="margin-top:12px;font-size:16px;color:#8390b5;">Desde UYU 990 · Devolucion garantizada 7 dias</div>'
       + '</div></div></div>';
   }
   return '<div class="fade"><div class="result"><h3>Informe disponible</h3><p>Tu informe Clearing esta listo.</p></div></div>';
@@ -783,7 +861,11 @@ function renderHerramientasPlan4() {
     { id: "pago_minimos",   l: "Pudiste pagar todos los minimos?" },
     { id: "flujo_positivo", l: "Tu flujo este mes fue positivo?" },
   ];
-  var gastos = _st().gastos || {};
+  var gastos     = _st().gastos || {};
+  var diag       = _diag();
+  var flujoBase  = diag ? diag.fin.flujoLibre : 0;
+  var maxSlider  = Math.max(2000, Object.values(gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0));
+  var flujoColor = flujoBase >= 0 ? "#34ffaf" : "#ff4e72";
 
   var h1 = renderToolCard(1, "Semaforo de tu situacion", "Tres preguntas para saber como estas esta semana.",
     '<div style="margin-top:8px;">'
@@ -805,18 +887,36 @@ function renderHerramientasPlan4() {
     + renderCompItem("ingreso_extra","Voy a buscar aunque sea una fuente de ingreso extra")
     + '</div>', c2);
 
-  var h3 = renderToolCard(3, "Cuanto podes liberar reduciendo gastos", "Cada peso que liberas es un paso hacia la estabilizacion.",
+  var h3 = renderToolCard(3, "Cuanto podrias liberar por mes",
+    "Indica un monto mensual posible. No importa de que gasto venga.",
     '<div style="margin-top:8px;">'
-    + EXPENSE_CATS.filter(function(c) { return parseFloat(gastos[c.k]) > 0; }).map(function(c) {
-        var val = parseFloat(gastos[c.k]) || 0;
-        return '<div style="margin-bottom:16px;">'
-          + '<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:16px;font-weight:700;">' + c.l + '</span><span style="font-size:16px;font-weight:700;color:#40d7ff;" id="lv-' + c.k + '">' + fmt(val) + '</span></div>'
-          + '<input type="range" min="0" max="' + val + '" step="500" value="' + val + '" data-cat="' + c.k + '" style="width:100%;accent-color:#40d7ff;"/></div>';
-      }).join("")
-    + '<div style="background:rgba(64,215,255,.1);border:1px solid rgba(64,215,255,.25);border-radius:14px;padding:16px 20px;text-align:center;">'
-    + '<div style="font-size:15px;color:#8390b5;margin-bottom:6px;">Si reduces a estos niveles, liberarias</div>'
-    + '<div style="font-size:48px;font-weight:900;color:#40d7ff;letter-spacing:-2px;" id="total-liberado">' + fmt(0) + '</div>'
-    + '<div style="font-size:15px;color:#8390b5;margin-top:4px;">por mes</div></div>'
+
+    // Slider general de reduccion
+    + '<div style="margin-bottom:22px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+    + '<span style="font-size:15px;font-weight:700;color:rgba(255,255,255,.8);">Monto mensual a liberar</span>'
+    + '<span style="font-size:15px;font-weight:800;color:#40d7ff;" id="lv-liberar">' + fmt(0) + '</span>'
+    + '</div>'
+    + '<input type="range" min="0" max="' + maxSlider + '" step="500" value="0" data-liberar-monto style="width:100%;accent-color:#40d7ff;"/>'
+    + '</div>'
+
+    // Ingresos complementarios
+    + '<div style="margin-bottom:22px;padding:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;">'
+    + '<div style="font-size:14px;font-weight:800;color:rgba(255,255,255,.7);margin-bottom:6px;">Ingresos complementarios</div>'
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:12px;">Si tenes ingresos variables, changas, horas extra o apoyo puntual, podes incluirlos para ver tu margen mensual potencial.</div>'
+    + '<div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;">Monto mensual adicional</div>'
+    + '<div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
+    + '<input type="number" style="padding-left:36px;" placeholder="0" id="ing-complementario" data-ingreso-comp/></div>'
+    + '<div style="margin-top:10px;font-size:12px;color:#8390b5;line-height:1.6;">Puede mejorar tu margen real, pero no siempre cuenta como ingreso formal para bancos o financieras.</div>'
+    + '</div>'
+
+    // Flujo simulado
+    + '<div style="background:rgba(64,215,255,.06);border:1px solid rgba(64,215,255,.18);border-radius:14px;padding:18px 20px;text-align:center;">'
+    + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Plata disponible por mes</div>'
+    + '<div style="font-size:44px;font-weight:900;color:' + flujoColor + ';letter-spacing:-2px;" id="flujo-simulado">' + fmt(flujoBase) + '</div>'
+    + '<div style="font-size:13px;color:#8390b5;margin-top:10px;line-height:1.6;">Estos ajustes muestran como podria cambiar tu margen mensual disponible. El diagnostico financiero no cambia hasta que esos cambios sean reales.</div>'
+    + '</div>'
+
     + '</div>', true);
 
   return h1 + h2 + h3;
@@ -889,26 +989,69 @@ function renderHerramientasPlan5() {
 // =============================================================================
 function renderModalPremium() {
   return '<div class="premium-modal-content">'
-    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;">'
-    + '<div><div class="premium-badge">Opcional · siguiente nivel</div>'
-    + '<div style="font-size:32px;font-weight:900;line-height:1.1;margin-top:6px;">Entende exactamente<br>que ve el banco sobre vos.</div></div>'
+
+    // Header: badge + headline + close
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;">'
+    + '<div>'
+    + '<div class="premium-badge">El siguiente paso</div>'
+    + '<div style="font-size:30px;font-weight:900;line-height:1.15;margin-top:8px;">Tu perfil financiero real.</div>'
+    + '<div style="font-size:16px;color:#8390b5;margin-top:8px;line-height:1.5;">Interpretado con IA. Con un plan concreto para volver a calificar.</div>'
+    + '</div>'
     + '<button id="btn-cerrar-premium" class="modal-close-btn" type="button">&#215;</button>'
     + '</div>'
-    + '<div class="premium-text">Tu diagnostico actual esta basado en lo que vos declaraste. Mi Plan Plus accede a tu historial real en el sistema financiero y lo interpreta con inteligencia artificial.</div>'
+
+    // Guarantee — moved to top, visually prominent
+    + '<div style="background:rgba(52,255,175,.07);border:1px solid rgba(52,255,175,.22);border-radius:16px;padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;">'
+    + '<div style="font-size:28px;flex-shrink:0;">🛡</div>'
+    + '<div>'
+    + '<div style="font-size:15px;font-weight:800;color:#34ffaf;margin-bottom:3px;">Garantia de devolucion — 7 dias</div>'
+    + '<div style="font-size:14px;color:#8390b5;line-height:1.5;">Si en 7 dias no te sirve, te devolvemos el dinero. Sin preguntas. El informe es provisto por <strong style="color:rgba(255,255,255,.7);">Clearing de Informes Uruguay</strong>.</div>'
+    + '</div>'
+    + '</div>'
+
+    // Intro — BCU + Clearing + AI positioning
+    + '<div class="premium-text" style="margin-bottom:18px;">Tu diagnostico actual usa estimaciones. Mi Plan Plus analiza tu historial real del sistema financiero uruguayo — Clearing, BCU y mas — y te dice exactamente que esta frenando tu aprobacion y como resolverlo.</div>'
+
+    // Feature list — errores first (highest emotional impact)
     + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:22px;margin-bottom:18px;">'
-    + '<div style="font-size:13px;color:#8390b5;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px;">Lo que vas a recibir</div>'
-    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);"><span style="font-size:22px;flex-shrink:0;">🔍</span><div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Tu historial real</div><div style="font-size:15px;color:#8390b5;line-height:1.5;">Deudas, atrasos y consultas que el banco ve sobre vos</div></div></div>'
-    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);"><span style="font-size:22px;flex-shrink:0;">🤖</span><div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Analisis con IA</div><div style="font-size:15px;color:#8390b5;line-height:1.5;">La IA interpreta el informe y te dice que corregir primero</div></div></div>'
-    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);"><span style="font-size:22px;flex-shrink:0;">📋</span><div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Plan basado en datos reales</div><div style="font-size:15px;color:#8390b5;line-height:1.5;">No en estimaciones, en lo que realmente figura</div></div></div>'
-    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);"><span style="font-size:22px;flex-shrink:0;">✉️</span><div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Todo por email</div><div style="font-size:15px;color:#8390b5;line-height:1.5;">Recibis el informe y el analisis en tu correo</div></div></div>'
-    + '<div style="display:flex;gap:14px;padding:12px 0;"><span style="font-size:22px;flex-shrink:0;">✓</span><div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Verificacion de errores</div><div style="font-size:15px;color:#8390b5;line-height:1.5;">Si hay algo mal registrado, te lo decimos</div></div></div>'
+    + '<div style="font-size:13px;color:#8390b5;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px;">Que incluye</div>'
+
+    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
+    + '<span style="font-size:22px;flex-shrink:0;">✓</span>'
+    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Deteccion de errores en tu historial</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">Si hay algo mal registrado que te esta bloqueando, te lo mostramos. Eso solo puede cambiar el resultado.</div></div></div>'
+
+    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
+    + '<span style="font-size:22px;flex-shrink:0;">🔍</span>'
+    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Datos reales del sistema financiero</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">Historial de Clearing, informacion del BCU y consultas activas sobre tu perfil</div></div></div>'
+
+    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
+    + '<span style="font-size:22px;flex-shrink:0;">🤖</span>'
+    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Analisis con IA</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">La IA lee tu informe y te dice que corregir primero, en base a tu caso</div></div></div>'
+
+    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
+    + '<span style="font-size:22px;flex-shrink:0;">📋</span>'
+    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Plan recalculado con datos reales</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">Tu plan se actualiza con lo que realmente figura — no con lo que estimaste</div></div></div>'
+
+    + '<div style="display:flex;gap:14px;padding:12px 0;">'
+    + '<span style="font-size:22px;flex-shrink:0;">✉️</span>'
+    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Todo en tu correo en menos de 24hs</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">Recibis el informe y el analisis directamente</div></div></div>'
+
     + '</div>'
-    + '<div class="pricing-grid">'
-    + '<div class="pricing-card" data-elegir-plan="one_time"><div style="font-size:13px;color:#8390b5;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Una vez</div><div class="price-amount">990</div><div class="price-label">UYU · pago unico</div><div class="price-desc">1 informe Clearing + analisis IA. Sin compromiso.</div><button class="btn btn-secondary" style="width:100%;height:56px;font-size:17px;margin-top:14px;" data-elegir-plan="one_time">Elegir este plan</button></div>'
-    + '<div class="pricing-card featured" data-elegir-plan="trimestral"><div class="pricing-top-badge">Recomendado</div><div style="font-size:13px;color:#40d7ff;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Trimestral</div><div class="price-amount">1.290</div><div class="savings-badge">Ahorras UYU 180</div><div class="price-label">UYU · pago unico</div><div class="price-desc">3 informes Clearing (dia 0, 30 y 60) + 3 analisis IA. Sin sorpresas.</div><button class="btn btn-primary" style="width:100%;height:56px;font-size:17px;margin-top:14px;" data-elegir-plan="trimestral">Elegir trimestral</button></div>'
+
+    // Single pricing card
+    + '<div style="background:rgba(64,215,255,.06);border:2px solid rgba(64,215,255,.3);border-radius:22px;padding:24px;margin-bottom:18px;" data-elegir-plan="one_time">'
+    + '<div style="font-size:13px;color:#40d7ff;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Diagnostico completo</div>'
+    + '<div class="price-amount">990</div>'
+    + '<div class="price-label">UYU · pago unico</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.6;margin-top:10px;">Informe financiero real + analisis IA + plan de accion. Pago unico. Sin suscripcion.</div>'
+    + '<button class="btn btn-primary" style="width:100%;height:56px;font-size:18px;margin-top:16px;" data-elegir-plan="one_time">Acceder al diagnostico completo</button>'
     + '</div>'
-    + '<div style="background:rgba(255,211,111,.08);border:1px solid rgba(255,211,111,.2);border-radius:14px;padding:14px 18px;margin-bottom:16px;"><div style="font-size:14px;font-weight:800;color:#ffd36f;margin-bottom:4px;">Cual elegir?</div><div style="font-size:15px;color:#8390b5;line-height:1.6;">El <strong style="color:rgba(255,255,255,.9);">pago unico</strong> es para entender tu situacion ahora. El <strong style="color:rgba(255,255,255,.9);">trimestral</strong> actualiza tu informe en los dias 30 y 60.</div></div>'
-    + '<div style="text-align:center;font-size:15px;color:#8390b5;">Si en 7 dias no te ayudo, te devolvemos el dinero. El informe es provisto por Clearing de Informes Uruguay.</div>'
+
     + '</div>';
 }
 
@@ -943,8 +1086,19 @@ function abrirModalPremium() {
       btn.onclick = function() {
         var tipo = btn.getAttribute("data-elegir-plan");
         track("click_reset_plus", { tipo: tipo, plan: diag && diag.planId });
-        cerrarPremium();
-        alert("Redirigiendo al pago... (TODO IT: integrar pasarela de pago)");
+
+        if (content) {
+          content.innerHTML = '<div style="padding:48px 28px;text-align:center;">'
+            + '<div style="font-size:44px;margin-bottom:22px;">📩</div>'
+            + '<div style="font-size:24px;font-weight:900;margin-bottom:12px;line-height:1.2;">Recibimos tu pedido</div>'
+            + '<div style="font-size:17px;color:#8390b5;line-height:1.7;margin-bottom:24px;">'
+            + 'En breve te vamos a contactar para completar el proceso y enviarte tu informe Clearing.'
+            + '</div>'
+            + '<div style="padding:14px 18px;background:rgba(64,215,255,.07);border:1px solid rgba(64,215,255,.15);border-radius:14px;font-size:15px;color:#8390b5;line-height:1.6;">'
+            + 'Cualquier consulta: <strong style="color:#40d7ff;">info@credizona.com.uy</strong>'
+            + '</div>'
+            + '</div>';
+        }
       };
     });
   }

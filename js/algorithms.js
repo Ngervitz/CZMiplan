@@ -50,7 +50,7 @@ const PLANES = {
     problema:  "Tu situacion esta en un punto critico. Antes de pedir otro credito, hay que estabilizar lo que tenes.",
     objetivo:  "Parar la caida primero. Estabilizarte. Despues, con la situacion ordenada, pensar en el credito.",
     prioridades: [
-      "No tomar ninguna deuda nueva bajo ningun concepto.",
+      "No tomar ninguna deuda nueva en este periodo.",
       "Ordenar las deudas informales y las que estan en mora. Son las que mas dano hacen.",
       "Lograr que cada mes te sobre aunque sea un poco. Eso es la base de todo.",
     ],
@@ -123,13 +123,32 @@ function calcularFinanciero() {
 
 // =============================================================================
 // PRIORIDAD DE DEUDA
+// El estado de la deuda actua como multiplicador dominante, no como factor aditivo.
+// Una deuda en mora de monto moderado supera a una deuda grande al dia.
 // =============================================================================
 function calcularPrioridad(d) {
-  const est = getEstado(d.estado);
-  return (parseFloat(d.monto) || 0) * 0.15
-    + (parseFloat(d.pago) || 0) * 0.2
-    + (TASAS[d.tipo] || 62) * 40
-    + (est ? est.puntaje * 1500 : 0);
+  const monto = parseFloat(d.monto) || 0;
+  const pago  = parseFloat(d.pago)  || 0;
+  const tasa  = TASAS[d.tipo] || 62;
+  const ing   = PRE.ingreso || 1;
+
+  // Presion sobre el flujo mensual (relativa al ingreso)
+  const presionFlujo = (pago / ing) * 100;
+
+  // Costo financiero mensual como numero normalizado
+  const interesMensual = monto * (tasa / 100 / 12);
+
+  // Presion informal: no siempre visible en Clearing, pero real sobre el flujo
+  const presionInformal = d.tipo === "informal" ? 20 : 0;
+
+  // Score base: flujo + interes relativo + presion de tipo
+  const base = presionFlujo + (interesMensual / 200) + presionInformal;
+
+  // Estado como multiplicador — factor dominante de severidad
+  const MULT = { al_dia: 1, atraso_leve: 3, atraso_grave: 6, mora: 12 };
+  const mult = MULT[d.estado] || 1;
+
+  return base * mult;
 }
 
 function deudaPrioritaria() {
@@ -152,6 +171,96 @@ function asignarPlan(enc, fin) {
 }
 
 // =============================================================================
+// INTERPRETACION CONTEXTUAL — reglas deterministas sobre datos declarados
+// Retorna { principal, secundaria } — maximo 1+1 mensajes.
+// Prioridad fija: flujo <= 0 > moras > informal > ratio alto > default
+// =============================================================================
+function interpretarSituacion(fin) {
+  // Caso 1 — flujo negativo o cero (dominante)
+  if (fin.flujoLibre <= 0) {
+    return {
+      principal:  "Con los numeros que declaraste, hoy no hay margen para asumir otra cuota.",
+      secundaria: "Pedir mas plata puede dar alivio corto, pero aumenta el riesgo de atrasarte mas.",
+    };
+  }
+  // Caso 2 — flujo positivo pero con atrasos activos
+  if (fin.cantMoras > 0) {
+    return {
+      principal:  "Tus ingresos todavia dejan algo de margen, pero los atrasos actuales ya estan afectando tu perfil.",
+      secundaria: "Antes de pedir mas credito, conviene regularizar lo que ya figura atrasado.",
+    };
+  }
+  // Caso 3 — deuda informal presente (sin caso 1 ni 2)
+  if (fin.cantInformales > 0) {
+    return {
+      principal:  "Tenes deuda informal activa que puede estar presionando tu flujo mensual.",
+      secundaria: "No siempre figura en Clearing o BCU, pero puede complicar el resto de tus pagos.",
+    };
+  }
+  // Caso 4 — ratio alto sin atrasos
+  if (fin.ratio > 0.35) {
+    return {
+      principal:  "Hoy venis cumpliendo, pero una parte alta de tus ingresos ya esta comprometida en cuotas.",
+      secundaria: "Una cuota nueva puede dejarte sin margen ante cualquier imprevisto.",
+    };
+  }
+  // Caso 5 — default
+  return {
+    principal:  "Tu situacion necesita orden, pero todavia hay margen para corregir sin tomar decisiones apuradas.",
+    secundaria: null,
+  };
+}
+
+// =============================================================================
+// BLOQUEADORES ACTIVOS — derivados de calcularFinanciero()
+// =============================================================================
+function calcularBloqueadores(fin) {
+  const bl = [];
+  if (fin.cantMoras >= 2) {
+    bl.push({ tipo: "mora_multiple", etiqueta: fin.cantMoras + " deudas en mora o atraso registradas", impacto: "alto" });
+  } else if (fin.cantMoras === 1) {
+    bl.push({ tipo: "mora", etiqueta: "Deuda en mora o atraso registrado", impacto: "alto" });
+  }
+  if (fin.cantInformales > 0) {
+    bl.push({ tipo: "informal", etiqueta: "Prestamo informal activo", impacto: "alto" });
+  }
+  if (fin.flujoLibre < 0) {
+    bl.push({ tipo: "flujo_negativo", etiqueta: "Flujo mensual negativo", impacto: "alto" });
+  }
+  if (fin.ratio > 0.5) {
+    bl.push({ tipo: "ratio_critico", etiqueta: "Carga de pagos sobre el 50% del ingreso", impacto: "alto" });
+  } else if (fin.ratio > 0.35) {
+    bl.push({ tipo: "ratio_alto", etiqueta: "Carga de pagos entre el 35% y 50% del ingreso", impacto: "medio" });
+  }
+  return bl;
+}
+
+// =============================================================================
+// HORIZONTE DE RECALIFICACION — derivado de calculos existentes
+// =============================================================================
+function calcularHorizonte(fin, ing) {
+  let meses = 0;
+  if (fin.cantMoras === 0 && fin.ratio <= 0.30 && fin.flujoLibre > (ing || 1) * 0.15) {
+    meses = 1;
+  } else {
+    if (fin.cantMoras > 0)                         meses += fin.cantMoras * 3;
+    if (fin.ratio > 0.5)                           meses += 9;
+    else if (fin.ratio > 0.35)                     meses += 4;
+    if (fin.flujoLibre < 0)                        meses += 6;
+    else if (fin.flujoLibre < (ing || 1) * 0.15)   meses += 2;
+    meses = Math.max(1, meses);
+  }
+  let banda, label;
+  if (meses <= 1)       { banda = "inmediato"; label = "Ya hay condiciones para considerar una solicitud"; }
+  else if (meses <= 3)  { banda = "corto";     label = "Proximos 2 a 3 meses"; }
+  else if (meses <= 6)  { banda = "corto";     label = "Proximos 4 a 6 meses"; }
+  else if (meses <= 12) { banda = "medio";     label = "Dentro de 6 a 12 meses"; }
+  else if (meses <= 24) { banda = "medio";     label = "Dentro de 1 a 2 anos"; }
+  else                  { banda = "largo";     label = "Mas de 2 anos"; }
+  return { meses, banda, label };
+}
+
+// =============================================================================
 // MOTOR COMPLETO
 // =============================================================================
 function calcularMotor() {
@@ -166,10 +275,14 @@ function calcularMotor() {
   const diasRec = snap
     ? Math.floor((Date.now() - new Date(snap.fecha_inicio).getTime()) / 86400000)
     : 0;
+  const bloqueadores   = calcularBloqueadores(fin);
+  const horizonte      = calcularHorizonte(fin, PRE.ingreso);
+  const interpretacion = interpretarSituacion(fin);
   return {
     enc, fin, scoreReset, nivelR,
     planId, plan: PLANES[planId],
     prio: deudaPrioritaria(), diasRec,
+    bloqueadores, horizonte, interpretacion,
   };
 }
 

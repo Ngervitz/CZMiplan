@@ -35,7 +35,7 @@ function clamp(n, a, b) {
 function colorScore(s)  { return s >= 21 ? "#34ffaf" : s >= 13 ? "#ffd36f" : "#ff4e72"; }
 function colorNivel(n)  { return n === "A" ? "#34ffaf" : n === "B+" ? "#a78bfa" : n === "B" ? "#ffd36f" : "#ff4e72"; }
 function colorRiesgo(r) { return r === "Critico" ? "#ff4e72" : r === "Medio" ? "#ffd36f" : "#34ffaf"; }
-function nivelTexto(n)  { return n === "A" ? "MANEJABLE" : n === "B+" ? "MUY BUENO" : n === "B" ? "EN PROCESO" : "REQUIERE ATENCION"; }
+function nivelTexto(n)  { return n === "A" ? "Manejable" : n === "B+" ? "Muy bueno" : n === "B" ? "En proceso" : "Requiere accion"; }
 
 // --- Pre-loaded data desde URL params ---
 function getPreLoaded() {
