@@ -7,12 +7,39 @@ const ALGORITHM_VERSION = "reset_v3_dark";
 const STORAGE_KEY       = "cr_v3";
 const API_TOKEN         = "REEMPLAZAR_CON_TOKEN_REAL"; // TODO IT
 
+// Per-module algorithm version constants — used by buildDiagnosisSnapshot()
+const BEHAVIORAL_ALGORITHM_VERSION  = "survey_v2_simple";
+const FINANCIAL_ALGORITHM_VERSION   = "financial_v3_dark";
+const HORIZON_ALGORITHM_VERSION     = "horizon_v1";
+const INTERPRETATION_ENGINE_VERSION = "interpretation_v1";
+
+// Input source taxonomy — classifies where each data point came from
+// DECLARED:  user-entered directly
+// SIMULATED: slider / temporary simulation (does NOT affect score/risk)
+// VERIFIED:  future Equifax-confirmed data (not yet implemented)
+const INPUT_SOURCES = Object.freeze({
+  DECLARED:  "DECLARED",
+  SIMULATED: "SIMULATED",
+  VERIFIED:  "VERIFIED",
+});
+
+// UUID v4 generator — used by identity layer and snapshot system
+function generateUUID() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0;
+    var v = c === "x" ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 const API = {
   guardar:  "https://api.credizona.com.uy/api/reset/guardar",   // TODO IT
   clearing: "https://api.credizona.com.uy/api/reset/clearing",  // TODO IT
   pago:     "https://api.credizona.com.uy/api/reset/pago",      // TODO IT
   ia:       "https://api.credizona.com.uy/api/reset/ia",        // TODO IT
 };
+
+const SURVEY_URL = "https://credizona.com.uy/encuesta"; // TODO IT: reemplazar con URL real de encuesta
 
 const SITUACION_LABELS = {
   relacion_dependencia:  "Relacion de dependencia",

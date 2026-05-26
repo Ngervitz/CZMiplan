@@ -21,28 +21,42 @@ function updateSticky() {
   var bar  = document.getElementById("sticky-bar");
   if (!lbl || !stEl || !cta) return;
 
+  // step 0: SEGMENTO 1 keeps its own sticky; diagnosis/bridge screens have inline CTAs
   if (step === 0 && SEGMENTO === 1) {
-    if (bar) bar.classList.remove("dashboard");
-    lbl.textContent  = "Evaluacion inicial";
-    stEl.textContent = "Ver mi evaluacion y continuar";
+    if (bar) { bar.style.display = ""; bar.classList.remove("dashboard"); }
+    lbl.textContent  = "Tu situacion inicial";
+    stEl.textContent = "Analizamos las senales principales de tu perfil.";
     cta.textContent  = "Ver evaluacion";
     cta.className    = "sticky-btn";
-  } else if (step === 0 || step === 1) {
+    return;
+  }
+
+  if (step === 0) {
+    if (bar) bar.style.display = "none";
+    return;
+  }
+
+  if (bar) bar.style.display = "";
+
+  if (step === 1) {
+    // step 1 = deudas — primary recovery interpretation layer
     if (bar) bar.classList.remove("dashboard");
-    lbl.textContent  = "Paso " + (SEGMENTO === 1 ? 2 : 1) + " de " + (SEGMENTO === 1 ? 3 : 2);
-    stEl.textContent = "Completa tus gastos mensuales";
-    cta.textContent  = "Continuar";
+    lbl.textContent  = "Tus deudas actuales";
+    stEl.textContent = "Identificamos donde esta hoy la mayor presion financiera.";
+    cta.textContent  = "Continuar analisis";
     cta.className    = "sticky-btn";
   } else if (step === 2) {
+    // step 2 = gastos — financial context
     if (bar) bar.classList.remove("dashboard");
-    lbl.textContent  = "Ultimo paso";
-    stEl.textContent = "Genera tu diagnostico completo";
-    cta.textContent  = "Ver mi plan";
+    lbl.textContent  = "Tus gastos mensuales";
+    stEl.textContent = "Completamos el contexto real de tu flujo.";
+    cta.textContent  = "Ver diagnostico completo";
     cta.className    = "sticky-btn";
   } else {
+    // step 3 = dashboard — full diagnosis
     if (bar) bar.classList.add("dashboard");
-    lbl.textContent  = "Que esta frenando tu perfil?";
-    stEl.textContent = "Entende mejor tu situacion financiera";
+    lbl.textContent  = "Tu diagnostico completo";
+    stEl.textContent = "Interpretacion completa de tu situacion financiera actual.";
     cta.textContent  = "Ver diagnostico completo";
     cta.className    = "sticky-btn premium";
   }
@@ -75,7 +89,8 @@ function updateHeader() {
 // STEP PILLS
 // =============================================================================
 function renderStepPills(cur, total) {
-  var labels = SEGMENTO === 1 ? ["Evaluacion", "Gastos", "Deudas"] : ["Gastos", "Deudas"];
+  // New flow: Situacion inicial → Deudas → Gastos → Diagnostico completo
+  var labels = SEGMENTO === 1 ? ["Situacion inicial", "Deudas", "Gastos"] : ["Deudas", "Gastos"];
   var t = total || labels.length;
   var html = '<div class="step-pills">';
   labels.slice(0, t).forEach(function(l, i) {
@@ -134,7 +149,7 @@ function renderDiagInicial() {
     + '<div class="section-title">Para darte un diagnostico mas preciso necesitamos 2 minutos mas.</div>'
     + '<div class="section-text">No necesitas montos exactos. Una estimacion alcanza para detectar que deuda te esta danando mas.</div>'
     + '<div class="steps">'
-    + [["1","Gastos","Vemos cuanto margen mensual queda."],["2","Deudas","Identificamos acreedores y montos."],["3","Prioridad","Calculamos que deuda dana mas."],["4","Plan","Te mostramos que hacer primero."]]
+    + [["1","Deudas","Identificamos donde esta hoy la mayor presion financiera."],["2","Gastos","Completamos el contexto real de tu flujo."],["3","Diagnostico","Interpretacion completa de tu situacion financiera actual."]]
       .map(function(x) { return '<div class="step"><div class="step-num">' + x[0] + '</div><div class="step-title">' + x[1] + '</div><div class="step-text">' + x[2] + '</div></div>'; }).join("")
     + '</div></div></div>';
 }
@@ -154,7 +169,8 @@ function renderGastos() {
   var pct    = PRE.ingreso > 0 ? total / PRE.ingreso : 0;
   var pc     = pct > 0.9 ? "#ff4e72" : pct > 0.7 ? "#ffd36f" : "#34ffaf";
 
-  var html = renderStepPills(SEGMENTO === 1 ? 1 : 0, SEGMENTO === 1 ? 3 : 2);
+  // New flow: Gastos is step index 2 for SEGMENTO 1, index 1 for others
+  var html = renderStepPills(SEGMENTO === 1 ? 2 : 1, SEGMENTO === 1 ? 3 : 2);
 
   html += '<div style="font-size:15px;color:#8390b5;line-height:1.6;margin-bottom:20px;padding:0 4px;">'
     + 'El banco ya tiene informacion sobre vos. Este diagnostico te ayuda a entenderla.'
@@ -170,8 +186,8 @@ function renderGastos() {
   }
 
   html += '<div class="card">'
-    + '<div class="section-title">Gastos mensuales</div>'
-    + '<div class="section-text">No necesitas montos exactos. Una estimacion ya nos permite detectar patrones financieros importantes.</div>'
+    + '<div class="section-title">Tus gastos mensuales</div>'
+    + '<div class="section-text">Completamos el contexto real de tu flujo mensual. Una estimacion alcanza para ver el margen disponible.</div>'
     + EXPENSE_CATS.map(function(c, i) {
         var val    = parseFloat(gastos[c.k]) || 0;
         var isOpen = val > 0 || i === 0;
@@ -202,12 +218,13 @@ function renderGastos() {
 // STEP 2 — DEUDAS
 // =============================================================================
 function renderDeudas() {
-  var html = renderStepPills(SEGMENTO === 1 ? 2 : 1, SEGMENTO === 1 ? 3 : 2);
+  // New flow: Deudas is step index 1 for SEGMENTO 1, index 0 for others
+  var html = renderStepPills(SEGMENTO === 1 ? 1 : 0, SEGMENTO === 1 ? 3 : 2);
   var deudas = _st().deudas || [];
 
   html += '<div class="card">'
-    + '<div class="section-title">Tus deudas</div>'
-    + '<div class="section-text">El acreedor y el tipo de deuda son fundamentales para detectar que deuda te esta danando mas y por donde empezar.</div>'
+    + '<div class="section-title">Tus deudas actuales</div>'
+    + '<div class="section-text">Identificamos el acreedor, el monto y el comportamiento de pago para detectar donde esta hoy la mayor presion financiera.</div>'
     + '<div id="deudas-container">' + deudas.map(renderDeudaCard).join("") + '</div>'
     + '<button class="btn btn-secondary" style="height:68px;font-size:20px;margin-bottom:0;" id="btn-agregar-deuda">+ Agregar deuda</button>'
     + '<div class="metrics" id="metrics-live">' + renderMetricsLive() + '</div>'
@@ -218,38 +235,283 @@ function renderDeudas() {
   return html;
 }
 
+// =============================================================================
+// STATUS-AWARE PAYMENT SECTION
+// Renders different payment inputs based on the selected debt status.
+// Conversational primary question — "¿Qué está pasando hoy con esta deuda?"
+// Replaces the technical ESTADOS_DEUDA dropdown.
+// Selection drives _renderPagoSection() follow-up questions.
+// Internal estado is inferred by app.js — never shown as a raw technical value.
+// =============================================================================
+var _SITUACION_OPTS = [
+  { v: "pagando_normal",   l: "La estoy pagando normalmente",     color: "#34ffaf", bg: "rgba(52,255,175,.1)"  },
+  { v: "atrasado_pagando", l: "Me atrasé pero sigo pagando algo", color: "#ffd36f", bg: "rgba(255,211,111,.1)" },
+  { v: "deje_pagar",       l: "Dejé de pagar",                   color: "#ff7538", bg: "rgba(255,117,56,.1)"  },
+  { v: "mora_reclamo",     l: "Está en mora o reclamo",           color: "#ff4e72", bg: "rgba(255,78,114,.1)"  },
+  { v: "no_seguro",        l: "No estoy seguro",                  color: "#8390b5", bg: "rgba(131,144,181,.1)" },
+];
+
+function _renderSituacionUI(d, i) {
+  var sel = d.situacion_ui || "";
+  return '<div style="margin-top:18px;">'
+    + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:10px;">¿Qué está pasando hoy con esta deuda?</div>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;">'
+    + _SITUACION_OPTS.map(function(o) {
+        var active = sel === o.v;
+        return '<button type="button"'
+          + ' data-deuda-situacion="' + o.v + '"'
+          + ' data-deuda-idx="' + i + '"'
+          + ' style="text-align:left;padding:12px 16px;border-radius:12px;border:1.5px solid '
+          + (active ? o.color : "rgba(255,255,255,.1)") + ';background:'
+          + (active ? o.bg : "transparent") + ';color:'
+          + (active ? o.color : "rgba(255,255,255,.7)") + ';font-size:15px;font-weight:'
+          + (active ? "800" : "600") + ';cursor:pointer;width:100%;line-height:1.4;">'
+          + o.l + '</button>';
+      }).join("")
+    + '</div></div>';
+}
+
+// Renders a small inline button-group for option selection (atraso_tiempo, pago_clarificacion, etc.)
+function _renderBtnGroup(opts, field, cur, idx) {
+  return '<div style="display:flex;flex-direction:column;gap:6px;">'
+    + opts.map(function(o) {
+        var active = cur === o.v;
+        return '<button type="button"'
+          + ' data-deuda-field="' + field + '"'
+          + ' data-deuda-val="' + o.v + '"'
+          + ' data-deuda-idx="' + idx + '"'
+          + ' style="text-align:left;padding:10px 14px;border-radius:10px;border:1.5px solid '
+          + (active ? "rgba(64,215,255,.5)" : "rgba(255,255,255,.1)") + ';background:'
+          + (active ? "rgba(64,215,255,.08)" : "transparent") + ';color:'
+          + (active ? "#40d7ff" : "rgba(255,255,255,.65)") + ';font-size:14px;font-weight:'
+          + (active ? "700" : "500") + ';cursor:pointer;width:100%;">'
+          + o.l + '</button>';
+      }).join("")
+    + '</div>';
+}
+
+// =============================================================================
+// CONDITIONAL FOLLOW-UP QUESTIONS
+// Driven by d.situacion_ui (semantic user selection).
+// Internal estado is inferred — never selected directly by user.
+//
+// Cases:
+//   pagando_normal   → Case A: monthly payment input + clarification if 0
+//   atrasado_pagando → Case B: delay range + last paid amount
+//   deje_pagar       → Case C: delay range only (estado inferred from range)
+//   mora_reclamo     → Case D: informational — no payment capture
+//   no_seguro        → Case E: approximate timing question
+// =============================================================================
+function _renderPagoSection(d, i) {
+  var situacion = d.situacion_ui || "";
+  if (!situacion) return "";
+
+  var pref  = '<div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>';
+  var numIn = function(field, val) {
+    return pref + '<input type="number" style="padding-left:36px;" placeholder="0" value="'
+      + (val != null && val !== "" ? val : "")
+      + '" data-deuda-field="' + field + '" data-deuda-idx="' + i + '"/></div>';
+  };
+
+  // Case A — pagando normalmente
+  if (situacion === "pagando_normal") {
+    var showClarif = (!d.pago || parseFloat(d.pago) === 0);
+    return '<div style="margin-top:16px;">'
+      + '<div class="field"><label>¿Cuánto pagás por mes?</label>'
+      + numIn("pago", d.pago)
+      + '<div style="font-size:13px;color:#8390b5;margin-top:4px;">No tiene que ser exacto.</div>'
+      + '</div>'
+      + (showClarif
+          ? '<div id="clarif-block-' + i + '" style="margin-top:12px;padding:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;">'
+            + '<div style="font-size:14px;color:rgba(255,255,255,.75);margin-bottom:10px;">¿Esta deuda no tiene cuota este mes o preferís no declararlo?</div>'
+            + _renderBtnGroup([
+                { v: "sin_cuota",   l: "No tiene cuota este mes"  },
+                { v: "no_recuerdo", l: "No recuerdo el monto"     },
+                { v: "no_declaro",  l: "Prefiero no declararlo"   },
+              ], "pago_clarificacion", d.pago_clarificacion || "", i)
+            + '</div>'
+          : '<div id="clarif-block-' + i + '" style="display:none;"></div>')
+      + '</div>';
+  }
+
+  // Case B — atrasado pero sigue pagando algo
+  if (situacion === "atrasado_pagando") {
+    var optsB = [
+      { v: "menos_30", l: "Menos de 30 días"   },
+      { v: "30_90",    l: "Entre 30 y 90 días" },
+    ];
+    var ultimoVal = d.ultimo_pago_declarado != null && d.ultimo_pago_declarado !== "" ? d.ultimo_pago_declarado : d.pago;
+    return '<div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;">'
+      + '<div class="field"><label>¿Hace cuánto no pagás completo?</label>'
+      + _renderBtnGroup(optsB, "atraso_tiempo", d.atraso_tiempo || "", i)
+      + '</div>'
+      + '<div class="field"><label>¿Cuánto pagaste la última vez?</label>'
+      + numIn("ultimo_pago_declarado", ultimoVal)
+      + '<div style="font-size:13px;color:#8390b5;margin-top:4px;">Aunque haya sido parcial.</div>'
+      + '</div></div>';
+  }
+
+  // Case C — dejó de pagar
+  if (situacion === "deje_pagar") {
+    var optsC = [
+      { v: "menos_30", l: "Menos de 30 días"  },
+      { v: "30_90",    l: "Entre 30 y 90 días" },
+      { v: "mas_90",   l: "Más de 90 días"     },
+    ];
+    return '<div style="margin-top:16px;">'
+      + '<div class="field"><label>¿Hace cuánto?</label>'
+      + _renderBtnGroup(optsC, "atraso_tiempo", d.atraso_tiempo || "", i)
+      + '</div></div>';
+  }
+
+  // Case D — mora o reclamo: no payment expected
+  if (situacion === "mora_reclamo") {
+    return '<div style="margin-top:14px;padding:10px 14px;background:rgba(255,78,114,.06);border:1px solid rgba(255,78,114,.15);border-radius:10px;">'
+      + '<span style="font-size:13px;color:#8390b5;">Deuda en mora o reclamo — no hay pago mensual activo registrado.</span></div>';
+  }
+
+  // Case E — no está seguro
+  if (situacion === "no_seguro") {
+    var optsE = [
+      { v: "poco_tiempo",  l: "Hace poco"           },
+      { v: "varios_meses", l: "Hace varios meses"   },
+      { v: "no_sabe",      l: "No lo sé"            },
+    ];
+    return '<div style="margin-top:16px;">'
+      + '<div class="field"><label>¿Hace cuánto creés que empezó el problema?</label>'
+      + _renderBtnGroup(optsE, "atraso_tiempo_aprox", d.atraso_tiempo_aprox || "", i)
+      + '</div></div>';
+  }
+
+  return "";
+}
+
+// =============================================================================
+// PESO-BASED FINANCIAL PRESSURE NOTE
+// Contextual interpretation copy per situacion_ui (Sprint 6.5+).
+// Legacy path retained for debts without situacion_ui (pre-Sprint 6.5).
+// Internal TASAS and interesMostrado are used for enrichment only — not shown.
+// =============================================================================
+function _renderPresionNote(d) {
+  var monto = parseFloat(d.monto) || 0;
+  var pago  = parseFloat(d.pago)  || 0;
+  if (!monto) return "";
+
+  var sit  = d.situacion_ui || "";
+  var wrap = function(txt) {
+    return '<div style="font-size:14px;color:#8390b5;margin-top:8px;line-height:1.5;">' + txt + '</div>';
+  };
+
+  // ── Sprint 6.5+ path: contextual copy per semantic situacion ──────────────
+  if (sit) {
+    // Informal debt — flow pressure note overrides situacion copy
+    if (d.tipo === "informal") {
+      if (pago > 0) {
+        return wrap('Este prestamo no siempre figura en Clearing o BCU, pero genera una presion de '
+          + '<strong style="color:rgba(255,255,255,.8);">' + fmt(pago) + '</strong>/mes sobre tu flujo.');
+      }
+      return wrap('Este prestamo no siempre figura en Clearing o BCU, pero puede seguir generando presion sobre tu flujo real.');
+    }
+
+    if (sit === "pagando_normal") {
+      if (pago <= 0) return ""; // clarification block handles the zero-pago state
+      return wrap('Esta deuda representa una salida mensual aproximada de <strong style="color:rgba(255,255,255,.8);">' + fmt(pago) + '</strong>.');
+    }
+
+    if (sit === "atrasado_pagando") {
+      return wrap('Aunque el pago sea parcial, esta deuda sigue generando presión mensual.');
+    }
+
+    if (sit === "deje_pagar") {
+      return wrap('Aunque hoy no haya pagos activos, la deuda sigue impactando tu situación financiera.');
+    }
+
+    if (sit === "mora_reclamo") {
+      return wrap('El impacto principal hoy parece venir del atraso acumulado.');
+    }
+
+    if (sit === "no_seguro") {
+      return wrap('No hay suficiente información todavía para interpretar esta deuda con precisión.');
+    }
+
+    return "";
+  }
+
+  // ── Legacy path: pre-Sprint 6.5 debts without situacion_ui ───────────────
+  if (d.tipo === "informal") {
+    if (pago > 0) {
+      return wrap('Este prestamo no siempre figura en Clearing o BCU, pero genera una presion de '
+        + '<strong style="color:rgba(255,255,255,.8);">' + fmt(pago) + '</strong>/mes sobre tu flujo.');
+    }
+    return wrap('Este prestamo no siempre figura en Clearing o BCU, pero puede seguir generando presion sobre tu flujo real.');
+  }
+
+  var noPaySources = ["no_paga", "mora_sin_pago"];
+  var isPagoInactivo = (pago === 0) || (d.pago_fuente && noPaySources.indexOf(d.pago_fuente) !== -1);
+  if (isPagoInactivo) {
+    return wrap('Hoy no hay un pago mensual activo registrado. El impacto puede estar en el atraso acumulado.');
+  }
+
+  // Active payment legacy fallback — interesMostrado computed internally, not shown as %
+  var interesMostrado = d.interes_mostrado;
+  if (!interesMostrado && monto > 0 && pago > 0) {
+    var tasa = TASAS[d.tipo] || 62;
+    var est  = monto * tasa / 100 / 12;
+    var cap  = d.estado === "al_dia" ? pago * 0.80 : pago * 0.95;
+    interesMostrado = Math.round(Math.min(est, cap));
+  }
+  if (!interesMostrado || interesMostrado <= 0) return "";
+
+  return wrap('Esta deuda representa una salida mensual aproximada de <strong style="color:rgba(255,255,255,.8);">' + fmt(pago) + '</strong>.');
+}
+
 function renderDeudaCard(d, i) {
-  var est         = getEstado(d.estado);
+  var est         = getEstado(d.estado);  // reflects inferred internal estado
   var borderColor = est ? est.color : "rgba(61,220,255,.25)";
-  var tasa        = d.tipo ? TASAS[d.tipo] : null;
   var insight     = d.tipo ? getMicroInsight(d.tipo) : null;
 
   return '<div class="debt-card" id="debt-card-' + i + '" style="border-left:3px solid ' + borderColor + ';">'
     + '<div class="debt-top"><div class="debt-name">Deuda #' + (i + 1) + (d.acreedor ? " — " + d.acreedor : "") + '</div>'
     + '<button class="remove-btn" data-remove-deuda="' + i + '">&#215;</button></div>'
     + '<div class="grid">'
+
+    // Tipo — TASAS remain internal; no rate labels shown
     + '<div class="field"><label>Tipo de deuda</label>'
     + '<select data-deuda-field="tipo" data-deuda-idx="' + i + '">'
     + '<option value="">Selecciona...</option>'
-    + DEBT_TYPES.map(function(t) { return '<option value="' + t.v + '"' + (d.tipo === t.v ? " selected" : "") + '>' + t.l + ' (~' + t.tasa + '% TNA)</option>'; }).join("")
+    + DEBT_TYPES.map(function(t) { return '<option value="' + t.v + '"' + (d.tipo === t.v ? " selected" : "") + '>' + t.l + '</option>'; }).join("")
     + '</select></div>'
-    + '<div class="field"><label>Acreedor</label><input type="text" placeholder="Ej: BROU, OCA..." value="' + (d.acreedor || "") + '" data-deuda-field="acreedor" data-deuda-idx="' + i + '"/></div>'
+
+    // Acreedor
+    // TODO: Replace free-text creditor input with autocomplete
+    // using the creditor dictionary in creditors.js.
+    // Allow manual "otro" fallback only after no confident match.
+    // Dictionary grows via CRM unknown creditor review process.
+    + '<div class="field"><label>Acreedor</label>'
+    + '<input type="text" placeholder="Ej: BROU, OCA..." value="' + (d.acreedor_raw != null ? d.acreedor_raw : (d.acreedor || "")) + '" data-deuda-field="acreedor" data-deuda-idx="' + i + '"/></div>'
+
+    // Monto
     + '<div class="field"><label>Monto de la deuda</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
     + '<input type="number" style="padding-left:36px;" placeholder="0" value="' + (d.monto || "") + '" data-deuda-field="monto" data-deuda-idx="' + i + '"/></div></div>'
-    + '<div class="field"><label>Pago mensual</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
-    + '<input type="number" style="padding-left:36px;" placeholder="0" value="' + (d.pago || "") + '" data-deuda-field="pago" data-deuda-idx="' + i + '"/></div></div>'
+
     + '</div>'
-    + '<div class="field" style="margin-top:12px;"><label>Estado de la deuda</label>'
-    + '<select data-deuda-field="estado" data-deuda-idx="' + i + '">'
-    + '<option value="">Selecciona el estado...</option>'
-    + ESTADOS_DEUDA.map(function(e) { return '<option value="' + e.v + '"' + (d.estado === e.v ? " selected" : "") + '>' + e.l + '</option>'; }).join("")
-    + '</select></div>'
+
+    // Conversational primary question — replaces technical estado dropdown
+    + _renderSituacionUI(d, i)
+
+    // Conditional follow-up questions — driven by situacion_ui selection
+    + _renderPagoSection(d, i)
+
+    // Inferred estado indicator — visual diagnostic signal (non-technical copy)
     + (est
-        ? '<div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 14px;border-radius:10px;background:' + est.color + '15;border:1px solid ' + est.color + '30;">'
-          + '<div style="width:12px;height:12px;border-radius:50%;background:' + est.color + ';flex-shrink:0;"></div>'
-          + '<span style="font-size:14px;font-weight:700;color:' + est.color + ';">' + est.impact + '</span></div>'
+        ? '<div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 14px;border-radius:10px;background:' + est.color + '15;border:1px solid ' + est.color + '30;">'
+          + '<div style="width:10px;height:10px;border-radius:50%;background:' + est.color + ';flex-shrink:0;"></div>'
+          + '<span style="font-size:13px;font-weight:700;color:' + est.color + ';">' + est.impact + '</span></div>'
         : "")
-    + (tasa ? '<div style="font-size:14px;color:#8390b5;margin-top:8px;">Tasa estimada: ~' + tasa + '% TNA · intereses aprox. ' + fmt(Math.round((parseFloat(d.monto) || 0) * tasa / 100 / 12)) + '/mes</div>' : "")
+
+    // Peso-based pressure note (no TNA/%)
+    + _renderPresionNote(d)
+
     + (insight ? '<div class="micro-insight micro-' + insight.cls + '">' + insight.txt + '</div>' : "")
     + '</div>';
 }
@@ -265,10 +527,25 @@ function getMicroInsight(tipo) {
 }
 
 function renderMetricsLive() {
-  var fin = calcularFinanciero();
+  var fin    = calcularFinanciero();
+  var deudas = window.CZState ? (window.CZState.deudas || []) : [];
+
+  // Estimated total monthly interest in pesos — replaces TNA% metric
+  // Uses interes_mostrado per debt if enriched, otherwise inline fallback
+  var interesTotalEst = deudas.reduce(function(s, d) {
+    if (d.interes_mostrado > 0) return s + d.interes_mostrado;
+    var m = parseFloat(d.monto) || 0;
+    var p = parseFloat(d.pago)  || 0;
+    if (!m || !p || d.tipo === "informal") return s;
+    var tasa = TASAS[d.tipo] || 62;
+    var est  = m * tasa / 100 / 12;
+    var cap  = d.estado === "al_dia" ? p * 0.80 : p * 0.95;
+    return s + Math.round(Math.min(est, cap));
+  }, 0);
+
   return '<div class="metric"><small>Deuda total</small><strong style="color:#ff4e72;">' + fmt(fin.totalDeuda) + '</strong></div>'
     + '<div class="metric"><small>Pago mensual</small><strong style="color:#ffd36f;">' + fmt(fin.totalPago) + '</strong></div>'
-    + '<div class="metric"><small>Costo financiero est.</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';font-size:18px;">~' + fin.interesProm + '% TEA</strong></div>'
+    + '<div class="metric"><small>Interes mensual est.</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';font-size:18px;">~' + fmt(interesTotalEst) + '</strong></div>'
     + '<div class="metric"><small>Nivel de riesgo</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';">' + fin.nivelRiesgo + '</strong></div>';
 }
 
@@ -342,7 +619,7 @@ function renderBloqueadores(diag) {
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
       + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(52,255,175,.06);border:1px solid rgba(52,255,175,.15);border-radius:12px;">'
       + '<div style="font-size:18px;color:#34ffaf;">✓</div>'
-      + '<div style="font-size:15px;color:rgba(255,255,255,.8);line-height:1.5;">Sin factores criticos detectados en los datos declarados. Puede haber condiciones para intentar una solicitud.</div>'
+      + '<div style="font-size:15px;color:rgba(255,255,255,.8);line-height:1.5;">Sin factores criticos detectados en tu perfil actual. Puede haber condiciones para intentar una solicitud.</div>'
       + '</div></div>';
   }
   return '<div class="plan-card">'
@@ -370,7 +647,7 @@ function renderHorizonteRecalificacion(diag) {
   return '<div class="plan-card" style="border-color:' + bord + ';background:' + bg + ';">'
     + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
     + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + h.label + '</div>'
-    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Basado en los datos declarados, sin nuevas deudas, siguiendo el plan. El historial real del sistema financiero puede incluir otros elementos que modifiquen este calculo.</div>'
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Basado en la informacion analizada, sin nuevas deudas, siguiendo el plan. El historial real del sistema financiero puede incluir otros elementos que modifiquen este calculo.</div>'
     + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
     + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye Mi Plan Plus.'
     + '</div></div>';
@@ -392,6 +669,77 @@ function renderAccionPrioritaria(diag) {
     + diag.plan.prioridades.map(function(p, i) {
         return '<div class="prioridad-item"><div class="prioridad-num" style="background:' + pc + '20;color:' + pc + ';">' + (i + 1) + '</div><div class="prioridad-text" style="font-size:14px;">' + p + '</div></div>';
       }).join("")
+    + '</div>';
+}
+
+// =============================================================================
+// SPRINT 7B — INTERPRETACION NARRATIVE HELPERS
+// =============================================================================
+
+// Neutral recuperabilidad badge — NO color variation between states.
+// Same background and text color for all values; only text changes.
+function renderRecuperabilidadBadge(iv2) {
+  var BADGE_TEXT = {
+    recuperable_rapido:      "Recuperación posible",
+    recuperable_medio:       "Recuperación gradual",
+    recuperable_largo:       "Requiere tiempo",
+    requiere_estabilizacion: "Estabilización primero",
+    no_accionable:           "Margen insuficiente",
+  };
+  var txt = BADGE_TEXT[iv2.recuperabilidad_class] || "";
+  if (!txt) return "";
+  return '<div style="display:inline-block;padding:5px 14px;border-radius:20px;'
+    + 'border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);'
+    + 'font-size:12px;font-weight:700;color:rgba(255,255,255,.65);'
+    + 'letter-spacing:.04em;margin-bottom:16px;">' + txt + '</div>';
+}
+
+// Renders the 4-block interpretacion_v2 narrative section.
+// Uses getNarrativaByTipo() — never accesses array by index.
+// Confidence note is rendered AFTER all four blocks, separate from card content.
+function renderNarrativaInterpretacion(diag) {
+  var iv2 = diag.interpretacion_v2;
+  if (!iv2 || !iv2.narrativa_jerarquizada) return "";
+
+  var nPrincipal = getNarrativaByTipo(iv2.narrativa_jerarquizada, "problema_principal");
+  var nPresion   = getNarrativaByTipo(iv2.narrativa_jerarquizada, "presion_dominante");
+  var nRecup     = getNarrativaByTipo(iv2.narrativa_jerarquizada, "recuperabilidad");
+  var nPaso      = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
+
+  var block = function(label, text) {
+    if (!text) return "";
+    return '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:11px;font-weight:800;color:#8390b5;'
+      + 'text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">' + label + '</div>'
+      + '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.65;">' + text + '</div>'
+      + '</div>';
+  };
+
+  // Skip presion_dominante if patron is sin_patron AND confidence is not low.
+  var showPresion = !(iv2.patron_deuda === "sin_patron" && iv2.confidence_level !== "low");
+
+  var confidenceNote = "";
+  if (iv2.confidence_level === "low") {
+    confidenceNote = '<div style="margin-top:16px;padding-top:14px;'
+      + 'border-top:1px solid rgba(255,255,255,.07);'
+      + 'font-size:13px;color:#8390b5;line-height:1.6;">'
+      + 'Este diagnóstico todavía puede mejorar si completás la información de tus deudas.'
+      + '</div>';
+  } else if (iv2.confidence_level === "medium") {
+    confidenceNote = '<div style="margin-top:16px;padding-top:14px;'
+      + 'border-top:1px solid rgba(255,255,255,.07);'
+      + 'font-size:13px;color:#8390b5;line-height:1.6;">'
+      + 'Algunos datos son estimados. El diagnóstico mejora con más información.'
+      + '</div>';
+  }
+
+  return '<div class="plan-card">'
+    + renderRecuperabilidadBadge(iv2)
+    + block("Qué está pasando",        nPrincipal ? nPrincipal.texto : null)
+    + (showPresion ? block("Presión principal",          nPresion  ? nPresion.texto  : null) : "")
+    + block("Capacidad de recuperación", nRecup     ? nRecup.texto    : null)
+    + block("Primer paso recomendado",   nPaso      ? nPaso.texto     : null)
+    + confidenceNote
     + '</div>';
 }
 
@@ -424,22 +772,70 @@ function renderTabPlan() {
     + '<div style="font-size:19px;color:rgba(255,255,255,.9);line-height:1.6;">' + diag.plan.objetivo + '</div>'
     + '</div></div>'
 
-    // 2. Bloqueadores activos
+    // 2. Interpretacion v2 — narrative blocks (Sprint 7B)
+    + renderNarrativaInterpretacion(diag)
+
+    // 3. Bloqueadores activos
     + renderBloqueadores(diag)
 
-    // 3. Horizonte estimado para recalificar
+    // 4. Horizonte estimado para recalificar
     + renderHorizonteRecalificacion(diag)
 
-    // 4. Accion prioritaria (direccion estrategica)
-    + renderAccionPrioritaria(diag)
+    // 5. Accion prioritaria v1 (direccion estrategica — legacy)
+    // SPRINT 7.1 — V1 ACTION HIDDEN (not deleted)
+    // Reason: v2 narrative (Sprint 7B) is now the
+    //   primary action surface.
+    // V1 kept active internally for:
+    //   - fallback safety on edge cases
+    //   - CRM snapshot cross-calibration during
+    //     first traffic phase
+    // Scheduled removal: Sprint 1 of Backend Phase
+    // Condition for removal: v2 validated with real
+    //   user data, no edge-case failures detected
+    //   in production.
+    + '<div style="display:none;height:0;overflow:hidden;">' + renderAccionPrioritaria(diag) + '</div>'
 
-    // 5. Por donde empezar (deuda especifica — ejecucion tactica)
+    // 6. Accion prioritaria v2 — next_best_action via action_key (Sprint 7B)
+    + (function() {
+        var iv2 = diag.interpretacion_v2;
+        if (!iv2 || !iv2.narrativa_jerarquizada) return "";
+        var nPaso = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
+        if (!nPaso || !nPaso.texto) return "";
+        return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);">'
+          + '<div style="font-size:13px;font-weight:800;color:#8390b5;'
+          + 'text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Acción prioritaria</div>'
+          + '<div style="padding:14px 16px;background:rgba(255,255,255,.04);'
+          + 'border:1px solid rgba(255,255,255,.09);border-radius:12px;">'
+          + '<div style="font-size:15px;color:rgba(255,255,255,.9);line-height:1.65;">'
+          + nPaso.texto
+          + '</div></div></div>';
+      })()
+
+    // 7. Por donde empezar (deuda especifica — ejecucion tactica)
     + (prio
         ? '<div class="priority-card">'
           + '<div style="font-size:13px;font-weight:800;color:#ffd36f;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Por donde empezar</div>'
           + '<div style="font-size:28px;font-weight:900;margin-bottom:14px;">' + (prio.acreedor || DEBT_TYPES.find(function(t) { return t.v === prio.tipo; })?.l || "Sin nombre") + '</div>'
           + '<div class="grid">'
-          + [["Monto", fmt(parseFloat(prio.monto)||0), "#ff4e72"], ["Pago mensual", fmt(parseFloat(prio.pago)||0), "#ffd36f"], ["Costo estimado", "~" + (TASAS[prio.tipo]||62) + "% TEA", "#8390b5"], ["Interes/mes", fmt(Math.round((parseFloat(prio.monto)||0)*(TASAS[prio.tipo]||62)/100/12)), "#ffd36f"]]
+          + (function() {
+              var m = parseFloat(prio.monto) || 0;
+              var p = parseFloat(prio.pago)  || 0;
+              // Peso-based pressure — no TNA/TEA% exposed
+              var intEst = prio.interes_mostrado || (function() {
+                if (!m || !p || prio.tipo === "informal") return 0;
+                var tasa = TASAS[prio.tipo] || 62;
+                var est  = m * tasa / 100 / 12;
+                var cap  = prio.estado === "al_dia" ? p * 0.80 : p * 0.95;
+                return Math.round(Math.min(est, cap));
+              })();
+              var rows = [
+                ["Monto",              fmt(m),       "#ff4e72"],
+                ["Pago mensual",       fmt(p),       "#ffd36f"],
+                ["Presion latente est.", fmt(prio.presion_latente_estimada || Math.round(m * (TASAS[prio.tipo]||62) / 100 / 12)), "#8390b5"],
+                ["Costo financiero est./mes", fmt(intEst), "#ffd36f"],
+              ];
+              return rows;
+            })()
             .map(function(x) { return '<div><small style="color:#8390b5;display:block;margin-bottom:6px;">' + x[0] + '</small><strong style="font-size:' + (x[2] === "#8390b5" ? "20" : "32") + 'px;color:' + x[2] + ';">' + x[1] + '</strong></div>'; }).join("")
           + '</div>'
           + (prio.tipo === "informal"
@@ -448,10 +844,10 @@ function renderTabPlan() {
           + '</div>'
         : "")
 
-    // 6. Herramientas del plan
+    // 8. Herramientas del plan
     + renderHerramientas()
 
-    // 7. Metricas de apoyo
+    // 9. Metricas de apoyo
     + '<div class="metrics">'
     + [
         { l: "Plata que te sobra/mes",   v: fmt(fin.flujoLibre),               c: fin.flujoLibre < 0 ? "#ff4e72" : "#34ffaf", s: fin.flujoLibre < 0 ? "deficit" : "disponible" },
@@ -461,10 +857,10 @@ function renderTabPlan() {
       ].map(function(m) { return '<div class="metric"><small>' + m.l + '</small><strong style="color:' + m.c + ';">' + m.v + '</strong><div style="font-size:14px;color:#8390b5;margin-top:6px;">' + m.s + '</div></div>'; }).join("")
     + '</div>'
 
-    // 8. Analisis financiero detallado (radiografia — bloques 1 a 4)
+    // 10. Analisis financiero detallado (radiografia — bloques 1 a 4)
     + renderRadiografia()
 
-    // 9. Composicion del perfil + progreso (contexto analitico)
+    // 11. Composicion del perfil + progreso (contexto analitico)
     + '<div class="plan-card">'
     + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;">Composicion de tu perfil</div>'
     + '<div class="grid">'
@@ -481,7 +877,7 @@ function renderTabPlan() {
     + (!TIENE_ENCUESTA
         ? '<div style="margin-top:18px;padding:16px 18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;">'
           + '<div style="font-size:14px;font-weight:800;color:rgba(255,255,255,.7);margin-bottom:8px;">Refinar diagnostico financiero</div>'
-          + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">El analisis actual esta basado en ingresos, gastos y deudas declaradas. Responder algunas preguntas adicionales puede mejorar la precision del diagnostico.</div>'
+          + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">El analisis actual se basa en tus ingresos, gastos y deudas. Responder algunas preguntas adicionales puede mejorar la precision del diagnostico.</div>'
           + '<button class="btn btn-secondary" style="height:52px;font-size:15px;" id="btn-refinar-diagnostico">Completar analisis conductual</button>'
           + '</div>'
         : "")
@@ -494,11 +890,11 @@ function renderTabPlan() {
           + '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:15px;color:#8390b5;"><span>Inicio: ' + fmt(st.saldoIni) + '</span><span>Hoy: ' + fmt(fin.totalDeuda) + '</span></div></div>'
         : "")
 
-    // 10. Premium
+    // 12. Premium
     + '<div class="premium-card">'
     + '<div class="premium-badge">Recomendado para tu caso</div>'
     + '<div class="premium-title">Mi Plan Plus</div>'
-    + '<div class="premium-text">Tu diagnostico usa los datos que declaraste. El informe Clearing muestra lo que el banco ya tiene registrado sobre vos — y la IA te dice que cambiar primero.</div>'
+    + '<div class="premium-text">Tu diagnostico parte de lo que analizamos juntos. El informe Clearing muestra lo que el banco ya tiene sobre vos — y la IA te dice que cambiar primero.</div>'
     + '<button class="btn btn-secondary" style="height:68px;font-size:20px;" id="btn-conocer-plus">Ver que incluye para mi caso</button>'
     + '</div></div>';
 }
@@ -672,7 +1068,8 @@ function contarCompletadas() {
   var pid  = (_diag() || {}).planId;
   if (pid === 1) return [herr.ingresos && herr.ingresos.total > 0, Object.keys(herr.gastos_cls||{}).length > 0, herr.ingresos && herr.ingresos.total > 0 && Object.keys(herr.gastos_cls||{}).length > 0].filter(Boolean).length;
   if (pid === 2) return [Object.keys(herr.gestiones||{}).length > 0, Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
-  if (pid === 3) return [Object.keys(herr.vencimientos||{}).length > 0, Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
+  // Plan 3 h1 is now a derived pressure diagnostic (always complete — no date inputs required)
+  if (pid === 3) return [true, Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
   if (pid === 4) return [Object.keys(herr.semaforo||{}).length === 3, Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
   if (pid === 5) return [Object.keys(herr.habitos||{}).length > 0, Object.keys(herr.atrasos||{}).length > 0, true].filter(Boolean).length;
   return 0;
@@ -707,7 +1104,7 @@ function renderHerramientasPlan1() {
   var gCV = EXPENSE_CATS.filter(function(c) { return parseFloat(gastos[c.k]) > 0; });
 
   var h1 = renderToolCard(1, "Cuanto te entra realmente por mes?",
-    "Tu sueldo declarado es " + fmt(PRE.ingreso) + ". Suma cualquier otro ingreso que no figure en la solicitud.",
+    "El ingreso registrado en tu solicitud es " + fmt(PRE.ingreso) + ". Suma cualquier otro ingreso que no figure ahi.",
     '<div style="margin-top:4px;">'
     + '<div style="position:relative;margin-bottom:12px;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
     + '<input type="number" style="padding-left:36px;" id="ing-formal" value="' + (ing.formal || PRE.ingreso) + '"/></div>'
@@ -733,7 +1130,7 @@ function renderHerramientasPlan1() {
   var h2 = renderToolCard(2, "Separa lo que no podes reducir de lo que si podes",
     "Para cada gasto marca si es fijo o si podes reducirlo.",
     gCV.length === 0
-      ? '<div style="font-size:17px;color:#8390b5;margin-top:8px;">No cargaste gastos aun.</div>'
+      ? '<div style="font-size:17px;color:#8390b5;margin-top:8px;">Todavia no hay gastos en tu diagnostico.</div>'
       : '<div style="margin-top:8px;">'
         + gCV.map(function(c) {
             return '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
@@ -793,7 +1190,7 @@ function renderHerramientasPlan2() {
       }).join("")
     + '</div>', c1);
 
-  var h2 = renderToolCard(2, "Tus compromisos de este mes", "Tres cosas concretas. Sin estas, cualquier plan es solo papel.",
+  var h2 = renderToolCard(2, "Las acciones prioritarias de recuperacion", "Tres acciones que hoy impactan directamente tu margen y tu perfil.",
     '<div style="margin-top:8px;">'
     + renderCompItem("no_deuda_nueva", "No voy a sacar ninguna deuda nueva este mes")
     + renderCompItem("pagar_minimos",  "Voy a pagar los minimos en fecha")
@@ -813,25 +1210,48 @@ function renderHerramientasPlan2() {
 // ---- Plan 3 ----
 function renderHerramientasPlan3() {
   var herr  = _herr();
-  var venc  = herr.vencimientos || {};
   var comp_ = herr.compromisos  || {};
   var diag  = _diag();
-  var c1 = Object.keys(venc).length > 0;
+  // c1 is always true: pressure diagnostic is derived from debt data, no user action required
+  var c1 = true;
   var c2 = Object.values(comp_).some(Boolean);
   var rA = diag.fin.ratio;
   var dif = Math.max(0, (rA - 0.30) * PRE.ingreso);
 
-  var h1 = renderToolCard(1, "Tus vencimientos este mes", "Un solo atraso puede echarte atras meses de progreso.",
+  // Vencimiento date inputs removed — replaced with per-debt financial pressure summary
+  var ESTADO_LABELS = {
+    "al_dia":        { l: "Al dia",          color: "#34ffaf" },
+    "atraso_leve":   { l: "Atraso leve",     color: "#ffd36f" },
+    "atraso_grave":  { l: "Atraso grave",     color: "#ff4e72" },
+    "mora":          { l: "En mora",          color: "#ff4e72" },
+    "informal":      { l: "Deuda informal",   color: "#ff4e72" },
+    "negociando":    { l: "En negociacion",   color: "#40d7ff" },
+    "refinanciado":  { l: "Refinanciado",     color: "#40d7ff" },
+  };
+  var h1 = renderToolCard(1, "Donde esta hoy tu mayor presion financiera", "Las deudas que hoy generan mas presion sobre tu margen mensual.",
     '<div style="margin-top:8px;">'
-    + (_st().deudas || []).map(function(d, i) {
-        var key = d.acreedor || d.tipo || "d" + (i + 1);
-        return '<div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
-          + '<div style="flex:1;font-size:17px;font-weight:700;">' + (d.acreedor || (DEBT_TYPES.find(function(t) { return t.v === d.tipo; }) || {}).l || "Deuda #" + (i + 1)) + '</div>'
-          + '<input type="date" style="width:180px;" value="' + (venc[key] || "") + '" data-venc-key="' + key + '"/></div>';
-      }).join("")
+    + (function() {
+        var deudas = _st().deudas || [];
+        if (!deudas.length) return '<div style="font-size:16px;color:#8390b5;">No hay deudas registradas todavia.</div>';
+        return deudas.map(function(d, i) {
+          var nombre   = d.acreedor || (DEBT_TYPES.find(function(t) { return t.v === d.tipo; }) || {}).l || "Deuda #" + (i + 1);
+          var eInfo    = ESTADO_LABELS[d.estado] || { l: "Sin estado", color: "#8390b5" };
+          var presion  = d.presion_latente_estimada || 0;
+          var presColor = presion > 5000 ? "#ff4e72" : presion > 2000 ? "#ffd36f" : "#40d7ff";
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
+            + '<div style="flex:1;">'
+              + '<div style="font-size:17px;font-weight:700;">' + nombre + '</div>'
+              + '<div style="margin-top:4px;display:inline-block;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:700;background:rgba(255,255,255,.05);border:1px solid ' + eInfo.color + ';color:' + eInfo.color + ';">' + eInfo.l + '</div>'
+            + '</div>'
+            + (presion > 0
+                ? '<div style="text-align:right;"><div style="font-size:20px;font-weight:900;color:' + presColor + ';letter-spacing:-1px;">' + fmt(Math.round(presion)) + '</div><div style="font-size:12px;color:#8390b5;">presion/mes</div></div>'
+                : '<div style="font-size:14px;color:#8390b5;">Sin datos</div>')
+            + '</div>';
+        }).join("");
+      })()
     + '</div>', c1);
 
-  var h2 = renderToolCard(2, "Tus compromisos de recuperacion", "Estos tres habitos marcan la diferencia.",
+  var h2 = renderToolCard(2, "Las obligaciones que hoy mas afectan tu margen", "Estos tres habitos marcan la diferencia en el proceso de recuperacion.",
     '<div style="margin-top:8px;">'
     + renderCompItem("pagar_fecha",    "Voy a pagar todo en fecha este mes")
     + renderCompItem("no_gasto_extra", "No voy a hacer gastos que no tenia planeados")
@@ -1060,7 +1480,7 @@ function abrirModalPremium() {
   var content = document.getElementById("modal-premium-content");
   var overlay = document.getElementById("modal-premium");
 
-  track("view_reset_plus", { plan: diag && diag.planId, score: diag && diag.scoreReset });
+  trackEvent(CZ_EVENT_NAMES.PREMIUM_OPENED, { plan: diag && diag.planId, score: diag && diag.scoreReset });
 
   if (content) content.innerHTML = renderModalPremium();
 
@@ -1085,6 +1505,14 @@ function abrirModalPremium() {
     overlay.querySelectorAll("[data-elegir-plan]").forEach(function(btn) {
       btn.onclick = function() {
         var tipo = btn.getAttribute("data-elegir-plan");
+        // Checkout started — recovery state + temporal tracking
+        if (window.CZState) {
+          window.CZState.temporal.payment_completed_at = null; // reset in case of re-entry
+          setRecoveryState("checkout_started");
+          trackEvent(CZ_EVENT_NAMES.CHECKOUT_STARTED, {
+            tipo: tipo, plan: diag && diag.planId,
+          });
+        }
         track("click_reset_plus", { tipo: tipo, plan: diag && diag.planId });
 
         if (content) {
@@ -1107,6 +1535,161 @@ function bindTabEvents() {
   // No-op por ahora. Los eventos principales están delegados desde app.js.
 }
 
+// =============================================================================
+// DIAGNOSIS SCREEN — step 0, behavioral data available (survey or CRM/localStorage)
+// Replaces renderGastos() as the step 0 screen for users who have completed the survey.
+// Does NOT run calcularMotor() — enc is derived from existing URL params or loaded diag.
+// =============================================================================
+function renderDiagnosisScreen() {
+  var diag  = _diag();
+  // Prefer enc from loaded diag (CRM / localStorage); fallback to live URL-param calculation
+  var enc   = (diag && diag.enc) ? diag.enc : calcularEncuesta(PRE.respuestas);
+  var nivel = enc ? enc.nivel : "B";
+
+  var LEVELS = {
+    "A": {
+      labelText:  "Perfil conductual sin alertas criticas",
+      labelColor: "#34ffaf",
+      line1:      "Tus respuestas no muestran factores de riesgo conductual importantes.",
+      line2:      "El rechazo puede estar relacionado con la estructura de tus deudas o el ratio de pagos mensual.",
+      accion:     "Para completar el diagnostico, vemos el panorama de tus deudas.",
+    },
+    "B+": {
+      labelText:  "Perfil con disposicion al cambio",
+      labelColor: "#a78bfa",
+      line1:      "Tus habitos financieros muestran capacidad de mejora.",
+      line2:      "Hay factores por corregir, pero el punto de partida es recuperable con orden.",
+      accion:     "Para afinar el diagnostico, analizamos tus deudas actuales.",
+    },
+    "B": {
+      labelText:  "Perfil con aspectos a revisar",
+      labelColor: "#ffd36f",
+      line1:      "Tu situacion muestra puntos de riesgo que vale ordenar.",
+      line2:      "Con el detalle de tus deudas podemos identificar cuales son los mas relevantes.",
+      accion:     "Completamos el analisis con tus deudas actuales.",
+    },
+    "C": {
+      labelText:  "Perfil con factores de riesgo activos",
+      labelColor: "#ff4e72",
+      line1:      "Hay mas de un factor que puede estar complicando las aprobaciones hoy.",
+      line2:      "Para entender exactamente que esta pasando, necesitamos el detalle de tus deudas.",
+      accion:     "Ahora vamos a ordenar el panorama de tus deudas. Con eso podemos detectar que esta generando mas presion hoy.",
+    },
+  };
+
+  var lv = LEVELS[nivel] || LEVELS["B"];
+
+  // Contextual modifier — shown when flagsRiesgo contain specific signals
+  var modifier = "";
+  if (enc && enc.flagsRiesgo && enc.flagsRiesgo.length > 0) {
+    modifier = '<p style="font-size:13px;color:#8390b5;margin:14px 0 0;padding:12px 14px;'
+      + 'background:rgba(255,255,255,.04);border-radius:10px;line-height:1.55;">'
+      + 'Algunas respuestas muestran senales de presion financiera que pueden estar afectando tus aprobaciones hoy.'
+      + '</p>';
+  }
+
+  // Horizon — only show precise label when a prior diag (with real financial data) exists.
+  // Without financial data there is no credible basis for a time estimate.
+  var horizHtml;
+  if (diag && diag.horizonte) {
+    var hColor = diag.horizonte.banda === "inmediato" ? "#34ffaf"
+               : diag.horizonte.banda === "corto"    ? "#ffd36f" : "#8390b5";
+    horizHtml = '<div style="font-size:13px;color:' + hColor + ';font-weight:600;margin-bottom:24px;">'
+      + 'Horizonte estimado: ' + diag.horizonte.label + '</div>';
+  } else {
+    horizHtml = '<div style="font-size:13px;color:#5a6480;margin-bottom:24px;line-height:1.5;">'
+      + 'El horizonte depende del peso real de tus deudas. Lo calculamos en el siguiente paso.'
+      + '</div>';
+  }
+
+  return '<div class="card">'
+    // Profile status label
+    + '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;'
+    +   'color:' + lv.labelColor + ';text-transform:uppercase;margin-bottom:16px;">'
+    + lv.labelText + '</div>'
+
+    // Main interpretation — 2 lines
+    + '<p style="font-size:16px;color:rgba(255,255,255,.85);line-height:1.55;margin:0 0 8px;">'
+    + lv.line1 + '</p>'
+    + '<p style="font-size:15px;color:#8390b5;line-height:1.55;margin:0;">'
+    + lv.line2 + '</p>'
+
+    // Contextual modifier (conditional)
+    + modifier
+
+    // Divider
+    + '<div style="height:1px;background:rgba(255,255,255,.07);margin:20px 0;"></div>'
+
+    // Main action + horizon
+    + '<div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.5);'
+    +   'text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Proximo paso</div>'
+    + '<p style="font-size:15px;color:rgba(255,255,255,.85);margin:0 0 10px;">'
+    + lv.accion + '</p>'
+    + horizHtml
+
+    // CTA
+    + '<button id="btn-diagnosis-start" style="'
+    +   'width:100%;padding:18px;background:#5b7cff;color:#fff;border:none;'
+    +   'border-radius:16px;font-size:17px;font-weight:800;cursor:pointer;'
+    +   'box-shadow:0 4px 20px rgba(91,124,255,.3);line-height:1.3;">'
+    + 'Ver que deuda pesa mas'
+    + '</button>'
+    + '</div>';
+}
+
+// =============================================================================
+// BRIDGE SCREEN — step 0, no behavioral data from any source
+// Shown when czuid was present but CRM returned null AND localStorage is empty.
+// Does NOT show financial cards, scores, or any diagnostic data.
+// =============================================================================
+function renderBridgeScreen() {
+  return [
+    '<div style="',
+      'display:flex;flex-direction:column;align-items:center;',
+      'justify-content:center;min-height:60vh;',
+      'padding:32px 8px calc(80px + env(safe-area-inset-bottom));text-align:center;',
+    '">',
+
+    // Wordmark / brand anchor
+    '<div style="',
+      'font-size:13px;font-weight:700;letter-spacing:.12em;',
+      'color:#5b7cff;text-transform:uppercase;margin-bottom:36px;',
+    '">Credizona · Mi Plan</div>',
+
+    // Title
+    '<h2 style="',
+      'font-size:22px;font-weight:800;color:rgba(255,255,255,.95);',
+      'line-height:1.35;margin:0 0 20px;max-width:340px;',
+    '">Todavia no pudimos interpretar que esta frenando tu perfil.</h2>',
+
+    // Subtext
+    '<p style="',
+      'font-size:15px;color:#8390b5;line-height:1.65;',
+      'max-width:340px;margin:0 0 40px;',
+    '">',
+      'El rechazo financiero no siempre depende solo de ingresos o Clearing. ',
+      'Mi Plan analiza organizacion financiera, presion mensual y habitos ',
+      'para detectar que puede estar afectando tu situacion hoy.',
+    '</p>',
+
+    // CTA
+    '<button id="btn-bridge-survey" style="',
+      'background:#5b7cff;color:#fff;border:none;',
+      'border-radius:16px;padding:18px 32px;',
+      'font-size:17px;font-weight:800;cursor:pointer;',
+      'width:100%;max-width:340px;line-height:1.3;',
+      'box-shadow:0 4px 20px rgba(91,124,255,.35);',
+    '">Completar diagnostico inicial</button>',
+
+    // Helper text
+    '<p style="',
+      'font-size:13px;color:#5a6480;margin:14px 0 0;',
+    '">Te lleva menos de 2 minutos.</p>',
+
+    '</div>',
+  ].join("");
+}
+
 function renderAll() {
   var st = _st();
   var main = document.getElementById("main-content");
@@ -1118,10 +1701,21 @@ function renderAll() {
 
   if (st.step === 0 && SEGMENTO === 1) {
     html = renderDiagInicial();
-  } else if (st.step === 0 || st.step === 1) {
-    html = renderGastos();
-  } else if (st.step === 2) {
+  } else if (st.step === 0) {
+    var hasBehavioral = TIENE_ENCUESTA || (st.diag && st.diag.enc);
+    if (st.miplan_started) {
+      // User already entered the flow — correct state and advance to debt entry
+      st.step = 1;
+      html = renderDeudas();
+    } else if (hasBehavioral) {
+      html = renderDiagnosisScreen();
+    } else {
+      html = renderBridgeScreen();
+    }
+  } else if (st.step === 1) {
     html = renderDeudas();
+  } else if (st.step === 2) {
+    html = renderGastos();
   } else if (st.step === 3) {
     html = renderDashboard();
   }

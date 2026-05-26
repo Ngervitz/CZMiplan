@@ -71,3 +71,121 @@ const ESTADOS_DEUDA = [
 function getEstado(v) {
   return ESTADOS_DEUDA.find(e => e.v === v) || null;
 }
+
+// =============================================================================
+// CREDITOR DICTIONARY — canonical name lookup by normalized alias
+// Aliases are lowercase, accent-free, trimmed keys.
+// Grows organically via CRM unknown-creditor review process.
+// =============================================================================
+const CREDITOR_DICT = {
+  // Banks
+  "brou": "BROU",  "banco republica": "BROU",  "republica": "BROU",
+  "banco de la republica": "BROU",  "banco de la republica oriental del uruguay": "BROU",
+  "itau": "Itaú",  "banco itau": "Itaú",  "itau banco": "Itaú",
+  "santander": "Santander",  "banco santander": "Santander",
+  "hsbc": "HSBC",
+  "scotiabank": "Scotiabank",  "scotia": "Scotiabank",
+  "bbva": "BBVA",
+  "bhu": "BHU",  "banco hipotecario": "BHU",
+
+  // Cards / financial companies
+  "oca": "OCA",  "tarjeta oca": "OCA",  "oca tarjeta": "OCA",
+  "creditel": "Creditel",
+  "visa": "VISA Uruguay",  "visa uruguay": "VISA Uruguay",
+  "mastercard": "Mastercard",  "master": "Mastercard",
+  "anda": "ANDA",  "anda prestamo": "ANDA",
+  "prex": "Prex",
+  "pronto": "Pronto",
+  "pass card": "Pass Card",  "passcard": "Pass Card",  "pass": "Pass Card",
+  "cash": "Cash",
+
+  // Cooperatives
+  "cofac": "Cofac",
+  "fucerep": "Fucerep",
+  "la uruguaya": "La Uruguaya",  "uruguaya": "La Uruguaya",
+  "fucac": "FUCAC",
+  "acac": "ACAC",
+  "coopace": "Coopace",
+
+  // Services
+  "ute": "UTE",
+  "ose": "OSE",
+  "antel": "ANTEL",
+  "movistar": "Movistar",
+  "claro": "Claro",
+
+  // Informal
+  "familiar": "Familiar",  "familia": "Familiar",
+  "madre": "Familiar",  "padre": "Familiar",
+  "hermano": "Familiar",  "hermana": "Familiar",
+  "tio": "Familiar",  "tia": "Familiar",
+  "abuelo": "Familiar",  "abuela": "Familiar",
+  "primo": "Familiar",  "prima": "Familiar",
+  "amigo": "Amigo",  "amiga": "Amigo",
+  "prestamista": "Prestamista particular",
+  "particular": "Prestamista particular",
+  "persona": "Prestamista particular",
+  "privado": "Prestamista particular",
+
+  // Other
+  "abitab": "Abitab",
+  "redpagos": "Redpagos",  "red pagos": "Redpagos",
+  "midinero": "MiDinero",  "mi dinero": "MiDinero",
+  "alfabrou": "AlfaBROU",  "alfa brou": "AlfaBROU",  "alfa": "AlfaBROU",
+  "caja notarial": "Caja Notarial",  "notarial": "Caja Notarial",
+  "bse": "BSE",
+  "disse": "DISSE",
+  "divino": "Divino",
+  "motociclo": "Motociclo",
+  "multi ahorro": "Multi Ahorro",  "multiahorro": "Multi Ahorro",
+};
+
+// Internal: decide if a raw string is safe to show as-is in the UI
+function _esMostrable(raw) {
+  var t = (raw || "").trim();
+  if (t.length < 3) return false;
+  if (/^\d+$/.test(t)) return false;                        // only numbers
+  var letras = t.replace(/[^a-zA-Z\u00C0-\u024F]/g, "");
+  if (letras.length < 3) return false;                      // fewer than 3 letter chars
+  if (/^(.)\1{2,}$/.test(t.toLowerCase())) return false;   // repetition (jjjj, aaa)
+  return true;
+}
+
+// =============================================================================
+// normalizarAcreedor(rawText)
+// Returns { acreedor_raw, acreedor_key, acreedor_normalizado, acreedor_display }
+// acreedor_raw   — exact input, never modified
+// acreedor_key   — lowercase, accent-free, collapsed key for dictionary lookup
+// acreedor_normalizado — matched canonical name, or "otro"
+// acreedor_display     — safe display value for UI
+// =============================================================================
+function normalizarAcreedor(rawText) {
+  var raw = rawText != null ? String(rawText) : "";
+
+  var key = raw
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")   // remove combining diacriticals (á→a etc.)
+    .replace(/[^a-z0-9\s]/g, " ")      // remove punctuation
+    .replace(/\s+/g, " ")
+    .trim();
+
+  var normalizado = CREDITOR_DICT[key] || "otro";
+
+  var display;
+  if (normalizado !== "otro") {
+    display = normalizado;
+  } else if (_esMostrable(raw)) {
+    display = raw.trim();
+  } else {
+    display = "Una de tus deudas";
+  }
+
+  return {
+    acreedor_raw:         raw,
+    acreedor_key:         key,
+    acreedor_normalizado: normalizado,
+    acreedor_display:     display,
+  };
+}
