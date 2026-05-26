@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Términos y Condiciones — Credizona Mi Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0f2e;
+    --surface:  rgba(255,255,255,.04);
+    --border:   rgba(255,255,255,.08);
+    --text:     rgba(255,255,255,.88);
+    --muted:    #8390b5;
+    --accent:   #40d7ff;
+    --danger:   #ff4e72;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,15,46,.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .site-header .brand {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+    text-decoration: none;
+    letter-spacing: -.01em;
+  }
+  .site-header .brand span { color: var(--accent); }
+  .back-link {
+    font-size: 14px;
+    color: var(--muted);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color .15s;
+  }
+  .back-link:hover { color: var(--text); }
+
+  /* ── Layout ── */
+  .wrapper {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+
+  /* ── Doc header ── */
+  .doc-header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .doc-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .doc-header h1 {
+    font-size: clamp(24px, 5vw, 36px);
+    font-weight: 900;
+    line-height: 1.2;
+    letter-spacing: -.02em;
+    margin-bottom: 16px;
+  }
+  .doc-meta {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .doc-meta span { display: flex; align-items: center; gap: 6px; }
+
+  /* ── Notice box ── */
+  .notice {
+    background: rgba(255,78,114,.07);
+    border: 1px solid rgba(255,78,114,.2);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 40px;
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .notice strong { color: #ff4e72; }
+
+  /* ── Section ── */
+  .section {
+    margin-bottom: 40px;
+  }
+  .section-num {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .section h2 {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -.01em;
+    margin-bottom: 16px;
+    line-height: 1.3;
+  }
+  .section p {
+    font-size: 15px;
+    color: rgba(255,255,255,.75);
+    margin-bottom: 14px;
+    line-height: 1.75;
+  }
+  .section p:last-child { margin-bottom: 0; }
+
+  /* ── List ── */
+  .legal-list {
+    list-style: none;
+    margin: 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .legal-list li {
+    font-size: 15px;
+    color: rgba(255,255,255,.75);
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    line-height: 1.6;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .legal-list li .bullet {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    margin-top: 8px;
+  }
+  .legal-list li.no { border-color: rgba(255,78,114,.2); }
+  .legal-list li.no .bullet { background: var(--danger); }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 40px 0;
+  }
+
+  /* ── Footer ── */
+  .doc-footer {
+    margin-top: 64px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .doc-footer a { color: var(--accent); text-decoration: none; }
+  .doc-footer a:hover { text-decoration: underline; }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .wrapper { padding: 32px 16px 80px; }
+    .site-header { padding: 14px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="brand">Credizona <span>Mi Plan</span></a>
+  <a href="/" class="back-link">← Volver</a>
+</header>
+
+<main class="wrapper">
+
+  <div class="doc-header">
+    <div class="doc-tag">Documento legal · TC_v2.0_202605</div>
+    <h1>Términos y Condiciones de Uso</h1>
+    <div class="doc-meta">
+      <span>📅 Última actualización: 26 de mayo de 2026</span>
+      <span>🇺🇾 Jurisdicción: Uruguay</span>
+    </div>
+  </div>
+
+  <div class="notice">
+    <strong>Leé esto antes de continuar.</strong> Al usar Credizona Mi Plan aceptás estos términos en su totalidad. Si no estás de acuerdo, no uses el servicio.
+  </div>
+
+  <!-- Cláusula 1 -->
+  <div class="section">
+    <div class="section-num">Cláusula 1</div>
+    <h2>Quién opera este servicio</h2>
+    <p>Credizona Mi Plan es un producto digital operado bajo la marca Credizona por <strong>[Razón Social — completar antes de publicar]</strong>, responsable del tratamiento de datos personales y de la prestación del servicio, conforme a la normativa uruguaya vigente.</p>
+    <p>Contacto: <a href="mailto:credizonauy@gmail.com" style="color:#40d7ff;">credizonauy@gmail.com</a></p>
+  </div>
+
+  <!-- Cláusula 2 -->
+  <div class="section">
+    <div class="section-num">Cláusula 2</div>
+    <h2>Qué es Credizona Mi Plan</h2>
+    <p>Credizona Mi Plan es una herramienta digital de interpretación contextual y organización financiera orientada a personas que han sido rechazadas en una solicitud de crédito o que no completaron su proceso de evaluación.</p>
+    <p>El servicio genera indicadores internos orientativos, proyecciones ilustrativas y sugerencias de organización basadas exclusivamente en la información declarada por el usuario.</p>
+  </div>
+
+  <!-- Cláusula 3 -->
+  <div class="section">
+    <div class="section-num">Cláusula 3</div>
+    <h2>Lo que Credizona Mi Plan NO es</h2>
+    <p>El usuario declara comprender que Credizona Mi Plan:</p>
+    <ul class="legal-list">
+      <li class="no"><div class="bullet"></div><div><strong>No es</strong> una institución financiera, banco, administradora de créditos ni otorgante de financiamiento de ningún tipo.</div></li>
+      <li class="no"><div class="bullet"></div><div><strong>No es</strong> un broker financiero ni intermediario crediticio.</div></li>
+      <li class="no"><div class="bullet"></div><div><strong>No es</strong> un asesor financiero profesional. Nada de lo que genera el sistema constituye asesoramiento financiero, legal ni patrimonial.</div></li>
+      <li class="no"><div class="bullet"></div><div><strong>No es</strong> un buró de crédito ni un simulador oficial de Clearing de Informes, Equifax ni del Banco Central del Uruguay. El indicador interno es propio, privado y no oficial, sin valor ante entidades financieras.</div></li>
+      <li class="no"><div class="bullet"></div><div><strong>No garantiza</strong> aprobación de crédito, mejora de historial crediticio, modificación de registros en centrales de riesgo ni recalificación ante ninguna entidad.</div></li>
+      <li class="no"><div class="bullet"></div><div><strong>No modifica</strong> registros externos de ningún tipo.</div></li>
+    </ul>
+  </div>
+
+  <!-- Cláusula 4 -->
+  <div class="section">
+    <div class="section-num">Cláusula 4</div>
+    <h2>Indicador interno — definición y limitaciones</h2>
+    <p>El sistema puede asignar al usuario un número o clasificación que refleja una evaluación orientativa basada en la información disponible dentro del servicio. Este indicador:</p>
+    <ul class="legal-list">
+      <li><div class="bullet"></div><div>Es de uso interno de Credizona Mi Plan únicamente.</div></li>
+      <li><div class="bullet"></div><div>No representa scoring crediticio oficial de ningún tipo.</div></li>
+      <li><div class="bullet"></div><div>No tiene valor legal ni financiero ante terceros.</div></li>
+      <li><div class="bullet"></div><div>Puede variar si cambian los datos declarados o los parámetros internos del sistema.</div></li>
+      <li><div class="bullet"></div><div>No implica ni predice aprobación, elegibilidad ni precalificación para ningún producto financiero.</div></li>
+    </ul>
+  </div>
+
+  <!-- Cláusula 5 -->
+  <div class="section">
+    <div class="section-num">Cláusula 5</div>
+    <h2>Responsabilidad por los datos declarados</h2>
+    <p>El usuario es el único responsable por la veracidad, exactitud y completitud de los datos que ingresa. El sistema procesa la información en la condición en que es suministrada. Credizona no verifica ni valida los datos declarados. Cualquier inexactitud afectará directamente los indicadores y proyecciones generados, sin que ello genere responsabilidad alguna para Credizona.</p>
+  </div>
+
+  <!-- Cláusula 6 -->
+  <div class="section">
+    <div class="section-num">Cláusula 6</div>
+    <h2>Limitación de responsabilidad</h2>
+    <p>Credizona no será responsable por:</p>
+    <ul class="legal-list">
+      <li class="no"><div class="bullet"></div><div>Decisiones financieras que el usuario tome basándose en los indicadores, proyecciones o sugerencias del servicio.</div></li>
+      <li class="no"><div class="bullet"></div><div>El rechazo de crédito por parte de cualquier entidad financiera, independientemente del indicador obtenido.</div></li>
+      <li class="no"><div class="bullet"></div><div>La permanencia, modificación o estado del usuario en registros de Clearing, Equifax, BCU o cualquier otra central de riesgo.</div></li>
+      <li class="no"><div class="bullet"></div><div>Daños directos o indirectos derivados del uso o interpretación del servicio.</div></li>
+    </ul>
+  </div>
+
+  <!-- Cláusula 7 -->
+  <div class="section">
+    <div class="section-num">Cláusula 7</div>
+    <h2>Sugerencia de reintento de solicitud</h2>
+    <p>El sistema puede informar al usuario cuando, según la evolución estimada de su información, podría estar en un mejor momento para volver a intentar voluntariamente una solicitud de préstamo. Esta comunicación es una sugerencia orientativa, no una garantía ni una preaprobación, y no implica que Credizona evaluará ni aprobará ninguna solicitud.</p>
+  </div>
+
+  <!-- Cláusula 8 -->
+  <div class="section">
+    <div class="section-num">Cláusula 8</div>
+    <h2>Mi Plan Plus</h2>
+    <p>Mi Plan Plus es una modalidad del servicio que, con autorización expresa del usuario, gestiona la obtención de reportes financieros y crediticios de proveedores externos habilitados para generar un informe contextual orientativo más completo. Mi Plan Plus no implica asesoramiento financiero profesional ni garantiza ningún resultado crediticio.</p>
+  </div>
+
+  <!-- Cláusula 9 -->
+  <div class="section">
+    <div class="section-num">Cláusula 9</div>
+    <h2>Modificaciones del servicio</h2>
+    <p>Credizona se reserva el derecho de modificar, suspender o discontinuar el servicio en cualquier momento. Los cambios sustanciales en estos Términos serán notificados al usuario por el canal de contacto registrado con anticipación razonable.</p>
+  </div>
+
+  <!-- Cláusula 10 -->
+  <div class="section">
+    <div class="section-num">Cláusula 10</div>
+    <h2>Propiedad intelectual</h2>
+    <p>El software, la interfaz, el motor de reglas, los modelos de generación de informes, las marcas y desarrollos informáticos de Credizona Mi Plan son propiedad exclusiva de Credizona, protegidos por la Ley N° 9.739 y demás normas de propiedad intelectual vigentes en Uruguay. Queda prohibida su reproducción, explotación comercial o ingeniería inversa con fines comerciales o competitivos no autorizados.</p>
+  </div>
+
+  <!-- Cláusula 11 -->
+  <div class="section">
+    <div class="section-num">Cláusula 11</div>
+    <h2>Ley aplicable y jurisdicción</h2>
+    <p>Estos Términos se rigen por las leyes de la República Oriental del Uruguay. Para cualquier controversia, las partes acuerdan como fuero preferente los Tribunales ordinarios de Montevideo, sin perjuicio del derecho del usuario a acudir a los tribunales de su domicilio conforme a las normas de defensa del consumidor aplicables.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="doc-footer">
+    <p>¿Preguntas sobre estos términos? Escribinos a <a href="mailto:credizonauy@gmail.com">credizonauy@gmail.com</a></p>
+    <p style="margin-top:8px;">Para ejercer tus derechos sobre tus datos personales consultá nuestra <a href="/privacidad.html">Política de Privacidad</a>.</p>
+    <p style="margin-top:16px;font-size:12px;color:#4a5280;">Versión TC_v2.0_202605 · Credizona Mi Plan · República Oriental del Uruguay</p>
+  </div>
+
+</main>
+</body>
+</html>

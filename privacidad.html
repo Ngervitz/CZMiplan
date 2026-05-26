@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Política de Privacidad — Credizona Mi Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0a0f2e;
+    --surface:  rgba(255,255,255,.04);
+    --border:   rgba(255,255,255,.08);
+    --text:     rgba(255,255,255,.88);
+    --muted:    #8390b5;
+    --accent:   #40d7ff;
+    --green:    #34ffaf;
+    --danger:   #ff4e72;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,15,46,.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .site-header .brand {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+    text-decoration: none;
+    letter-spacing: -.01em;
+  }
+  .site-header .brand span { color: var(--accent); }
+  .back-link {
+    font-size: 14px;
+    color: var(--muted);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color .15s;
+  }
+  .back-link:hover { color: var(--text); }
+
+  .wrapper {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+
+  .doc-header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .doc-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 14px;
+  }
+  .doc-header h1 {
+    font-size: clamp(24px, 5vw, 36px);
+    font-weight: 900;
+    line-height: 1.2;
+    letter-spacing: -.02em;
+    margin-bottom: 16px;
+  }
+  .doc-meta {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  /* ── Rights summary box ── */
+  .rights-box {
+    background: rgba(52,255,175,.06);
+    border: 1px solid rgba(52,255,175,.18);
+    border-radius: 16px;
+    padding: 22px 24px;
+    margin-bottom: 40px;
+  }
+  .rights-box h3 {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    margin-bottom: 14px;
+  }
+  .rights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .right-item {
+    font-size: 13px;
+    color: rgba(255,255,255,.75);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .right-item::before {
+    content: '✓';
+    color: var(--green);
+    font-weight: 800;
+    font-size: 12px;
+  }
+
+  .section {
+    margin-bottom: 40px;
+  }
+  .section-num {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .section h2 {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -.01em;
+    margin-bottom: 16px;
+    line-height: 1.3;
+  }
+  .section p {
+    font-size: 15px;
+    color: rgba(255,255,255,.75);
+    margin-bottom: 14px;
+    line-height: 1.75;
+  }
+  .section p:last-child { margin-bottom: 0; }
+
+  .legal-list {
+    list-style: none;
+    margin: 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .legal-list li {
+    font-size: 15px;
+    color: rgba(255,255,255,.75);
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    line-height: 1.6;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .legal-list li .bullet {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    margin-top: 8px;
+  }
+  .legal-list li.no { border-color: rgba(255,78,114,.2); }
+  .legal-list li.no .bullet { background: var(--danger); }
+
+  /* ── Retention table ── */
+  .ret-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .ret-table th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .ret-table td {
+    padding: 12px 14px;
+    color: rgba(255,255,255,.75);
+    border-bottom: 1px solid rgba(255,255,255,.05);
+    vertical-align: top;
+    line-height: 1.55;
+  }
+  .ret-table tr:last-child td { border-bottom: none; }
+  .ret-table tr:hover td { background: rgba(255,255,255,.02); }
+
+  /* ── ARCO box ── */
+  .arco-box {
+    background: rgba(64,215,255,.06);
+    border: 1px solid rgba(64,215,255,.18);
+    border-radius: 16px;
+    padding: 22px 24px;
+    margin-top: 16px;
+  }
+  .arco-box .arco-email {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--accent);
+    margin: 10px 0;
+  }
+  .arco-box .arco-plazos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .plazo-item {
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .plazo-item .days {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .plazo-item .label {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 40px 0;
+  }
+
+  .doc-footer {
+    margin-top: 64px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .doc-footer a { color: var(--accent); text-decoration: none; }
+  .doc-footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 480px) {
+    .wrapper { padding: 32px 16px 80px; }
+    .site-header { padding: 14px 16px; }
+    .arco-box .arco-plazos { grid-template-columns: 1fr; }
+    .rights-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="brand">Credizona <span>Mi Plan</span></a>
+  <a href="/" class="back-link">← Volver</a>
+</header>
+
+<main class="wrapper">
+
+  <div class="doc-header">
+    <div class="doc-tag">Documento legal · PP_v2.0_202605</div>
+    <h1>Política de Privacidad y Tratamiento de Datos</h1>
+    <div class="doc-meta">
+      <span>📅 Última actualización: 26 de mayo de 2026</span>
+      <span>⚖️ Ley N° 18.331 · Uruguay</span>
+    </div>
+  </div>
+
+  <div class="rights-box">
+    <h3>Tus derechos como usuario</h3>
+    <div class="rights-grid">
+      <div class="right-item">Acceso a tus datos</div>
+      <div class="right-item">Rectificación</div>
+      <div class="right-item">Actualización</div>
+      <div class="right-item">Inclusión</div>
+      <div class="right-item">Supresión</div>
+      <div class="right-item">Revocación del consentimiento</div>
+      <div class="right-item">Baja del servicio</div>
+      <div class="right-item">Revisión humana del scoring</div>
+    </div>
+  </div>
+
+  <!-- 1. Responsable -->
+  <div class="section">
+    <div class="section-num">Numeral 1</div>
+    <h2>Responsable del tratamiento</h2>
+    <p><strong>[Razón Social — completar antes de publicar]</strong><br>
+    RUT: [completar]<br>
+    Domicilio: [completar], Montevideo, Uruguay</p>
+    <p>Email datos personales: <a href="mailto:credizonauy@gmail.com" style="color:#40d7ff;">credizonauy@gmail.com</a></p>
+    <p style="font-size:13px;color:var(--muted);">Las bases de datos se encuentran inscritas o en proceso de inscripción ante la Unidad Reguladora y de Control de Datos Personales (URCDP).</p>
+  </div>
+
+  <!-- 2. Datos -->
+  <div class="section">
+    <div class="section-num">Numeral 2</div>
+    <h2>Datos que recopilamos y por qué</h2>
+
+    <p><strong style="color:var(--text);">Datos de identificación y contacto</strong></p>
+    <p>Nombre, Cédula de Identidad, correo electrónico, número de teléfono. Provienen del formulario previo de solicitud de préstamo y son reutilizados solo si el usuario acepta los términos de Mi Plan de forma separada.</p>
+
+    <p style="margin-top:20px;"><strong style="color:var(--text);">Datos financieros autodeclarados</strong></p>
+    <p>Ingresos mensuales estimados, egresos, volumen y tipo de deudas, cuotas activas, estado de atraso autodeclarado, intención y comportamiento de pago, presión financiera percibida y objetivos financieros.</p>
+
+    <p style="margin-top:20px;"><strong style="color:var(--text);">Datos generados por el sistema</strong></p>
+    <p>Indicador interno orientativo, clasificación de situación de deuda, proyección ilustrativa de reorganización y snapshot estructurado resumido.</p>
+
+    <p style="margin-top:20px;"><strong style="color:var(--text);">Datos de Mi Plan Plus (solo con consentimiento específico)</strong></p>
+    <p>Con autorización expresa, Credizona gestiona la obtención de reportes financieros y crediticios de proveedores externos habilitados. Estos reportes son eliminados automáticamente a los 7 días de su obtención.</p>
+
+    <p style="margin-top:20px;"><strong style="color:var(--text);">Datos de interacción</strong></p>
+    <p>Con consentimiento del usuario durante la fase Beta: señales de interacción con la interfaz (tiempos, clics, navegación) con finalidad exclusiva de calibración del sistema.</p>
+  </div>
+
+  <!-- 3. Finalidad -->
+  <div class="section">
+    <div class="section-num">Numeral 3</div>
+    <h2>Para qué usamos los datos</h2>
+    <ul class="legal-list">
+      <li><div class="bullet"></div><div>Generar el indicador interno orientativo y las proyecciones ilustrativas del servicio.</div></li>
+      <li><div class="bullet"></div><div>Enviar comunicaciones operativas autorizadas (informe listo, recordatorios, sugerencia de reintento de solicitud).</div></li>
+      <li><div class="bullet"></div><div>Enviar comunicaciones comerciales de Credizona, si el usuario lo autorizó de forma separada.</div></li>
+      <li><div class="bullet"></div><div>Mejorar el motor de reglas mediante análisis estadístico agregado y anonimizado.</div></li>
+      <li><div class="bullet"></div><div>En Mi Plan Plus: generar el informe contextual integrado.</div></li>
+    </ul>
+
+    <p style="margin-top:20px;"><strong style="color:var(--danger);">Lo que NO haremos con los datos:</strong></p>
+    <ul class="legal-list">
+      <li class="no"><div class="bullet"></div><div>No los venderemos ni compartiremos con terceros para uso comercial propio de esos terceros.</div></li>
+      <li class="no"><div class="bullet"></div><div>No los usaremos para scoring de terceros ni APIs de datos externas.</div></li>
+      <li class="no"><div class="bullet"></div><div>No los monetizaremos de forma individualizada.</div></li>
+      <li class="no"><div class="bullet"></div><div>No los enviaremos a plataformas publicitarias (Meta, Google u otras) como datos financieros, de scoring, atraso, severidad ni información de Clearing o BCU.</div></li>
+    </ul>
+    <p style="font-size:13px;color:var(--muted);margin-top:12px;">Si alguna de estas prácticas cambiara en el futuro, se solicitará nuevo consentimiento específico.</p>
+  </div>
+
+  <!-- 4. Perfilamiento -->
+  <div class="section">
+    <div class="section-num">Numeral 4</div>
+    <h2>Tratamiento automatizado y perfilamiento</h2>
+    <p>El sistema genera indicadores y clasificaciones mediante procesamiento automatizado sin intervención humana directa. Este tratamiento requiere consentimiento expreso del usuario, recogido mediante checkbox obligatorio separado en el flujo de la plataforma (Art. 16, Ley N° 18.331).</p>
+    <p>El usuario tiene derecho a conocer los criterios generales del indicador, solicitar revisión humana, impugnar los criterios y revocar este consentimiento en cualquier momento escribiendo a <a href="mailto:credizonauy@gmail.com" style="color:#40d7ff;">credizonauy@gmail.com</a>.</p>
+  </div>
+
+  <!-- 5. Infraestructura -->
+  <div class="section">
+    <div class="section-num">Numeral 5</div>
+    <h2>Infraestructura y localización de datos</h2>
+    <p>La plataforma opera con infraestructura de alojamiento en Uruguay. El sistema de CRM es provisto por un proveedor con sede comercial en Uruguay.</p>
+    <p>Credizona informa que los proveedores tecnológicos con sede en Uruguay pueden utilizar infraestructura de nube internacional subyacente. En ese caso, la transferencia de datos se realiza hacia jurisdicciones con niveles de protección adecuados conforme a los estándares de la URCDP, o bajo cláusulas contractuales de protección equivalente.</p>
+    <p>El usuario puede solicitar información actualizada sobre localización de datos escribiendo a <a href="mailto:credizonauy@gmail.com" style="color:#40d7ff;">credizonauy@gmail.com</a>.</p>
+  </div>
+
+  <!-- 6. Retención -->
+  <div class="section">
+    <div class="section-num">Numeral 6</div>
+    <h2>Conservación de datos</h2>
+    <table class="ret-table">
+      <thead>
+        <tr>
+          <th>Tipo de dato</th>
+          <th>Plazo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Datos de identificación y contacto activos en CRM</td>
+          <td>Hasta revocación o 18 meses de inactividad</td>
+        </tr>
+        <tr>
+          <td>Datos financieros declarados (operativos)</td>
+          <td>Hasta revocación o cierre del período activo</td>
+        </tr>
+        <tr>
+          <td>Reportes externos brutos (Mi Plan Plus)</td>
+          <td><strong style="color:var(--danger);">Máximo 7 días</strong> — borrado automático</td>
+        </tr>
+        <tr>
+          <td>Snapshot estructurado resumido</td>
+          <td>Hasta revocación o baja del usuario</td>
+        </tr>
+        <tr>
+          <td>Logs de consentimiento y auditoría legal</td>
+          <td>Mínimo 5 años desde la aceptación</td>
+        </tr>
+        <tr>
+          <td>Registros mínimos de seguridad</td>
+          <td>Según política interna de seguridad</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:13px;color:var(--muted);">Se entiende por "inactividad" el período sin sesión iniciada desde la última interacción registrada.</p>
+  </div>
+
+  <!-- 7. ARCO -->
+  <div class="section">
+    <div class="section-num">Numeral 7</div>
+    <h2>Ejercicio de derechos (ARCO)</h2>
+    <p>Podés ejercer en cualquier momento y gratuitamente tus derechos de Acceso, Rectificación, Actualización, Inclusión, Supresión, Revocación del consentimiento y Baja del servicio.</p>
+
+    <div class="arco-box">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:6px;">Escribinos a</p>
+      <div class="arco-email">credizonauy@gmail.com</div>
+      <p style="font-size:13px;color:var(--muted);">Incluí copia de tu Cédula de Identidad e indicá claramente el derecho que querés ejercer.</p>
+
+      <div class="arco-plazos">
+        <div class="plazo-item">
+          <div class="days">5</div>
+          <div class="label">días hábiles para acusar recibo</div>
+        </div>
+        <div class="plazo-item">
+          <div class="days">15</div>
+          <div class="label">días hábiles para resolver tu solicitud</div>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top:16px;font-size:14px;color:var(--muted);">Si no obtenés respuesta en los plazos indicados, podés presentar tu reclamo directamente ante la <strong style="color:var(--text);">URCDP (Unidad Reguladora y de Control de Datos Personales)</strong>.</p>
+
+    <p style="font-size:14px;color:var(--muted);margin-top:10px;"><strong style="color:var(--text);">Efecto de la baja:</strong> Credizona eliminará o anonimizará los datos personales operativos, conservando únicamente la información mínima necesaria para cumplimiento legal, auditoría y seguridad del sistema.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="doc-footer">
+    <p>¿Preguntas sobre tu privacidad? Escribinos a <a href="mailto:credizonauy@gmail.com">credizonauy@gmail.com</a></p>
+    <p style="margin-top:8px;">Consultá también nuestros <a href="/tyc.html">Términos y Condiciones de Uso</a>.</p>
+    <p style="margin-top:16px;font-size:12px;color:#4a5280;">Versión PP_v2.0_202605 · Credizona Mi Plan · República Oriental del Uruguay · Ley N° 18.331</p>
+  </div>
+
+</main>
+</body>
+</html>
