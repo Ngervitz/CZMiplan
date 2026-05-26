@@ -534,16 +534,32 @@ function enriquecerDeuda(d) {
     costoFinEst     = true;
   }
 
-  // Latent pressure: the estimated monthly financial cost this debt generates
-  // regardless of whether the user is actively paying. Used by CRM/recovery.
-  // When pago = 0 (stopped paying): debt still accrues interest cost.
+  // Latent pressure: estimated monthly financial cost regardless of payment.
+  // Formula: monto × TNA / 100 / 12  — simple monthly approximation, NOT compound.
+  // This is contextual framing only, never a contractual or legal figure.
   var presionLatente = interesMensualEst;
 
-  d.interes_mensual_estimado  = interesMensualEst;
-  d.interes_mostrado          = interesMostrado;
-  d.capital_estimado          = capitalEstimado;
-  d.presion_latente_estimada  = presionLatente;
-  d.costo_financiero_estimado = costoFinEst;
+  // Sprint 8.3 — display unrealism guard.
+  // The formula is mathematically correct. But for extreme debt-to-income ratios
+  // (e.g., 121M debt / 65K income at 95% TNA → ~9.6M/month interest), showing the
+  // exact figure is psychologically cartoonish and not useful for recovery framing.
+  //
+  // Flags trigger if either threshold is met:
+  //   A. presion > 25% of the debt's own monto per month (implies TNA > 300%)
+  //   B. presion > 1.5× monthly income (debt interest alone drowns the income)
+  //
+  // The flag gates the UI display only — raw value is kept for CRM/analytics.
+  var ingreso = PRE.ingreso || 1;
+  var unrealisticByDebt   = monto > 0 && presionLatente / monto > 0.25;
+  var unrealisticByIncome = presionLatente / ingreso > 1.5;
+  var presionLatenteUnrealistic = unrealisticByDebt || unrealisticByIncome;
+
+  d.interes_mensual_estimado          = interesMensualEst;
+  d.interes_mostrado                  = interesMostrado;
+  d.capital_estimado                  = capitalEstimado;
+  d.presion_latente_estimada          = presionLatente;
+  d.presion_latente_unrealistic_flag  = presionLatenteUnrealistic;
+  d.costo_financiero_estimado         = costoFinEst;
 
   // Backward compat: ensure pago_fuente has a value on legacy debts
   if (!d.pago_fuente) {

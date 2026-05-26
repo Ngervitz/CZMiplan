@@ -877,21 +877,32 @@ function renderTabPlan() {
               })();
               // Sprint 8.1: rename latent pressure row for clarity;
               // when pago=0 + severity critico, only show the potencial row.
+              // Sprint 8.3: guard against displaying unrealistically large figures.
               var latentLabel = "Presión mensual potencial";
-              var latentVal   = fmt(prio.presion_latente_estimada || Math.round(m * (TASAS[prio.tipo]||62) / 100 / 12));
+              var latentRaw   = prio.presion_latente_estimada || Math.round(m * (TASAS[prio.tipo]||62) / 100 / 12);
+              var latentUnrealistic = prio.presion_latente_unrealistic_flag
+                || (m > 0 && latentRaw / m > 0.25)
+                || (PRE.ingreso > 0 && latentRaw / PRE.ingreso > 1.5);
+              var latentVal = latentUnrealistic
+                ? null   // null → qualitative copy rendered below
+                : fmt(latentRaw);
               var rows;
               if (p === 0 && sevPrio.severity_level === "critico") {
-                rows = [
-                  ["Monto",             fmt(m),     "#ff4e72"],
-                  [latentLabel,         latentVal,  "#ffd447"],
-                ];
+                rows = latentUnrealistic
+                  ? [["Monto", fmt(m), "#ff4e72"]]
+                  : [
+                      ["Monto",         fmt(m),     "#ff4e72"],
+                      [latentLabel,     latentVal,  "#ffd447"],
+                    ];
               } else {
                 rows = [
                   ["Monto",                       fmt(m),       "#ff4e72"],
                   ["Pago mensual",                fmt(p),       "#ffd36f"],
-                  [latentLabel,                   latentVal,    "#8390b5"],
-                  ["Costo financiero est./mes",   fmt(intEst),  "#ffd36f"],
                 ];
+                if (!latentUnrealistic) {
+                  rows.push([latentLabel,                 latentVal,    "#8390b5"]);
+                  rows.push(["Costo financiero est./mes", fmt(intEst),  "#ffd36f"]);
+                }
               }
               return rows;
             })()
@@ -902,13 +913,21 @@ function renderTabPlan() {
               : "")
           + (function() {
               var sevP = _severityFromDiag(diag);
-              if (sevP.severity_level !== "critico" && !sevP.has_mora_or_deje_pagar) return "";
               var p0 = (parseFloat(prio.pago) || 0) === 0;
-              var latentNote = p0
-                ? '<div style="margin-top:10px;font-size:12px;color:#8390b5;line-height:1.55;">Estimación si la deuda siguiera acumulando costo. No es una cuota activa.</div>'
-                : "";
-              return latentNote
-                + '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">Antes de acelerar pagos, conviene estabilizar el atraso, confirmar el saldo actualizado y frenar el deterioro. La prioridad no es pagar mas rapido sino recuperar control.</div>';
+              var latentRawCheck = prio.presion_latente_estimada || 0;
+              var unrealisticCheck = prio.presion_latente_unrealistic_flag
+                || (parseFloat(prio.monto) > 0 && latentRawCheck / parseFloat(prio.monto) > 0.25)
+                || (PRE.ingreso > 0 && latentRawCheck / PRE.ingreso > 1.5);
+              var out = "";
+              if (unrealisticCheck) {
+                out += '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">El deterioro potencial de esta deuda es muy alto y el saldo actualizado debe verificarse.</div>';
+              } else if (p0) {
+                out += '<div style="margin-top:10px;font-size:12px;color:#8390b5;line-height:1.55;">Estimación si la deuda siguiera acumulando costo. No es una cuota activa.</div>';
+              }
+              if (sevP.severity_level === "critico" || sevP.has_mora_or_deje_pagar) {
+                out += '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">Antes de acelerar pagos, conviene estabilizar el atraso, confirmar el saldo actualizado y frenar el deterioro. La prioridad no es pagar mas rapido sino recuperar control.</div>';
+              }
+              return out;
             })()
           + '</div>'
         : "")
@@ -1036,16 +1055,22 @@ function renderRadiografia() {
     }
   }
 
+  // Sprint 8.3 — guard aggregate interest display
+  var interesUnrealistic = PRE.ingreso > 0 && r.interesMensualTotal / PRE.ingreso > 1.5;
+
   return '<div style="margin-bottom:20px;">'
     + '<div style="font-size:11px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;">Tu radiografia financiera</div>'
 
     // 1. Interes puro / costo latente
     + '<div style="background:rgba(255,78,114,.07);border:1px solid rgba(255,78,114,.2);border-radius:18px;padding:20px;margin-bottom:12px;">'
     + '<div style="font-size:13px;font-weight:800;color:#ff4e72;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">💸 ' + interesTitle + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
-    + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">' + interesLabelMes + '</div><div style="font-size:34px;font-weight:900;color:#ff4e72;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal)) + '</div></div>'
-    + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">' + interesLabelAno + '</div><div style="font-size:34px;font-weight:900;color:#ffd447;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal * 12)) + '</div></div>'
-    + '</div>' + interesDisclaimer + '</div>'
+    + (interesUnrealistic
+        ? '<div style="font-size:15px;color:#8390b5;line-height:1.65;">El deterioro potencial de esta deuda es muy alto y el saldo actualizado debe verificarse.</div>'
+        : '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
+          + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">' + interesLabelMes + '</div><div style="font-size:34px;font-weight:900;color:#ff4e72;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal)) + '</div></div>'
+          + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">' + interesLabelAno + '</div><div style="font-size:34px;font-weight:900;color:#ffd447;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal * 12)) + '</div></div>'
+          + '</div>')
+    + interesDisclaimer + '</div>'
 
     // 2. Meses por deuda
     + (st.deudas.some(function(_, i) { return r.mesesPorDeuda[i] !== null; })

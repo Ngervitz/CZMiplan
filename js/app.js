@@ -1242,6 +1242,34 @@ window.CZDebugFinancial = function() {
     horizon_guardrail_applied:     !!(sev.severity_level === "critico" || (iv2 && iv2.severity_level === "critico")),
     latent_pressure_label_mode:    (sev.has_unpaid_debt || (iv2 && iv2.has_unpaid_debt)) ? "presion_mensual_potencial" : "standard",
     critical_copy_override_applied:!!(sev.severity_level === "critico" || (iv2 && iv2.severity_level === "critico")),
+    // Sprint 8.3 — latent pressure math integrity audit fields
+    tasa_anual_base: (function() {
+      return deudas.map(function(d) {
+        return { acreedor: d.acreedor || d.tipo, tipo: d.tipo, tasa_tna: (typeof TASAS !== "undefined" ? TASAS[d.tipo] || 62 : 62) };
+      });
+    })(),
+    tasa_mensual_equivalente: (function() {
+      return deudas.map(function(d) {
+        var tna = (typeof TASAS !== "undefined" ? TASAS[d.tipo] || 62 : 62);
+        return { acreedor: d.acreedor || d.tipo, tasa_mensual_pct: Math.round(tna / 12 * 100) / 100 };
+      });
+    })(),
+    latent_pressure_formula_mode:  "tna_div_12_simple",
+    latent_pressure_before_guardrails: presionLatenteTotalEstimada,
+    latent_pressure_after_guardrails:  (function() {
+      var anyUnrealistic = deudas.some(function(d) { return d.presion_latente_unrealistic_flag; });
+      return anyUnrealistic ? "display_replaced_by_qualitative_copy" : presionLatenteTotalEstimada;
+    })(),
+    latent_pressure_unrealistic_flag: deudas.some(function(d) { return d.presion_latente_unrealistic_flag; }),
+    latent_pressure_per_debt: deudas.map(function(d, i) {
+      return {
+        idx:                  i,
+        acreedor:             d.acreedor || d.tipo,
+        monto:                parseFloat(d.monto) || 0,
+        presion_estimada:     d.presion_latente_estimada || 0,
+        unrealistic_flag:     !!d.presion_latente_unrealistic_flag,
+      };
+    }),
     deudas_detalle: deudas.map(function(d, i) {
       return {
         idx:           i,
@@ -1250,6 +1278,7 @@ window.CZDebugFinancial = function() {
         pago:          parseFloat(d.pago) || 0,
         pago_fuente:   d.pago_fuente,
         presion_lat:   d.presion_latente_estimada || 0,
+        unrealistic:   !!d.presion_latente_unrealistic_flag,
       };
     }),
   };
