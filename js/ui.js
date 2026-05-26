@@ -53,12 +53,10 @@ function updateSticky() {
     cta.textContent  = "Ver diagnostico completo";
     cta.className    = "sticky-btn";
   } else {
-    // step 3 = dashboard — full diagnosis
-    if (bar) bar.classList.add("dashboard");
-    lbl.textContent  = "Tu diagnostico completo";
-    stEl.textContent = "Interpretacion completa de tu situacion financiera actual.";
-    cta.textContent  = "Ver diagnostico completo";
-    cta.className    = "sticky-btn premium";
+    // step 3 = dashboard — sticky hidden entirely.
+    // Dashboard has inline CTAs; sticky would overlap and duplicate them.
+    if (bar) bar.style.display = "none";
+    return;
   }
 }
 
@@ -546,12 +544,32 @@ function renderMetricsLive() {
   return '<div class="metric"><small>Deuda total</small><strong style="color:#ff4e72;">' + fmt(fin.totalDeuda) + '</strong></div>'
     + '<div class="metric"><small>Pago mensual</small><strong style="color:#ffd36f;">' + fmt(fin.totalPago) + '</strong></div>'
     + '<div class="metric"><small>Interes mensual est.</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';font-size:18px;">~' + fmt(interesTotalEst) + '</strong></div>'
-    + '<div class="metric"><small>Nivel de riesgo</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';">' + fin.nivelRiesgo + '</strong></div>';
+    // SPRINT 7B.2 — V1 RISK BADGE HIDDEN (not deleted)
+    // Reason: color-coded risk damages premium tone
+    // v2 recuperabilidad badge (Sprint 7B) is the correct surface for this information
+    // Scheduled removal: Sprint 1 of Backend Phase
+    + '<div style="display:none;height:0;overflow:hidden;"><div class="metric"><small>Nivel de riesgo</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';">' + fin.nivelRiesgo + '</strong></div></div>';
+}
+
+// =============================================================================
+// SPRINT 7B.3 — SUSPENDED DEBT / SEVERITY UI HELPERS
+// =============================================================================
+
+function _severityFromDiag(diag) {
+  if (diag && diag.interpretacion_v2) return diag.interpretacion_v2;
+  var deudas = (_st().deudas || []);
+  if (typeof calcularSeveridadFinanciera !== "function") return {};
+  var fin = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
+  return calcularSeveridadFinanciera(fin, deudas, PRE.ingreso);
 }
 
 function actualizarResultLive() {
-  var fin   = calcularFinanciero();
-  var prio  = deudaPrioritaria();
+  var fin    = calcularFinanciero();
+  var prio   = deudaPrioritaria();
+  var deudas = _st().deudas || [];
+  var sev    = typeof calcularSeveridadFinanciera === "function"
+    ? calcularSeveridadFinanciera(fin, deudas, PRE.ingreso)
+    : {};
   var title = document.getElementById("result-title");
   var text  = document.getElementById("result-text");
   if (!title || !text) return;
@@ -561,9 +579,19 @@ function actualizarResultLive() {
     return;
   }
   title.textContent = (prio.acreedor || prio.tipo || "Esta deuda") + " parece ser tu deuda mas sensible";
-  if (fin.nivelRiesgo === "Critico") text.textContent = "Detectamos una combinacion de pagos altos y deuda cara. La prioridad es recuperar flujo y evitar seguir acumulando intereses.";
-  else if (fin.nivelRiesgo === "Medio") text.textContent = "Tu situacion parece ordenable, pero ya hay presion financiera. La prioridad deberia ser reorganizar y atacar primero la deuda de " + (prio.acreedor || prio.tipo) + ".";
-  else text.textContent = "No parece una situacion critica, pero hay oportunidades claras para mejorar tu perfil si priorizas correctamente.";
+  if (sev.severity_level === "critico" || (sev.has_unpaid_debt && sev.severe_latent_pressure)) {
+    text.textContent = "La situacion muestra deterioro financiero severo. Aunque hoy no haya pagos activos, el tamano de la deuda y el atraso acumulado requieren estabilizacion antes de pensar en recuperacion.";
+  } else if (sev.severity_level === "alto" || sev.has_mora_or_deje_pagar) {
+    text.textContent = "Hay deudas sin pago activo o en atraso prolongado. La prioridad es estabilizar la situacion y entender el saldo actualizado antes de reorganizar pagos.";
+  } else if (fin.nivelRiesgo === "Critico") {
+    text.textContent = "Detectamos una combinacion de pagos altos y deuda cara. La prioridad es recuperar flujo y evitar seguir acumulando intereses.";
+  } else if (fin.nivelRiesgo === "Medio") {
+    text.textContent = "Tu situacion parece ordenable, pero ya hay presion financiera. La prioridad deberia ser reorganizar y atacar primero la deuda de " + (prio.acreedor || prio.tipo) + ".";
+  } else if (sev.has_unpaid_debt) {
+    text.textContent = "Hay deudas sin pago activo registrado. Eso no significa que esten resueltas: conviene estabilizar y confirmar el saldo actual antes de planificar.";
+  } else {
+    text.textContent = "No parece una situacion critica, pero hay oportunidades claras para mejorar tu perfil si priorizas correctamente.";
+  }
 }
 
 function actualizarMetrics() {
@@ -640,7 +668,22 @@ function renderBloqueadores(diag) {
 }
 
 function renderHorizonteRecalificacion(diag) {
-  var h = diag.horizonte;
+  var h   = diag.horizonte;
+  var sev = _severityFromDiag(diag);
+
+  // Sprint 8.1 — horizon guardrail (render-layer only).
+  // diag.horizonte raw values are NEVER modified; this only changes what is
+  // shown when severity_level = "critico". Snapshot + CRM keep the raw label.
+  if (sev.severity_level === "critico") {
+    return '<div class="plan-card" style="border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);">'
+      + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
+      + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable sin estabilización previa</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Antes de proyectar una recalificación, primero hay que estabilizar el atraso y confirmar el saldo actualizado.</div>'
+      + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
+      + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
+      + '</div></div>';
+  }
+
   var col  = (h.banda === "inmediato" || h.banda === "corto") ? "#34ffaf" : h.banda === "medio" ? "#ffd36f" : "#8390b5";
   var bg   = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.06)"  : h.banda === "medio" ? "rgba(255,211,111,.06)"  : "rgba(255,255,255,.03)";
   var bord = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.2)"   : h.banda === "medio" ? "rgba(255,211,111,.18)"  : "rgba(255,255,255,.08)";
@@ -649,10 +692,13 @@ function renderHorizonteRecalificacion(diag) {
     + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + h.label + '</div>'
     + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Basado en la informacion analizada, sin nuevas deudas, siguiendo el plan. El historial real del sistema financiero puede incluir otros elementos que modifiquen este calculo.</div>'
     + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
-    + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye Mi Plan Plus.'
+    + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
     + '</div></div>';
 }
 
+// @deprecated — hidden Sprint 7.1
+// Scheduled for removal: Sprint 1 Backend Phase
+// Do not re-activate without reviewing v2 architecture
 function renderAccionPrioritaria(diag) {
   var pc   = diag.plan.color;
   var int_ = diag.interpretacion;
@@ -820,6 +866,7 @@ function renderTabPlan() {
           + (function() {
               var m = parseFloat(prio.monto) || 0;
               var p = parseFloat(prio.pago)  || 0;
+              var sevPrio = _severityFromDiag(diag);
               // Peso-based pressure — no TNA/TEA% exposed
               var intEst = prio.interes_mostrado || (function() {
                 if (!m || !p || prio.tipo === "informal") return 0;
@@ -828,12 +875,24 @@ function renderTabPlan() {
                 var cap  = prio.estado === "al_dia" ? p * 0.80 : p * 0.95;
                 return Math.round(Math.min(est, cap));
               })();
-              var rows = [
-                ["Monto",              fmt(m),       "#ff4e72"],
-                ["Pago mensual",       fmt(p),       "#ffd36f"],
-                ["Presion latente est.", fmt(prio.presion_latente_estimada || Math.round(m * (TASAS[prio.tipo]||62) / 100 / 12)), "#8390b5"],
-                ["Costo financiero est./mes", fmt(intEst), "#ffd36f"],
-              ];
+              // Sprint 8.1: rename latent pressure row for clarity;
+              // when pago=0 + severity critico, only show the potencial row.
+              var latentLabel = "Presión mensual potencial";
+              var latentVal   = fmt(prio.presion_latente_estimada || Math.round(m * (TASAS[prio.tipo]||62) / 100 / 12));
+              var rows;
+              if (p === 0 && sevPrio.severity_level === "critico") {
+                rows = [
+                  ["Monto",             fmt(m),     "#ff4e72"],
+                  [latentLabel,         latentVal,  "#ffd447"],
+                ];
+              } else {
+                rows = [
+                  ["Monto",                       fmt(m),       "#ff4e72"],
+                  ["Pago mensual",                fmt(p),       "#ffd36f"],
+                  [latentLabel,                   latentVal,    "#8390b5"],
+                  ["Costo financiero est./mes",   fmt(intEst),  "#ffd36f"],
+                ];
+              }
               return rows;
             })()
             .map(function(x) { return '<div><small style="color:#8390b5;display:block;margin-bottom:6px;">' + x[0] + '</small><strong style="font-size:' + (x[2] === "#8390b5" ? "20" : "32") + 'px;color:' + x[2] + ';">' + x[1] + '</strong></div>'; }).join("")
@@ -841,6 +900,16 @@ function renderTabPlan() {
           + (prio.tipo === "informal"
               ? '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,211,111,.06);border:1px solid rgba(255,211,111,.15);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">Este tipo de deuda no siempre figura en el historial financiero formal, pero puede generar presion significativa sobre el flujo mensual y dificultar la estabilidad general.</div>'
               : "")
+          + (function() {
+              var sevP = _severityFromDiag(diag);
+              if (sevP.severity_level !== "critico" && !sevP.has_mora_or_deje_pagar) return "";
+              var p0 = (parseFloat(prio.pago) || 0) === 0;
+              var latentNote = p0
+                ? '<div style="margin-top:10px;font-size:12px;color:#8390b5;line-height:1.55;">Estimación si la deuda siguiera acumulando costo. No es una cuota activa.</div>'
+                : "";
+              return latentNote
+                + '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">Antes de acelerar pagos, conviene estabilizar el atraso, confirmar el saldo actualizado y frenar el deterioro. La prioridad no es pagar mas rapido sino recuperar control.</div>';
+            })()
           + '</div>'
         : "")
 
@@ -848,14 +917,41 @@ function renderTabPlan() {
     + renderHerramientas()
 
     // 9. Metricas de apoyo
-    + '<div class="metrics">'
-    + [
-        { l: "Plata que te sobra/mes",   v: fmt(fin.flujoLibre),               c: fin.flujoLibre < 0 ? "#ff4e72" : "#34ffaf", s: fin.flujoLibre < 0 ? "deficit" : "disponible" },
-        { l: "Total de deudas",           v: fmt(fin.totalDeuda),               c: "#ffd36f",                                   s: (_st().deudas||[]).length + " deuda" + ((_st().deudas||[]).length !== 1 ? "s" : "") },
-        { l: "De tu sueldo va a deudas",  v: Math.round(fin.ratio * 100) + "%", c: fin.ratio > 0.5 ? "#ff4e72" : fin.ratio > 0.35 ? "#ffd36f" : "#34ffaf", s: "meta: menos del 30%" },
-        { l: "Pagas en cuotas por mes",   v: fmt(fin.totalPago),                c: "rgba(255,255,255,.7)",                      s: "suma de minimos" },
-      ].map(function(m) { return '<div class="metric"><small>' + m.l + '</small><strong style="color:' + m.c + ';">' + m.v + '</strong><div style="font-size:14px;color:#8390b5;margin-top:6px;">' + m.s + '</div></div>'; }).join("")
-    + '</div>'
+    + (function() {
+        var sev = _severityFromDiag(diag);
+        var flujoNote = "";
+        if (sev.severity_level === "critico" && sev.has_unpaid_debt) {
+          flujoNote = '<div style="margin-top:12px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
+            + 'El flujo actual puede verse artificialmente liberado por pagos suspendidos. Hay presión financiera estructural fuera del flujo mensual activo.'
+            + '</div>';
+        } else if (sev.has_unpaid_debt) {
+          flujoNote = '<div style="margin-top:12px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">El flujo actual puede verse artificialmente liberado por pagos suspendidos.</div>';
+        }
+        var ratioPct = Math.round(fin.ratio * 100);
+        var ratioColor = ratioPct > 50 ? "#ff4e72" : ratioPct > 35 ? "#ffd447" : "#34ffaf";
+        var ratioSub   = "meta: menos del 30%";
+        if (ratioPct === 0 && sev.has_unpaid_debt) {
+          ratioColor = "#ffd447";
+          ratioSub   = sev.severity_level === "critico"
+            ? "presión mensual potencial fuera del flujo"
+            : "sin pagos activos registrados";
+        }
+        var flujoColor = fin.flujoLibre < 0 ? "#ff4e72" : "#34ffaf";
+        var flujoSub   = fin.flujoLibre < 0 ? "deficit" : "disponible";
+        if (fin.flujoLibre >= 0 && sev.has_unpaid_debt) {
+          flujoColor = "#ffd447";
+          flujoSub   = "puede incluir alivio por pagos suspendidos";
+        }
+        return '<div class="metrics">'
+          + [
+              { l: "Plata que te sobra/mes",   v: fmt(fin.flujoLibre),               c: flujoColor, s: flujoSub },
+              { l: "Total de deudas",           v: fmt(fin.totalDeuda),               c: "#ffd36f",  s: (_st().deudas||[]).length + " deuda" + ((_st().deudas||[]).length !== 1 ? "s" : "") },
+              { l: "De tu sueldo va a deudas",  v: ratioPct + "%",                    c: ratioColor, s: ratioSub },
+              { l: "Pagas en cuotas por mes",   v: fmt(fin.totalPago),                c: "rgba(255,255,255,.7)", s: "suma de minimos" },
+            ].map(function(m) { return '<div class="metric"><small>' + m.l + '</small><strong style="color:' + m.c + ';">' + m.v + '</strong><div style="font-size:14px;color:#8390b5;margin-top:6px;">' + m.s + '</div></div>'; }).join("")
+          + flujoNote
+          + '</div>';
+      })()
 
     // 10. Analisis financiero detallado (radiografia — bloques 1 a 4)
     + renderRadiografia()
@@ -903,21 +999,53 @@ function renderTabPlan() {
 // RADIOGRAFIA FINANCIERA
 // =============================================================================
 function renderRadiografia() {
-  var st = _st();
-  if (!_diag() || !st.deudas || st.deudas.length === 0) return "";
-  var r = calcularRadiografia();
+  var st   = _st();
+  var diag = _diag();
+  if (!diag || !st.deudas || st.deudas.length === 0) return "";
+  var r    = calcularRadiografia();
+  var sev  = _severityFromDiag(diag);
+  var hasSuspendedDebt = sev.has_mora_or_deje_pagar || st.deudas.some(function(d) {
+    return d.situacion_ui === "deje_pagar" || d.situacion_ui === "mora_reclamo";
+  });
   var DISC = '<div style="font-size:12px;color:#8390b5;margin-top:6px;">* Basado en tasas estimadas de mercado. Tu tasa real puede variar.</div>';
+  var SUSPENDED_DISC = '<div style="font-size:12px;color:#8390b5;margin-top:6px;">Estimacion orientativa. No representa una cuota ni un pago activo.</div>';
+  var CRITICAL_DISC  = '<div style="font-size:12px;color:#8390b5;margin-top:6px;">Estimación orientativa basada en tasas internas. En deudas críticas, el saldo real debe verificarse.</div>';
+
+  var isCritical = sev.severity_level === "critico"
+    || (sev.deuda_total_ingreso_ratio != null && sev.deuda_total_ingreso_ratio >= 24);
+
+  var interesTitle = hasSuspendedDebt
+    ? "LO QUE PODRIA ACUMULARSE SOBRE LA DEUDA"
+    : "Lo que pagas sin reducir deuda";
+  var interesLabelMes = hasSuspendedDebt ? "Costo estimado por mes" : "Solo intereses por mes";
+  var interesLabelAno = hasSuspendedDebt ? "Costo estimado en un ano" : "Solo en un ano";
+  var interesDisclaimer = isCritical ? CRITICAL_DISC : hasSuspendedDebt ? SUSPENDED_DISC : DISC;
+
+  var ratioPct = r.pctComprometido;
+  var ratioColor = ratioPct > 50 ? "#ff4e72" : ratioPct > 35 ? "#ffd447" : "#34ffaf";
+  var ratioCopy  = ratioPct > 50
+    ? "Mas de la mitad del ingreso va a servicios de deuda."
+    : ratioPct > 35
+      ? "Una parte importante del ingreso ya esta comprometida en deudas."
+      : "La carga de pagos activos es manejable en relacion al ingreso.";
+  if (r.comprometido === 0 && sev.has_unpaid_debt) {
+    ratioColor = "#ffd447";
+    ratioCopy  = "No hay pagos activos registrados, pero eso no significa que la deuda este resuelta.";
+    if (sev.severe_latent_pressure) {
+      ratioCopy += " Hay presion financiera latente fuera del flujo mensual actual.";
+    }
+  }
 
   return '<div style="margin-bottom:20px;">'
     + '<div style="font-size:11px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;">Tu radiografia financiera</div>'
 
-    // 1. Interes puro
+    // 1. Interes puro / costo latente
     + '<div style="background:rgba(255,78,114,.07);border:1px solid rgba(255,78,114,.2);border-radius:18px;padding:20px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:800;color:#ff4e72;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">💸 Lo que pagas sin reducir deuda</div>'
+    + '<div style="font-size:13px;font-weight:800;color:#ff4e72;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">💸 ' + interesTitle + '</div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
-    + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">Solo intereses por mes</div><div style="font-size:34px;font-weight:900;color:#ff4e72;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal)) + '</div></div>'
-    + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">Solo en un ano</div><div style="font-size:34px;font-weight:900;color:#ffd447;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal * 12)) + '</div></div>'
-    + '</div>' + DISC + '</div>'
+    + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">' + interesLabelMes + '</div><div style="font-size:34px;font-weight:900;color:#ff4e72;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal)) + '</div></div>'
+    + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">' + interesLabelAno + '</div><div style="font-size:34px;font-weight:900;color:#ffd447;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal * 12)) + '</div></div>'
+    + '</div>' + interesDisclaimer + '</div>'
 
     // 2. Meses por deuda
     + (st.deudas.some(function(_, i) { return r.mesesPorDeuda[i] !== null; })
@@ -947,16 +1075,16 @@ function renderRadiografia() {
           + DISC + '</div>'
         : "")
 
-    // 4. % comprometido
+    // 4. % comprometido — active payments only (Sprint 7B.2); framing fix (Sprint 7B.3)
     + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px;margin-bottom:12px;">'
-    + '<div style="font-size:13px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">📊 De tu sueldo, cuanto ya esta comprometido</div>'
+    + '<div style="font-size:13px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">📊 De tu sueldo, cuanto va a pagos de deudas</div>'
     + '<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">'
-    + '<div style="font-size:52px;font-weight:900;color:' + (r.pctComprometido > 85 ? "#ff4e72" : r.pctComprometido > 70 ? "#ffd447" : "#34ffaf") + ';line-height:1;letter-spacing:-2px;">' + r.pctComprometido + '%</div>'
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">' + (r.pctComprometido > 85 ? "Casi todo tu sueldo ya esta gastado antes de que llegue." : r.pctComprometido > 70 ? "La mayoria de tu sueldo ya tiene destino fijo." : "Tenes un margen razonable para maniobrar.") + '</div>'
+    + '<div style="font-size:52px;font-weight:900;color:' + ratioColor + ';line-height:1;letter-spacing:-2px;">' + ratioPct + '%</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">' + ratioCopy + '</div>'
     + '</div>'
     + '<div style="height:14px;background:rgba(255,255,255,.08);border-radius:7px;overflow:hidden;margin-bottom:8px;">'
-    + '<div style="height:100%;border-radius:7px;width:' + r.pctComprometido + '%;background:' + (r.pctComprometido > 85 ? "#ff4e72" : r.pctComprometido > 70 ? "#ffd447" : "#34ffaf") + ';"></div></div>'
-    + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8390b5;"><span>Comprometido: ' + fmt(Math.round(r.comprometido)) + '</span><span>Libre: ' + fmt(Math.max(0, PRE.ingreso - r.comprometido)) + '</span></div>'
+    + '<div style="height:100%;border-radius:7px;width:' + ratioPct + '%;background:' + ratioColor + ';"></div></div>'
+    + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8390b5;"><span>Pagos activos: ' + fmt(Math.round(r.comprometido)) + '</span><span>Flujo libre: ' + fmt(Math.max(0, r.flujoLibreActivo)) + '</span></div>'
     + '</div>'
 
     + '</div>';
@@ -978,7 +1106,11 @@ function renderTabDeudas() {
     + '<div class="metric"><small>Deuda total</small><strong style="color:#ff4e72;">' + fmt(total) + '</strong></div>'
     + '<div class="metric"><small>Canceladas</small><strong style="color:#34ffaf;">' + canc + '/' + deudas.length + '</strong></div>'
     + '<div class="metric"><small>Puntaje actual</small><strong style="color:' + colorScore(diag.scoreReset) + ';">' + diag.scoreReset + '</strong></div>'
-    + '<div class="metric"><small>Nivel</small><strong style="color:' + colorNivel(diag.nivelR) + ';font-size:24px;">' + nivelTexto(diag.nivelR) + '</strong></div>'
+    // SPRINT 7B.2 — V1 RISK BADGE HIDDEN (not deleted)
+    // Reason: color-coded risk damages premium tone
+    // v2 recuperabilidad badge (Sprint 7B) is the correct surface for this information
+    // Scheduled removal: Sprint 1 of Backend Phase
+    + '<div style="display:none;height:0;overflow:hidden;"><div class="metric"><small>Nivel</small><strong style="color:' + colorNivel(diag.nivelR) + ';font-size:24px;">' + nivelTexto(diag.nivelR) + '</strong></div></div>'
     + '</div>'
     + deudas.map(renderDeudaLive).join("")
     + '<div style="text-align:center;margin-top:14px;font-size:16px;color:#8390b5;">Los cambios se guardan automaticamente.</div>'

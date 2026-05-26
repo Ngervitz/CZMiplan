@@ -1144,3 +1144,113 @@ function actualizarSimuladorFlujo() {
     flujoEl.style.color = flujoSim >= 0 ? "#34ffaf" : "#ff4e72";
   }
 }
+
+// =============================================================================
+// QA DEBUG HELPER — Sprint 7B.2
+// For DevTools inspection only. Does not affect UI or calculations.
+// Usage: CZDebugFinancial()
+// =============================================================================
+window.CZDebugFinancial = function() {
+  var st    = window.CZState || {};
+  var deudas = (st.deudas || []);
+  var gastos = st.gastos || {};
+  var ingreso = (window.PRE && PRE.ingreso) || 0;
+
+  var totalGastos = Object.values(gastos).reduce(function(s, v) {
+    return s + (parseFloat(v) || 0);
+  }, 0);
+
+  var deudaTotal = deudas.reduce(function(s, d) {
+    return s + (parseFloat(d.monto) || 0);
+  }, 0);
+
+  var pagosMensualesActivos = deudas.reduce(function(s, d) {
+    var sit = d.situacion_ui;
+    if (sit === "deje_pagar" || sit === "mora_reclamo") return s;
+    return s + (parseFloat(d.pago) || 0);
+  }, 0);
+
+  var presionLatenteTotalEstimada = deudas.reduce(function(s, d) {
+    return s + (d.presion_latente_estimada || 0);
+  }, 0);
+
+  var flujoLibre = ingreso - totalGastos - pagosMensualesActivos;
+  var ratioComprometido = ingreso > 0 ? Math.round(pagosMensualesActivos / ingreso * 100) : 0;
+
+  var deudaTotalIngresoRatio = ingreso > 0 ? deudaTotal / ingreso : 0;
+  var maxDeudaIngresoRatio = deudas.reduce(function(mx, d) {
+    var m = parseFloat(d.monto) || 0;
+    return ingreso > 0 ? Math.max(mx, m / ingreso) : mx;
+  }, 0);
+
+  var has_mora_or_deje_pagar = deudas.some(function(d) {
+    return d.situacion_ui === "deje_pagar" || d.situacion_ui === "mora_reclamo";
+  });
+  var has_unpaid_debt = deudas.some(function(d) {
+    var monto = parseFloat(d.monto) || 0;
+    if (monto <= 0) return false;
+    var sit = d.situacion_ui;
+    if (sit === "deje_pagar" || sit === "mora_reclamo") return true;
+    return (parseFloat(d.pago) || 0) === 0;
+  });
+  var severe_latent_pressure = has_unpaid_debt
+    && ingreso > 0
+    && (presionLatenteTotalEstimada / ingreso) >= 0.35;
+
+  var sev = typeof calcularSeveridadFinanciera === "function"
+    ? calcularSeveridadFinanciera(
+        typeof calcularFinanciero === "function" ? calcularFinanciero() : {},
+        deudas,
+        ingreso
+      )
+    : {};
+
+  var motor = typeof calcularMotor === "function" ? calcularMotor() : null;
+  var iv2   = motor && motor.interpretacion_v2;
+
+  return {
+    ingreso:                       ingreso,
+    total_gastos:                  totalGastos,
+    deuda_total:                   deudaTotal,
+    pagos_mensuales_activos:       pagosMensualesActivos,
+    presion_latente_total_estimada:presionLatenteTotalEstimada,
+    flujo_libre:                   flujoLibre,
+    ratio_comprometido_pct:        ratioComprometido + "%",
+    deuda_total_ingreso_ratio:     Math.round(deudaTotalIngresoRatio * 100) / 100,
+    max_deuda_ingreso_ratio:       Math.round(maxDeudaIngresoRatio * 100) / 100,
+    has_unpaid_debt:               has_unpaid_debt,
+    has_mora_or_deje_pagar:        has_mora_or_deje_pagar,
+    severe_latent_pressure:        severe_latent_pressure,
+    severity_stock:                sev.severity_stock || (iv2 && iv2.severity_stock) || null,
+    severity_behavioral:           sev.severity_behavioral || (iv2 && iv2.severity_behavioral) || null,
+    severity_level:                sev.severity_level || (iv2 && iv2.severity_level) || null,
+    recuperabilidad_class:         (iv2 && iv2.recuperabilidad_class) || null,
+    // Sprint 8 — guardrail fields
+    scoreFinancieroRaw:            motor ? motor.scoreFinancieroRaw : null,
+    scoreResetRaw:                 motor ? motor.scoreResetRaw      : null,
+    scoreFinancieroCapped:         motor && motor.fin ? motor.fin.scoreFinanciero : null,
+    scoreResetCapped:              motor ? motor.scoreReset          : null,
+    guardrail_applied:             motor ? motor.guardrail_applied   : null,
+    guardrail_reason:              motor ? motor.guardrail_reason    : null,
+    nivelR:                        motor ? motor.nivelR              : null,
+    // Sprint 8.1 — horizon + copy override fields
+    horizonte_original:            motor && motor.horizonte ? motor.horizonte.label : null,
+    horizonte_renderizado:         (function() {
+      var sl = sev.severity_level || (iv2 && iv2.severity_level);
+      return sl === "critico" ? "No estimable sin estabilización previa" : (motor && motor.horizonte ? motor.horizonte.label : null);
+    })(),
+    horizon_guardrail_applied:     !!(sev.severity_level === "critico" || (iv2 && iv2.severity_level === "critico")),
+    latent_pressure_label_mode:    (sev.has_unpaid_debt || (iv2 && iv2.has_unpaid_debt)) ? "presion_mensual_potencial" : "standard",
+    critical_copy_override_applied:!!(sev.severity_level === "critico" || (iv2 && iv2.severity_level === "critico")),
+    deudas_detalle: deudas.map(function(d, i) {
+      return {
+        idx:           i,
+        acreedor:      d.acreedor || d.tipo,
+        situacion_ui:  d.situacion_ui,
+        pago:          parseFloat(d.pago) || 0,
+        pago_fuente:   d.pago_fuente,
+        presion_lat:   d.presion_latente_estimada || 0,
+      };
+    }),
+  };
+};

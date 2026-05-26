@@ -175,6 +175,10 @@ function asignarPlan(enc, fin) {
 // Retorna { principal, secundaria } — maximo 1+1 mensajes.
 // Prioridad fija: flujo <= 0 > moras > informal > ratio alto > default
 // =============================================================================
+// @deprecated — v1 interpretation, output stored as diag.interpretacion (v1)
+// v2 output is diag.interpretacion_v2 via interpretarDiagnostico() (Sprint 7A+)
+// Scheduled for removal: Sprint 1 Backend Phase
+// Do not use for new UI surfaces without reviewing v2 architecture
 function interpretarSituacion(fin) {
   // Caso 1 — flujo negativo o cero (dominante)
   if (fin.flujoLibre <= 0) {
@@ -270,11 +274,51 @@ function calcularHorizonte(fin, ing) {
 // =============================================================================
 // MOTOR COMPLETO
 // =============================================================================
+// =============================================================================
+// GUARDRAIL DE SEVERIDAD — Sprint 8
+//
+// Post-processing cap applied AFTER raw score calculation AND AFTER
+// interpretarDiagnostico() resolves severity_level.
+// Raw scores are NEVER overwritten — preserved as *Raw fields.
+// Only references SEVERITY_CRITICO_SCORE_FIN_MAX and
+// SEVERITY_CRITICO_SCORE_RESET_MAX from config.js.
+// =============================================================================
+function aplicarGuardrailSeveridad(scores, severityLevel) {
+  var finRaw   = scores.scoreFinanciero;
+  var resetRaw = scores.scoreReset;
+
+  if (severityLevel === "critico") {
+    return {
+      scoreFinanciero:    Math.min(finRaw,   SEVERITY_CRITICO_SCORE_FIN_MAX),
+      scoreReset:         Math.min(resetRaw, SEVERITY_CRITICO_SCORE_RESET_MAX),
+      scoreFinancieroRaw: finRaw,
+      scoreResetRaw:      resetRaw,
+      guardrail_applied:  true,
+      guardrail_reason:   "severity_critico",
+    };
+  }
+
+  return {
+    scoreFinanciero:    finRaw,
+    scoreReset:         resetRaw,
+    scoreFinancieroRaw: finRaw,
+    scoreResetRaw:      resetRaw,
+    guardrail_applied:  false,
+    guardrail_reason:   null,
+  };
+}
+
 function calcularMotor() {
   const enc = calcularEncuesta(PRE.respuestas);
   const fin = calcularFinanciero();
-  const scoreReset = clamp(Math.round(fin.scoreFinanciero * 0.55 + enc.score * 0.45), 0, 30);
-  let nivelR = scoreReset >= 21 ? "A" : scoreReset >= 13 ? "B" : "C";
+
+  // ── Raw scores — unchanged formulas ────────────────────────────────────────
+  const scoreFinancieroRaw = fin.scoreFinanciero;
+  const scoreResetRaw      = clamp(Math.round(fin.scoreFinanciero * 0.55 + enc.score * 0.45), 0, 30);
+
+  // nivelR / planId derived from raw first so interpretarDiagnostico() gets a
+  // consistent diag object. Both will be recomputed after guardrail below.
+  let nivelR = scoreResetRaw >= 21 ? "A" : scoreResetRaw >= 13 ? "B" : "C";
   const planId = asignarPlan(enc, fin);
   if (planId === 4) nivelR = "C";
   if (planId === 2 && nivelR === "A") nivelR = "B";
@@ -317,15 +361,50 @@ function calcularMotor() {
   };
   // ── end behavioral ─────────────────────────────────────────────────────────
 
-  // Assemble result before passing to interpretation engine (Sprint 7A).
+  // Assemble result with raw scores before passing to interpretation engine.
   // interpretacion_v2 is additive — diag.interpretacion (v1) is unchanged.
   const result = {
-    enc, fin, scoreReset, nivelR,
+    enc, fin,
+    scoreReset: scoreResetRaw,       // raw — will be replaced by capped below
+    scoreFinancieroRaw, scoreResetRaw,
+    nivelR,
     planId, plan: PLANES[planId],
     prio: deudaPrioritaria(), diasRec,
     bloqueadores, horizonte, interpretacion,
   };
+
+  // Run interpretation engine (needs raw scores + behavioral signals).
   result.interpretacion_v2 = interpretarDiagnostico(result);
+
+  // ── Sprint 8 guardrail — post-processing cap ───────────────────────────────
+  const guardrail = aplicarGuardrailSeveridad(
+    { scoreFinanciero: scoreFinancieroRaw, scoreReset: scoreResetRaw },
+    result.interpretacion_v2.severity_level
+  );
+
+  // Replace visible scores with capped values.
+  fin.scoreFinanciero   = guardrail.scoreFinanciero;
+  result.scoreReset     = guardrail.scoreReset;
+
+  // Re-derive nivelR from capped scoreReset so all UI stays coherent.
+  result.nivelR = guardrail.scoreReset >= 21 ? "A"
+                : guardrail.scoreReset >= 13 ? "B"
+                : "C";
+  if (planId === 4) result.nivelR = "C";
+  if (planId === 2 && result.nivelR === "A") result.nivelR = "B";
+
+  // Persist raw + guardrail metadata on result.
+  result.scoreFinancieroRaw = guardrail.scoreFinancieroRaw;
+  result.scoreResetRaw      = guardrail.scoreResetRaw;
+  result.guardrail_applied  = guardrail.guardrail_applied;
+  result.guardrail_reason   = guardrail.guardrail_reason;
+
+  // Mirror into interpretacion_v2 for downstream consumers.
+  result.interpretacion_v2.scoreFinancieroRaw = guardrail.scoreFinancieroRaw;
+  result.interpretacion_v2.scoreResetRaw      = guardrail.scoreResetRaw;
+  result.interpretacion_v2.guardrail_applied  = guardrail.guardrail_applied;
+  result.interpretacion_v2.guardrail_reason   = guardrail.guardrail_reason;
+
   return result;
 }
 
@@ -374,9 +453,20 @@ function calcularRadiografia() {
     }
   }
 
-  // 4. % del sueldo comprometido
-  const comprometido    = fin.totalGastos + fin.totalPago;
-  const pctComprometido = ing > 0 ? Math.min(Math.round(comprometido / ing * 100), 100) : 0;
+  // 4. % del sueldo comprometido — active debt payments only.
+  // Root-cause fix (Sprint 7B.2): the old formula used totalGastos + totalPago,
+  // which made "cuanto ya esta comprometido" spike to ~98% even when monthly
+  // debt payments were small. Gastos are already reflected in flujoLibre.
+  // presion_latente_estimada and deuda_total are NOT included here.
+  var pagosMensualesActivos = deudas.reduce(function(s, d) {
+    var sit = d.situacion_ui;
+    // Explicitly stopped or in mora: payment is 0 (guard against legacy stale values)
+    if (sit === "deje_pagar" || sit === "mora_reclamo") return s;
+    return s + (parseFloat(d.pago) || 0);
+  }, 0);
+  const comprometido    = pagosMensualesActivos;
+  const pctComprometido = ing > 0 ? Math.min(Math.round(pagosMensualesActivos / ing * 100), 100) : 0;
+  const flujoLibreActivo = ing - fin.totalGastos - pagosMensualesActivos;
 
   // 5. Estimacion de cuando podria calificar
   let mesesParaCalificar = 0;
@@ -396,7 +486,8 @@ function calcularRadiografia() {
 
   return {
     interesMensualTotal, mesesPorDeuda, ahorroPagandoExtra,
-    pctComprometido, comprometido, mesesParaCalificar, mesCalifica,
+    pctComprometido, comprometido, pagosMensualesActivos, flujoLibreActivo,
+    mesesParaCalificar, mesCalifica,
     fin, prio,
   };
 }
@@ -498,6 +589,101 @@ function calcularDebtDataQuality(deudas) {
 }
 
 // =============================================================================
+// SEVERITY ENGINE — Sprint 7B.3
+// Separates structural debt burden (stock) from operational deterioration (behavioral).
+// Does NOT change active payment ratio or scoring formulas.
+// =============================================================================
+function calcularSeveridadFinanciera(fin, deudas, ingreso) {
+  fin    = fin    || {};
+  deudas = deudas || [];
+  ingreso = ingreso || PRE.ingreso || 1;
+
+  var deudaTotal = fin.totalDeuda || deudas.reduce(function(s, d) {
+    return s + (parseFloat(d.monto) || 0);
+  }, 0);
+
+  var deudaTotalIngresoRatio = ingreso > 0 ? deudaTotal / ingreso : 0;
+  var maxDeudaIngresoRatio   = deudas.reduce(function(mx, d) {
+    var m = parseFloat(d.monto) || 0;
+    return ingreso > 0 ? Math.max(mx, m / ingreso) : mx;
+  }, 0);
+
+  var has_mora_or_deje_pagar = deudas.some(function(d) {
+    return d.situacion_ui === "deje_pagar" || d.situacion_ui === "mora_reclamo";
+  });
+
+  var has_unpaid_debt = deudas.some(function(d) {
+    var monto = parseFloat(d.monto) || 0;
+    if (monto <= 0) return false;
+    var sit = d.situacion_ui;
+    if (sit === "deje_pagar" || sit === "mora_reclamo") return true;
+    return (parseFloat(d.pago) || 0) === 0;
+  });
+
+  var presionLatenteTotal = deudas.reduce(function(s, d) {
+    return s + (d.presion_latente_estimada || 0);
+  }, 0);
+
+  var presionLatenteRatio = ingreso > 0 ? presionLatenteTotal / ingreso : 0;
+  var severe_latent_pressure = has_unpaid_debt && presionLatenteRatio >= 0.35;
+
+  // A) Stock severity — structural debt burden
+  var severity_stock = null;
+  if (deudaTotalIngresoRatio >= 24) {
+    severity_stock = "critico";
+  } else if (deudaTotalIngresoRatio >= 12) {
+    severity_stock = "alto";
+  }
+
+  // B) Behavioral severity — operational deterioration
+  var severity_behavioral = null;
+  deudas.forEach(function(d) {
+    var monto = parseFloat(d.monto) || 0;
+    var montoIngresoRatio = ingreso > 0 ? monto / ingreso : 0;
+    if (d.situacion_ui === "deje_pagar"
+        && d.atraso_tiempo === "mas_90"
+        && montoIngresoRatio >= 12) {
+      severity_behavioral = "critico";
+    } else if (d.situacion_ui === "mora_reclamo" && montoIngresoRatio >= 6) {
+      if (severity_behavioral !== "critico") severity_behavioral = "alto";
+    }
+  });
+
+  // Latent pressure severity — recovery signal, not active cashflow
+  var severity_latent = null;
+  if (has_unpaid_debt && presionLatenteRatio >= 1.0) {
+    severity_latent = "critico";
+  } else if (severe_latent_pressure) {
+    severity_latent = "alto";
+  }
+
+  // Global resolution — any critico wins; otherwise any alto wins
+  var severity_level = null;
+  if (severity_stock === "critico"
+      || severity_behavioral === "critico"
+      || severity_latent === "critico") {
+    severity_level = "critico";
+  } else if (severity_stock === "alto"
+      || severity_behavioral === "alto"
+      || severity_latent === "alto") {
+    severity_level = "alto";
+  }
+
+  return {
+    severity_stock,
+    severity_behavioral,
+    severity_level,
+    deuda_total_ingreso_ratio: deudaTotalIngresoRatio,
+    max_deuda_ingreso_ratio:   maxDeudaIngresoRatio,
+    has_unpaid_debt,
+    has_mora_or_deje_pagar,
+    severe_latent_pressure,
+    presion_latente_total:     presionLatenteTotal,
+    presion_latente_ratio:     presionLatenteRatio,
+  };
+}
+
+// =============================================================================
 // INTERPRETATION ENGINE v1 — Sprint 7A
 //
 // Converts calcularMotor() output into a structured semantic interpretation.
@@ -543,6 +729,7 @@ function textoParaNarrativa(entry) {
       demasiadas_deudas: "La cantidad de obligaciones simultáneas está fragmentando el margen mensual disponible.",
       sin_accion:        "No se registran acciones concretas recientes para ordenar la situación financiera.",
       falta_organizacion:"El panorama financiero no está completamente claro, lo que dificulta detectar por dónde empezar.",
+      deterioro_estructural: "La situación muestra deterioro financiero severo. Aunque hoy no haya pagos activos, el tamaño de la deuda y el atraso acumulado requieren estabilización antes de pensar en recuperación.",
     };
     return cp[entry.causa] || null;
   }
@@ -609,6 +796,9 @@ function interpretarDiagnostico(diag) {
   var ratio       = fin.ratio      || 0;
   var cantMoras   = fin.cantMoras  || 0;
   var nivelR      = diag.nivelR    || "C";
+
+  // ── 0. SEVERITY ENGINE (Sprint 7B.3) ─────────────────────────────────────
+  var sev = calcularSeveridadFinanciera(fin, deudas, ingreso);
 
   // Granular survey scores not on enc — derived from PRE.respuestas via p2n().
   // P5 = financial stress (A=3 no stress, D=0 max stress).
@@ -776,6 +966,14 @@ function interpretarDiagnostico(diag) {
   } else if (nivelR === "C" && accion_score <= 1 && flujoLibre < 0) {
     recuperabilidad       = "muy_baja";
     recuperabilidad_class = "no_accionable";
+  } else if (sev.severity_level === "alto") {
+    if (recuperabilidad_class === "recuperable_rapido") {
+      recuperabilidad       = "media_baja";
+      recuperabilidad_class = "recuperable_largo";
+    }
+    if (causa_principal === "falta_organizacion") {
+      causa_principal = "mora_activa";
+    }
   }
 
   // ── 5. NEXT BEST ACTION ───────────────────────────────────────────────────
@@ -790,6 +988,9 @@ function interpretarDiagnostico(diag) {
     falta_organizacion: "ordenar_panorama",
   };
   var next_best_action = NBA_MAP[causa_principal] || "ordenar_panorama";
+  if (sev.severity_level === "critico") {
+    next_best_action = "estabilizar_atraso";
+  }
 
   // ── 6. BEHAVIORAL CONTRADICTION DETECTION ────────────────────────────────
   // Flags a mismatch between declared payment behavior and calculated signals.
@@ -815,9 +1016,28 @@ function interpretarDiagnostico(diag) {
 
   var interpretacion_parcial = false;
   if (confidence_level === "low") {
-    patron_deuda           = "sin_patron";  // insufficient data to assert pattern
-    causas_secundarias     = [];            // secondary causes require reliable data
+    if (sev.severity_level !== "critico" && sev.severity_level !== "alto") {
+      patron_deuda = "sin_patron";
+    }
+    causas_secundarias     = [];
     interpretacion_parcial = true;
+  }
+
+  // Sprint 7B.3 — re-apply severity framing after confidence adjustments
+  if (sev.severity_level === "critico") {
+    if (causa_principal === "falta_organizacion" || causa_principal === "sin_accion") {
+      causa_principal = "deterioro_estructural";
+    }
+    if (sev.has_mora_or_deje_pagar || sev.severity_behavioral) {
+      patron_deuda = "mora_congelada";
+    }
+    recuperabilidad       = "baja";
+    recuperabilidad_class = "requiere_estabilizacion";
+    if (flujoLibre < 0 && accion_score <= 1) {
+      recuperabilidad       = "muy_baja";
+      recuperabilidad_class = "no_accionable";
+    }
+    next_best_action = "estabilizar_atraso";
   }
 
   // ── 8. NARRATIVA JERARQUIZADA ─────────────────────────────────────────────
@@ -849,6 +1069,12 @@ function interpretarDiagnostico(diag) {
     },
   ];
 
+  // Rebuild narrativa entries that severity overrides may have changed
+  narrativa_jerarquizada[0].causa  = causa_principal;
+  narrativa_jerarquizada[1].patron = patron_deuda;
+  narrativa_jerarquizada[2].clase  = recuperabilidad_class;
+  narrativa_jerarquizada[3].accion = next_best_action;
+
   narrativa_jerarquizada = narrativa_jerarquizada.map(function(e) {
     e.texto = textoParaNarrativa(e);
     return e;
@@ -867,6 +1093,14 @@ function interpretarDiagnostico(diag) {
     confidence_level,
     interpretacion_parcial,
     interpretation_version: "miplan_v1",
+    severity_stock:           sev.severity_stock,
+    severity_behavioral:      sev.severity_behavioral,
+    severity_level:           sev.severity_level,
+    deuda_total_ingreso_ratio:sev.deuda_total_ingreso_ratio,
+    max_deuda_ingreso_ratio:  sev.max_deuda_ingreso_ratio,
+    has_unpaid_debt:          sev.has_unpaid_debt,
+    has_mora_or_deje_pagar:   sev.has_mora_or_deje_pagar,
+    severe_latent_pressure:   sev.severe_latent_pressure,
   };
 }
 
@@ -914,17 +1148,30 @@ function buildDiagnosisSnapshot() {
     horizon_algorithm_version:     HORIZON_ALGORITHM_VERSION,
     interpretation_engine_version: INTERPRETATION_ENGINE_VERSION,
 
-    // Scores
-    behavioral_score:  enc.score      != null ? enc.score          : null,
-    behavioral_level:  enc.nivel       || null,
-    financial_score:   motor.scoreReset != null ? motor.scoreReset  : null,
-    debt_ratio:        fin.ratio        != null ? fin.ratio          : null,
-    free_cash_flow:    fin.flujoLibre   != null ? fin.flujoLibre     : null,
+    // Scores — capped (visible) and raw (for analytics/ML)
+    behavioral_score:       enc.score           != null ? enc.score              : null,
+    behavioral_level:       enc.nivel            || null,
+    financial_score:        motor.scoreReset     != null ? motor.scoreReset      : null,
+    financial_score_raw:    motor.scoreResetRaw  != null ? motor.scoreResetRaw   : null,
+    score_financiero_raw:   motor.scoreFinancieroRaw != null ? motor.scoreFinancieroRaw : null,
+    guardrail_applied:      motor.guardrail_applied  != null ? motor.guardrail_applied  : false,
+    guardrail_reason:       motor.guardrail_reason    || null,
+    debt_ratio:             fin.ratio            != null ? fin.ratio              : null,
+    free_cash_flow:         fin.flujoLibre       != null ? fin.flujoLibre         : null,
 
     // Blockers and horizon
     blockers:          motor.bloqueadores || [],
     horizon_band:      hor.banda          || null,
     horizon_months:    hor.meses          != null ? hor.meses        : null,
+
+    // Sprint 7B.3 — severity signals from interpretacion_v2
+    severity_stock:           (motor.interpretacion_v2 && motor.interpretacion_v2.severity_stock)           || null,
+    severity_behavioral:      (motor.interpretacion_v2 && motor.interpretacion_v2.severity_behavioral)      || null,
+    severity_level:           (motor.interpretacion_v2 && motor.interpretacion_v2.severity_level)           || null,
+    has_unpaid_debt:          (motor.interpretacion_v2 && motor.interpretacion_v2.has_unpaid_debt)          || false,
+    severe_latent_pressure:   (motor.interpretacion_v2 && motor.interpretacion_v2.severe_latent_pressure)   || false,
+    deuda_total_ingreso_ratio:(motor.interpretacion_v2 && motor.interpretacion_v2.deuda_total_ingreso_ratio) || null,
+    recuperabilidad_class:    (motor.interpretacion_v2 && motor.interpretacion_v2.recuperabilidad_class)    || null,
 
     // Input snapshots — source-tagged per input taxonomy
     debt_data_quality: calcularDebtDataQuality(st.deudas || []),

@@ -13,6 +13,16 @@ const FINANCIAL_ALGORITHM_VERSION   = "financial_v3_dark";
 const HORIZON_ALGORITHM_VERSION     = "horizon_v1";
 const INTERPRETATION_ENGINE_VERSION = "interpretation_v1";
 
+// =============================================================================
+// Sprint 8 — Score guardrail constants
+// Applied post-calculation as a final output cap only.
+// Raw scores are always preserved alongside capped values.
+// Configurable here; DO NOT hardcode these thresholds elsewhere.
+// Values are starting points — will be tuned after first traffic phase.
+// =============================================================================
+var SEVERITY_CRITICO_SCORE_FIN_MAX   = 8;
+var SEVERITY_CRITICO_SCORE_RESET_MAX = 11;
+
 // Input source taxonomy — classifies where each data point came from
 // DECLARED:  user-entered directly
 // SIMULATED: slider / temporary simulation (does NOT affect score/risk)

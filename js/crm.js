@@ -60,17 +60,29 @@ function buildCRMData(motor) {
       });
     }),
     diagnosis: motor ? {
-      deuda_total:       motor.fin.totalDeuda,
-      pago_mensual:      motor.fin.totalPago,
-      interes_prom:      motor.fin.interesProm,
-      nivel_riesgo:      motor.fin.nivelRiesgo,
-      score_reset:       motor.scoreReset,
-      nivel_reset:       motor.nivelR,
-      plan_id:           motor.planId,
+      deuda_total:          motor.fin.totalDeuda,
+      pago_mensual:         motor.fin.totalPago,
+      interes_prom:         motor.fin.interesProm,
+      nivel_riesgo:         motor.fin.nivelRiesgo,
+      score_reset:          motor.scoreReset,
+      score_reset_raw:      motor.scoreResetRaw      != null ? motor.scoreResetRaw      : motor.scoreReset,
+      score_financiero_raw: motor.scoreFinancieroRaw != null ? motor.scoreFinancieroRaw : null,
+      guardrail_applied:    motor.guardrail_applied   != null ? motor.guardrail_applied  : false,
+      guardrail_reason:     motor.guardrail_reason     || null,
+      nivel_reset:          motor.nivelR,
+      plan_id:              motor.planId,
       // Sprint 6.5 — data quality signal for underwriting/recovery intelligence
       debt_data_quality: (typeof calcularDebtDataQuality === "function")
         ? calcularDebtDataQuality(st.deudas || [])
         : null,
+      // Sprint 7B.3 — severity + recovery signals
+      severity_stock:            motor.interpretacion_v2 ? motor.interpretacion_v2.severity_stock            : null,
+      severity_behavioral:       motor.interpretacion_v2 ? motor.interpretacion_v2.severity_behavioral       : null,
+      severity_level:            motor.interpretacion_v2 ? motor.interpretacion_v2.severity_level            : null,
+      has_unpaid_debt:           motor.interpretacion_v2 ? motor.interpretacion_v2.has_unpaid_debt           : null,
+      severe_latent_pressure:    motor.interpretacion_v2 ? motor.interpretacion_v2.severe_latent_pressure    : null,
+      deuda_total_ingreso_ratio: motor.interpretacion_v2 ? motor.interpretacion_v2.deuda_total_ingreso_ratio : null,
+      recuperabilidad_class:     motor.interpretacion_v2 ? motor.interpretacion_v2.recuperabilidad_class     : null,
     } : {},
     reset_plus: {
       estado: st.plusEstado || "sin_pago",
