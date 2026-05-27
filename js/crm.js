@@ -92,6 +92,10 @@ function buildCRMData(motor) {
       timestamp:         new Date().toISOString(),
       segmento:          SEGMENTO,
     },
+    // Legal acceptance — sourced from consent.js
+    legal_acceptance: (typeof getLegalAcceptancePayload === "function")
+      ? getLegalAcceptancePayload()
+      : null,
   };
 }
 

@@ -1057,8 +1057,10 @@ document.addEventListener("DOMContentLoaded", function() {
     }
   });
 
-  // Iniciar app
-  init();
+  // Iniciar app — consent check runs first
+  if (initConsent()) {
+    init();
+  }
 });
 
 // =============================================================================
@@ -1233,13 +1235,61 @@ window.CZDebugFinancial = function() {
     guardrail_applied:             motor ? motor.guardrail_applied   : null,
     guardrail_reason:              motor ? motor.guardrail_reason    : null,
     nivelR:                        motor ? motor.nivelR              : null,
-    // Sprint 8.1 — horizon + copy override fields
+    // Sprint 8.1 + 8.4 — horizon + copy override fields
+    flujo_libre_activo: (function() {
+      var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
+      return rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
+    })(),
     horizonte_original:            motor && motor.horizonte ? motor.horizonte.label : null,
     horizonte_renderizado:         (function() {
       var sl = sev.severity_level || (iv2 && iv2.severity_level);
-      return sl === "critico" ? "No estimable sin estabilización previa" : (motor && motor.horizonte ? motor.horizonte.label : null);
+      if (sl === "critico") return "No estimable sin estabilización previa";
+      var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
+      var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
+      var blockerTipos = (motor && motor.bloqueadores || []).map(function(b) { return b.tipo; });
+      var negFlow = (fla !== null && fla < 0)
+        || blockerTipos.indexOf("flujo_insuficiente") !== -1
+        || blockerTipos.indexOf("flujo_mensual_negativo") !== -1
+        || (iv2 && iv2.causa_principal === "flujo_negativo");
+      if (negFlow) return "No estimable con flujo mensual negativo";
+      return motor && motor.horizonte ? motor.horizonte.label : null;
     })(),
-    horizon_guardrail_applied:     !!(sev.severity_level === "critico" || (iv2 && iv2.severity_level === "critico")),
+    horizon_guardrail_applied:     !!(function() {
+      var sl = sev.severity_level || (iv2 && iv2.severity_level);
+      if (sl === "critico") return true;
+      var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
+      var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
+      var blockerTipos = (motor && motor.bloqueadores || []).map(function(b) { return b.tipo; });
+      return (fla !== null && fla < 0)
+        || blockerTipos.indexOf("flujo_insuficiente") !== -1
+        || blockerTipos.indexOf("flujo_mensual_negativo") !== -1
+        || (iv2 && iv2.causa_principal === "flujo_negativo");
+    })(),
+    negative_cashflow_horizon_guardrail_applied: (function() {
+      var sl = sev.severity_level || (iv2 && iv2.severity_level);
+      if (sl === "critico") return false; // critico takes priority; this flag is exclusive
+      var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
+      var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
+      var blockerTipos = (motor && motor.bloqueadores || []).map(function(b) { return b.tipo; });
+      return !!(
+        (fla !== null && fla < 0)
+        || blockerTipos.indexOf("flujo_insuficiente") !== -1
+        || blockerTipos.indexOf("flujo_mensual_negativo") !== -1
+        || (iv2 && iv2.causa_principal === "flujo_negativo")
+      );
+    })(),
+    horizon_guardrail_reason: (function() {
+      var sl = sev.severity_level || (iv2 && iv2.severity_level);
+      if (sl === "critico") return "severity_critico";
+      var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
+      var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
+      var blockerTipos = (motor && motor.bloqueadores || []).map(function(b) { return b.tipo; });
+      var negFlow = (fla !== null && fla < 0)
+        || blockerTipos.indexOf("flujo_insuficiente") !== -1
+        || blockerTipos.indexOf("flujo_mensual_negativo") !== -1
+        || (iv2 && iv2.causa_principal === "flujo_negativo");
+      return negFlow ? "negative_cashflow" : null;
+    })(),
     latent_pressure_label_mode:    (sev.has_unpaid_debt || (iv2 && iv2.has_unpaid_debt)) ? "presion_mensual_potencial" : "standard",
     critical_copy_override_applied:!!(sev.severity_level === "critico" || (iv2 && iv2.severity_level === "critico")),
     // Sprint 8.3 — latent pressure math integrity audit fields

@@ -670,15 +670,67 @@ function renderBloqueadores(diag) {
 function renderHorizonteRecalificacion(diag) {
   var h   = diag.horizonte;
   var sev = _severityFromDiag(diag);
+  var iv2 = diag.interpretacion_v2 || {};
 
-  // Sprint 8.1 — horizon guardrail (render-layer only).
-  // diag.horizonte raw values are NEVER modified; this only changes what is
-  // shown when severity_level = "critico". Snapshot + CRM keep the raw label.
-  if (sev.severity_level === "critico") {
+  // Sprint 8.4 debug — remove after confirming fix is stable
+  console.log("HORIZON DEBUG:", {
+    severity:        iv2.severity_level,
+    flujoLibre:      diag.fin ? diag.fin.flujoLibre      : undefined,
+    flujoLibreActivo:diag.fin ? diag.fin.flujoLibreActivo : undefined,
+    causa:           iv2.causa_principal,
+    bloqueadores:    iv2.bloqueadores,
+  });
+
+  // ── HORIZON GUARDRAIL (render-layer only) ────────────────────────────────
+  // Raw diag.horizonte values are NEVER modified; snapshot + CRM keep them.
+  // Priority: 1) critical severity  2) negative cashflow  3) normal render
+  //
+  // Bug-fix (Sprint 8.4): _severityFromDiag returns diag.interpretacion_v2
+  // whenever the field exists — but a diag restored from localStorage saved
+  // before Sprint 7B.3 has the interpretacion_v2 object without severity_level.
+  // In that case sev.severity_level === undefined and the critico branch is
+  // silently skipped.  Re-compute severity from live state when the stored
+  // value is absent so the guardrail fires correctly.
+  var severityLevel = sev.severity_level;
+  if (severityLevel == null && typeof calcularSeveridadFinanciera === "function") {
+    var _fin    = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
+    var _fresh  = calcularSeveridadFinanciera(_fin, (_st().deudas || []), PRE.ingreso);
+    severityLevel = _fresh.severity_level;
+  }
+
+  // Sprint 8.1 — severity_critico override
+  if (severityLevel === "critico") {
     return '<div class="plan-card" style="border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);">'
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable sin estabilización previa</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Antes de proyectar una recalificación, primero hay que estabilizar el atraso y confirmar el saldo actualizado.</div>'
+      + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
+      + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
+      + '</div></div>';
+  }
+
+  // Sprint 8.4 — negative cashflow override.
+  // flujoLibreActivo (excludes suspended payments) is the correct signal.
+  // flujoLibre can appear positive when debts are stopped, masking real margin.
+  var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
+  var flujoLibreActivo = rad.flujoLibreActivo != null
+    ? rad.flujoLibreActivo
+    : (diag.fin ? diag.fin.flujoLibre : 0);
+
+  var blockerTipos = (diag.bloqueadores || []).map(function(b) { return b.tipo; });
+  var hasNegativeCashflowBlocker = blockerTipos.indexOf("flujo_insuficiente") !== -1
+    || blockerTipos.indexOf("flujo_mensual_negativo") !== -1;
+  var hasNegativeCausaPrincipal  = iv2.causa_principal === "flujo_negativo";
+
+  var negativeFlowOverride = flujoLibreActivo < 0
+    || hasNegativeCashflowBlocker
+    || hasNegativeCausaPrincipal;
+
+  if (negativeFlowOverride) {
+    return '<div class="plan-card" style="border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);">'
+      + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
+      + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable con flujo mensual negativo</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
       + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
       + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
       + '</div></div>';
@@ -1878,6 +1930,10 @@ function renderAll() {
   }
 
   main.innerHTML = '<div class="fade">' + html + '</div>';
+
+  if (st.step === 2) {
+    if (typeof renderCommsOptIn === "function") renderCommsOptIn("main-content");
+  }
 
   if (st.step === 3) {
     renderTab();

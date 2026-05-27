@@ -1230,5 +1230,10 @@ function buildDiagnosisSnapshot() {
       liberador_activo:         false,
       ingresos_extra_activos:   !!(st.herr && st.herr.ingresos && st.herr.ingresos.extras && st.herr.ingresos.extras.length > 0),
     },
+
+    // Legal acceptance — sourced from consent.js
+    legal_acceptance: (typeof getLegalAcceptancePayload === "function")
+      ? getLegalAcceptancePayload()
+      : null,
   };
 }

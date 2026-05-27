@@ -101,3 +101,23 @@ const SEGMENTO = (() => {
   if (tieneIngreso && !TIENE_ENCUESTA) return 2;
   return 3;
 })();
+
+// =============================================================================
+// Legal consent constants
+// =============================================================================
+const LEGAL_VERSION_TC             = "TC_v2.0_202605";
+const LEGAL_VERSION_DISCLAIMER     = "DISC_v2.0_202605";
+const LEGAL_VERSION_PRIVACY        = "PP_v2.0_202605";
+const CONSENT_STORAGE_KEY          = "cz_consent_v1";
+const MIPLAN_UNAUTHORIZED_REDIRECT = "https://credizona.com.uy";
+
+// Consent event names
+const CZ_CONSENT_EVENTS = Object.freeze({
+  LEGAL_ACCEPTED:    "legal_accepted",
+  LEGAL_RESTORED:    "legal_restored_session",
+  OUTSIDE_FUNNEL:    "outside_funnel_redirect",
+  // Reserved for future implementation — do not implement now
+  CONSENT_REVOKED:   "consent_revoked",
+  MARKETING_OPTOUT:  "marketing_optout",
+  OPERATIONAL_OPTOUT:"operational_optout",
+});
