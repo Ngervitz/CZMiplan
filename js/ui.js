@@ -672,47 +672,43 @@ function renderHorizonteRecalificacion(diag) {
   var sev = _severityFromDiag(diag);
   var iv2 = diag.interpretacion_v2 || {};
 
-  // Sprint 8.4 debug — remove after confirming fix is stable
-  console.log("HORIZON DEBUG:", {
-    severity:        iv2.severity_level,
-    flujoLibre:      diag.fin ? diag.fin.flujoLibre      : undefined,
-    flujoLibreActivo:diag.fin ? diag.fin.flujoLibreActivo : undefined,
-    causa:           iv2.causa_principal,
-    bloqueadores:    iv2.bloqueadores,
-  });
-
-  // ── HORIZON GUARDRAIL (render-layer only) ────────────────────────────────
+  // ── HORIZON GUARDRAIL (render-layer only) ─────────────────────────────────
   // Raw diag.horizonte values are NEVER modified; snapshot + CRM keep them.
-  // Priority: 1) critical severity  2) negative cashflow  3) normal render
-  //
-  // Bug-fix (Sprint 8.4): _severityFromDiag returns diag.interpretacion_v2
-  // whenever the field exists — but a diag restored from localStorage saved
-  // before Sprint 7B.3 has the interpretacion_v2 object without severity_level.
-  // In that case sev.severity_level === undefined and the critico branch is
-  // silently skipped.  Re-compute severity from live state when the stored
-  // value is absent so the guardrail fires correctly.
+  // Priority: 1) critical rendered state  2) negative cashflow  3) normal render
+
+  // Sprint 8.4 stale-data fix: recompute severity from live state if the stored
+  // interpretacion_v2 predates Sprint 7B.3 and is missing severity_level.
   var severityLevel = sev.severity_level;
   if (severityLevel == null && typeof calcularSeveridadFinanciera === "function") {
-    var _fin    = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
-    var _fresh  = calcularSeveridadFinanciera(_fin, (_st().deudas || []), PRE.ingreso);
+    var _fin   = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
+    var _fresh = calcularSeveridadFinanciera(_fin, (_st().deudas || []), PRE.ingreso);
     severityLevel = _fresh.severity_level;
   }
 
-  // Sprint 8.1 — severity_critico override
-  if (severityLevel === "critico") {
+  // Sprint 8.5 — Hard kill switch.
+  // planId 4 and nivelR "C" can be assigned by behavioural scoring alone, without
+  // debt data meeting the financial severity thresholds. Covering all four signals
+  // ensures no time-range horizon is ever shown in a critical rendered state.
+  var isCriticalRenderedState =
+    diag.planId === 4
+    || diag.nivelR === "C"
+    || severityLevel === "critico"
+    || iv2.severity_level === "critico";
+
+  // ── 1. CRITICAL STATE OVERRIDE ────────────────────────────────────────────
+  if (isCriticalRenderedState) {
     return '<div class="plan-card" style="border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);">'
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable sin estabilización previa</div>'
-      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Antes de proyectar una recalificación, primero hay que estabilizar el atraso y confirmar el saldo actualizado.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Cuando el perfil está en estabilización crítica, primero hay que ordenar la situación y confirmar el saldo actualizado. Recién después se puede estimar un horizonte de recalificación.</div>'
+      + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Este diagnóstico se basa exclusivamente en la información que declaraste.</div>'
       + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
       + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
-      + '<div style="font-size:12px;color:#5a6480;margin-top:10px;line-height:1.55;">Esta proyección se basa exclusivamente en la información que declaraste.</div>'
       + '</div></div>';
   }
 
-  // Sprint 8.4 — negative cashflow override.
-  // flujoLibreActivo (excludes suspended payments) is the correct signal.
-  // flujoLibre can appear positive when debts are stopped, masking real margin.
+  // ── 2. NEGATIVE CASHFLOW OVERRIDE ─────────────────────────────────────────
+  // flujoLibreActivo excludes suspended payments — the correct signal.
   var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
   var flujoLibreActivo = rad.flujoLibreActivo != null
     ? rad.flujoLibreActivo
@@ -731,23 +727,24 @@ function renderHorizonteRecalificacion(diag) {
     return '<div class="plan-card" style="border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);">'
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable con flujo mensual negativo</div>'
-      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
+      + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
       + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
       + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
-      + '<div style="font-size:12px;color:#5a6480;margin-top:10px;line-height:1.55;">Esta proyección se basa exclusivamente en la información que declaraste.</div>'
       + '</div></div>';
   }
 
+  // ── 3. NORMAL HORIZON ─────────────────────────────────────────────────────
   var col  = (h.banda === "inmediato" || h.banda === "corto") ? "#34ffaf" : h.banda === "medio" ? "#ffd36f" : "#8390b5";
   var bg   = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.06)"  : h.banda === "medio" ? "rgba(255,211,111,.06)"  : "rgba(255,255,255,.03)";
   var bord = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.2)"   : h.banda === "medio" ? "rgba(255,211,111,.18)"  : "rgba(255,255,255,.08)";
   return '<div class="plan-card" style="border-color:' + bord + ';background:' + bg + ';">'
     + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
     + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + h.label + '</div>'
-    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Basado en la informacion analizada, sin nuevas deudas, siguiendo el plan. El historial real del sistema financiero puede incluir otros elementos que modifiquen este calculo.</div>'
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Basado en la informacion analizada, sin nuevas deudas, siguiendo el plan. El historial real del sistema financiero puede incluir otros elementos que modifiquen este calculo.</div>'
+    + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
     + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
     + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
-    + '<div style="font-size:12px;color:#5a6480;margin-top:10px;line-height:1.55;">Esta proyección se basa exclusivamente en la información que declaraste.</div>'
     + '</div></div>';
 }
 

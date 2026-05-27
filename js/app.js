@@ -1234,16 +1234,41 @@ window.CZDebugFinancial = function() {
     scoreResetCapped:              motor ? motor.scoreReset          : null,
     guardrail_applied:             motor ? motor.guardrail_applied   : null,
     guardrail_reason:              motor ? motor.guardrail_reason    : null,
+    plan_id:                       motor ? motor.planId              : null,
     nivelR:                        motor ? motor.nivelR              : null,
-    // Sprint 8.1 + 8.4 — horizon + copy override fields
+    // Sprint 8.1 + 8.4 + 8.5 — horizon + copy override fields
     flujo_libre_activo: (function() {
       var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
       return rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
     })(),
+    is_critical_rendered_state: (function() {
+      var sl = sev.severity_level || (iv2 && iv2.severity_level);
+      // Sprint 8.4: recompute if stale
+      if (sl == null && typeof calcularSeveridadFinanciera === "function") {
+        var _f = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
+        sl = calcularSeveridadFinanciera(_f, deudas, ingreso).severity_level;
+      }
+      return !!(
+        (motor && motor.planId === 4)
+        || (motor && motor.nivelR === "C")
+        || sl === "critico"
+        || (iv2 && iv2.severity_level === "critico")
+      );
+    })(),
     horizonte_original:            motor && motor.horizonte ? motor.horizonte.label : null,
     horizonte_renderizado:         (function() {
       var sl = sev.severity_level || (iv2 && iv2.severity_level);
-      if (sl === "critico") return "No estimable sin estabilización previa";
+      if (sl == null && typeof calcularSeveridadFinanciera === "function") {
+        var _f = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
+        sl = calcularSeveridadFinanciera(_f, deudas, ingreso).severity_level;
+      }
+      var isCrit = !!(
+        (motor && motor.planId === 4)
+        || (motor && motor.nivelR === "C")
+        || sl === "critico"
+        || (iv2 && iv2.severity_level === "critico")
+      );
+      if (isCrit) return "No estimable sin estabilización previa";
       var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
       var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
       var blockerTipos = (motor && motor.bloqueadores || []).map(function(b) { return b.tipo; });
@@ -1256,7 +1281,11 @@ window.CZDebugFinancial = function() {
     })(),
     horizon_guardrail_applied:     !!(function() {
       var sl = sev.severity_level || (iv2 && iv2.severity_level);
-      if (sl === "critico") return true;
+      if (sl == null && typeof calcularSeveridadFinanciera === "function") {
+        var _f = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
+        sl = calcularSeveridadFinanciera(_f, deudas, ingreso).severity_level;
+      }
+      if ((motor && motor.planId === 4) || (motor && motor.nivelR === "C") || sl === "critico" || (iv2 && iv2.severity_level === "critico")) return true;
       var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
       var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
       var blockerTipos = (motor && motor.bloqueadores || []).map(function(b) { return b.tipo; });
@@ -1266,8 +1295,13 @@ window.CZDebugFinancial = function() {
         || (iv2 && iv2.causa_principal === "flujo_negativo");
     })(),
     negative_cashflow_horizon_guardrail_applied: (function() {
+      // Only true when critical state did NOT already take priority
       var sl = sev.severity_level || (iv2 && iv2.severity_level);
-      if (sl === "critico") return false; // critico takes priority; this flag is exclusive
+      if (sl == null && typeof calcularSeveridadFinanciera === "function") {
+        var _f = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
+        sl = calcularSeveridadFinanciera(_f, deudas, ingreso).severity_level;
+      }
+      if ((motor && motor.planId === 4) || (motor && motor.nivelR === "C") || sl === "critico" || (iv2 && iv2.severity_level === "critico")) return false;
       var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
       var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
       var blockerTipos = (motor && motor.bloqueadores || []).map(function(b) { return b.tipo; });
@@ -1280,7 +1314,11 @@ window.CZDebugFinancial = function() {
     })(),
     horizon_guardrail_reason: (function() {
       var sl = sev.severity_level || (iv2 && iv2.severity_level);
-      if (sl === "critico") return "severity_critico";
+      if (sl == null && typeof calcularSeveridadFinanciera === "function") {
+        var _f = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
+        sl = calcularSeveridadFinanciera(_f, deudas, ingreso).severity_level;
+      }
+      if ((motor && motor.planId === 4) || (motor && motor.nivelR === "C") || sl === "critico" || (iv2 && iv2.severity_level === "critico")) return "critical_rendered_state";
       var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
       var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : null;
       var blockerTipos = (motor && motor.bloqueadores || []).map(function(b) { return b.tipo; });
