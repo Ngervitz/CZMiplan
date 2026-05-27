@@ -132,6 +132,16 @@ function getLegalAcceptancePayload() {
 // ---------------------------------------------------------------------------
 function initConsent() {
 
+  // QA / standalone guard — evaluated BEFORE any redirect logic.
+  // If any Mi Plan data params are present, the app is being loaded directly
+  // (QA testing, dev, or deep-link from Credizona with data but without the
+  // consent bridge).  Never redirect externally in this case.
+  var _p = new URLSearchParams(window.location.search);
+  var skipExternalRedirect = _p.has("p1")
+    || _p.has("nombre")
+    || _p.has("ingreso")
+    || _p.has("czuid");
+
   // Priority 1: URL params from Credizona rejection + survey funnel
   var urlConsent = readConsentFromURL();
   if (urlConsent) {
@@ -164,6 +174,10 @@ function initConsent() {
   // Priority 3: no valid consent — redirect to Credizona home.
   // Mi Plan operates within Credizona's recovery flow and requires
   // prior contextual information from the rejection funnel.
+  // Redirect is suppressed when QA / data params are present (see guard above).
+  if (skipExternalRedirect) {
+    return true;
+  }
   if (typeof trackEvent === "function") {
     trackEvent(CZ_CONSENT_EVENTS.OUTSIDE_FUNNEL, {
       destination: MIPLAN_UNAUTHORIZED_REDIRECT,
