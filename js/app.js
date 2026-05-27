@@ -1369,5 +1369,10 @@ window.CZDebugFinancial = function() {
         unrealistic:   !!d.presion_latente_unrealistic_flag,
       };
     }),
+    // Sprint 8.7 — diagnosis mode clarity
+    diagnosis_mode: {
+      initial_plan_locked:       true,
+      live_financial_simulation: true,
+    },
   };
 };
