@@ -706,6 +706,7 @@ function renderHorizonteRecalificacion(diag) {
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Antes de proyectar una recalificación, primero hay que estabilizar el atraso y confirmar el saldo actualizado.</div>'
       + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
       + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
+      + '<div style="font-size:12px;color:#5a6480;margin-top:10px;line-height:1.55;">Esta proyección se basa exclusivamente en la información que declaraste.</div>'
       + '</div></div>';
   }
 
@@ -733,6 +734,7 @@ function renderHorizonteRecalificacion(diag) {
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
       + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
       + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
+      + '<div style="font-size:12px;color:#5a6480;margin-top:10px;line-height:1.55;">Esta proyección se basa exclusivamente en la información que declaraste.</div>'
       + '</div></div>';
   }
 
@@ -745,6 +747,7 @@ function renderHorizonteRecalificacion(diag) {
     + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Basado en la informacion analizada, sin nuevas deudas, siguiendo el plan. El historial real del sistema financiero puede incluir otros elementos que modifiquen este calculo.</div>'
     + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
     + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
+    + '<div style="font-size:12px;color:#5a6480;margin-top:10px;line-height:1.55;">Esta proyección se basa exclusivamente en la información que declaraste.</div>'
     + '</div></div>';
 }
 
@@ -853,6 +856,13 @@ function renderTabPlan() {
   var prog   = st.saldoIni > 0 ? Math.max(0, (st.saldoIni - fin.totalDeuda) / st.saldoIni * 100) : 0;
 
   return '<div class="fade">'
+    + '<div style="margin-bottom:20px;padding:14px 18px;'
+    + 'background:rgba(255,255,255,.03);'
+    + 'border:1px solid rgba(255,255,255,.07);'
+    + 'border-radius:12px;font-size:13px;'
+    + 'color:#8390b5;line-height:1.6;">'
+    + 'Este análisis se basa exclusivamente en la información que declaraste.'
+    + '</div>'
 
     // 1. Plan card — situacion actual
     + '<div class="plan-card" style="border-color:' + pc + '33;">'
