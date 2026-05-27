@@ -96,6 +96,9 @@ function buildCRMData(motor) {
     legal_acceptance: (typeof getLegalAcceptancePayload === "function")
       ? getLegalAcceptancePayload()
       : null,
+
+    // Sprint 9 — incomplete data flag
+    gastos_missing_confirmed: !!(window.CZState && window.CZState.gastos_missing_confirmed),
   };
 }
 

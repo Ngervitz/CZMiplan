@@ -18,6 +18,12 @@ window.CZState = {
   iaRes:         null,
   miplan_started: false,
 
+  // Sprint 9 — incomplete data flags
+  gastos_missing_confirmed:  false,
+  _showGastosWarning:        false,
+  _hfCtaShown:               false,
+  _gastosWarningTracked:     false,
+
   // Business state — SEPARATE from UI step navigation
   // Only mutate via setRecoveryState(). Never set directly across files.
   user_recovery_state: null,
@@ -59,20 +65,22 @@ window.guardarLocal = function(extra) {
     var st = window.CZState;
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.assign({
-      step:                st.step,
-      gastos:              st.gastos,
-      deudas:              st.deudas,
-      diag:                st.diag,
-      snap:                st.snap,
-      saldoIni:            st.saldoIni,
-      tab:                 st.tab,
-      plusEstado:          st.plusEstado,
-      iaRes:               st.iaRes,
-      miplan_started:      st.miplan_started || false,
-      user_recovery_state: st.user_recovery_state || null,
-      temporal:            st.temporal || {},
-      herr:                st.herr,
-      fecha:               new Date().toISOString(),
+      step:                    st.step,
+      gastos:                  st.gastos,
+      deudas:                  st.deudas,
+      diag:                    st.diag,
+      snap:                    st.snap,
+      saldoIni:                st.saldoIni,
+      tab:                     st.tab,
+      plusEstado:              st.plusEstado,
+      iaRes:                   st.iaRes,
+      miplan_started:          st.miplan_started          || false,
+      user_recovery_state:     st.user_recovery_state     || null,
+      temporal:                st.temporal                || {},
+      herr:                    st.herr,
+      // Sprint 9 — persist incomplete-data flag across sessions
+      gastos_missing_confirmed: !!st.gastos_missing_confirmed,
+      fecha:                   new Date().toISOString(),
     }, extra)));
   } catch (e) {}
 };
@@ -122,9 +130,10 @@ function next() {
       return s + (parseFloat(v) || 0);
     }, 0);
 
-    if (total === 0) {
-      trackEvent(CZ_EVENT_NAMES.INPUT_VALIDATION_FAILED, { step: 2, field: "gastos" });
-      showToast("Agrega aunque sea una estimacion de gastos para continuar.");
+    // Sprint 9 — Show inline warning when gastos are empty and user hasn't confirmed skip
+    if (total === 0 && !st.gastos_missing_confirmed) {
+      st._showGastosWarning = true;
+      window.CredizonaUI.renderAll();
       return;
     }
 
@@ -191,6 +200,12 @@ function resetear() {
     iaRes:               null,
     miplan_started:      false,
     user_recovery_state: null,
+
+    // Sprint 9 — incomplete data flags
+    gastos_missing_confirmed:  false,
+    _showGastosWarning:        false,
+    _hfCtaShown:               false,
+    _gastosWarningTracked:     false,
     temporal: {
       first_seen_at:           null,
       last_seen_at:            null,
@@ -335,6 +350,8 @@ async function init() {
     st.user_recovery_state = dataToUse.user_recovery_state || null;
     if (dataToUse.temporal) Object.assign(st.temporal, dataToUse.temporal);
     if (dataToUse.herr) st.herr = dataToUse.herr;
+    // Sprint 9 — restore incomplete-data flag
+    st.gastos_missing_confirmed = !!dataToUse.gastos_missing_confirmed;
   }
 
   // Temporal tracking — update session fields
@@ -756,6 +773,42 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         if (id) switchTab(id);
+        return;
+      }
+
+      // Sprint 9 — Gastos missing warning: "Agregar gastos" keeps user on step 2
+      if (e.target.id === "btn-gastos-warn-back") {
+        st._showGastosWarning = false;
+        window.CredizonaUI.renderAll();
+        return;
+      }
+
+      // Sprint 9 — Gastos missing warning: "Continuar igual" proceeds with flag
+      if (e.target.id === "btn-gastos-warn-skip") {
+        st.gastos_missing_confirmed = true;
+        st._showGastosWarning       = false;
+        var _diagForTrack = st.diag;
+        trackEvent("gastos_missing_confirmed", {
+          scoreReset:              _diagForTrack ? _diagForTrack.scoreReset : null,
+          nivelR:                  _diagForTrack ? _diagForTrack.nivelR : null,
+          severity_level:          _diagForTrack && _diagForTrack.interpretacion_v2 ? _diagForTrack.interpretacion_v2.severity_level : null,
+          gastos_missing_confirmed: true,
+        });
+        next();
+        return;
+      }
+
+      // Sprint 9 — Hidden factor CTA click
+      if (e.target.id === "btn-hf-cta") {
+        var _diagHF  = st.diag;
+        var _iv2HF   = _diagHF && _diagHF.interpretacion_v2 ? _diagHF.interpretacion_v2 : {};
+        trackEvent("hidden_factor_cta_clicked", {
+          scoreReset:              _diagHF ? _diagHF.scoreReset : null,
+          nivelR:                  _diagHF ? _diagHF.nivelR : null,
+          severity_level:          _iv2HF.severity_level || null,
+          gastos_missing_confirmed: !!st.gastos_missing_confirmed,
+        });
+        _abrirPremium();
         return;
       }
 
@@ -1374,5 +1427,9 @@ window.CZDebugFinancial = function() {
       initial_plan_locked:       true,
       live_financial_simulation: true,
     },
+    // Sprint 9 — incomplete data flags
+    gastos_missing_confirmed:   !!(window.CZState && window.CZState.gastos_missing_confirmed),
+    hidden_factor_cta_shown:    !!(window.CZState && window.CZState._hfCtaShown),
+    hidden_factor_opportunity:  (typeof detectHiddenFactorOpportunity === "function" && diag) ? detectHiddenFactorOpportunity(diag) : false,
   };
 };

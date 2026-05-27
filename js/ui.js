@@ -206,6 +206,19 @@ function renderGastos() {
         : "")
     + '</div>';
 
+  // Sprint 9 — inline warning when user tries to continue with no gastos
+  if (_st()._showGastosWarning) {
+    html += '<div style="background:rgba(255,196,0,.09);border:1px solid rgba(255,196,0,.28);border-radius:18px;padding:22px 24px;margin-bottom:16px;">'
+      + '<div style="font-size:16px;font-weight:800;color:#ffd447;margin-bottom:10px;">⚠️ No cargaste gastos mensuales</div>'
+      + '<div style="font-size:16px;color:rgba(255,255,255,.75);line-height:1.6;margin-bottom:6px;">Podemos mostrarte un diagnóstico inicial, pero algunas proyecciones pueden verse más optimistas de lo real.</div>'
+      + '<div style="font-size:14px;color:#8390b5;line-height:1.5;margin-bottom:20px;">Agregar gastos mejora la precisión del análisis.</div>'
+      + '<div style="display:flex;gap:12px;flex-wrap:wrap;">'
+      + '<button class="btn btn-primary" id="btn-gastos-warn-back" style="flex:1;min-width:140px;height:52px;font-size:16px;">Agregar gastos</button>'
+      + '<button class="btn btn-secondary" id="btn-gastos-warn-skip" style="flex:1;min-width:140px;height:52px;font-size:15px;color:#ffd447;border-color:rgba(255,196,0,.3);">Continuar igual</button>'
+      + '</div>'
+      + '</div>';
+  }
+
   if (SEGMENTO === 1) {
     html += '<button class="nav-back" id="btn-back-diag">&#8592; Atras</button>';
   }
@@ -589,6 +602,9 @@ function actualizarResultLive() {
     text.textContent = "Tu situacion parece ordenable, pero ya hay presion financiera. La prioridad deberia ser reorganizar y atacar primero la deuda de " + (prio.acreedor || prio.tipo) + ".";
   } else if (sev.has_unpaid_debt) {
     text.textContent = "Hay deudas sin pago activo registrado. Eso no significa que esten resueltas: conviene estabilizar y confirmar el saldo actual antes de planificar.";
+  } else if (window.CZState && window.CZState.gastos_missing_confirmed) {
+    // Sprint 9 — confidence degradation: avoid optimistic summary when gastos are missing
+    text.textContent = "El analisis muestra baja presion desde las deudas registradas, pero sin gastos declarados la imagen puede ser incompleta.";
   } else {
     text.textContent = "No parece una situacion critica, pero hay oportunidades claras para mejorar tu perfil si priorizas correctamente.";
   }
@@ -877,7 +893,15 @@ function renderTabPlan() {
   var prio   = diag.prio;
   var prog   = st.saldoIni > 0 ? Math.max(0, (st.saldoIni - fin.totalDeuda) / st.saldoIni * 100) : 0;
 
+  // Sprint 9 — gastos missing warning card (near top of plan tab)
+  var _gastosMissingCard = (st.gastos_missing_confirmed)
+    ? '<div style="background:rgba(255,196,0,.08);border:1px solid rgba(255,196,0,.25);border-radius:14px;padding:14px 18px;margin-bottom:16px;font-size:14px;color:#ffd447;line-height:1.6;">'
+      + '⚠️ Este diagnóstico no incluye tus gastos mensuales. Algunas proyecciones pueden ser menos precisas.'
+      + '</div>'
+    : '';
+
   return '<div class="fade">'
+    + _gastosMissingCard
     + '<div style="margin-bottom:20px;padding:14px 18px;'
     + 'background:rgba(255,255,255,.03);'
     + 'border:1px solid rgba(255,255,255,.07);'
@@ -914,6 +938,18 @@ function renderTabPlan() {
 
     // 4. Horizonte estimado para recalificar
     + renderHorizonteRecalificacion(diag)
+
+    // Sprint 9 — Hidden Factor CTA
+    // Rendered only when user appears financially healthy but came from a rejection.
+    // Reuses existing Mi Plan Plus flow. No new checkout or route created.
+    + (typeof detectHiddenFactorOpportunity === "function" && detectHiddenFactorOpportunity(diag)
+        ? '<div class="plan-card" id="cz-hf-cta" style="background:rgba(64,215,255,.05);border-color:rgba(64,215,255,.2);">'
+          + '<div style="font-size:13px;font-weight:800;color:#40d7ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">🔍 Tu perfil declarado no muestra un bloqueo evidente</div>'
+          + '<div style="font-size:16px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:12px;">Con la información que ingresaste, no aparece una causa clara para el rechazo. Puede haber factores externos que esta simulación no puede ver.</div>'
+          + '<div style="font-size:14px;color:#8390b5;line-height:1.6;margin-bottom:20px;">Mi Plan Plus puede ayudarte a revisar información externa y entender mejor qué puede estar frenando la solicitud.</div>'
+          + '<button class="btn btn-primary" id="btn-hf-cta" style="width:100%;height:60px;font-size:18px;">Ver mi informe completo</button>'
+          + '</div>'
+        : '')
 
     // 5. Accion prioritaria v1 (direccion estrategica — legacy)
     // SPRINT 7.1 — V1 ACTION HIDDEN (not deleted)
@@ -1049,6 +1085,10 @@ function renderTabPlan() {
           flujoColor = "#ffd447";
           flujoSub   = "puede incluir alivio por pagos suspendidos";
         }
+        // Sprint 9 — confidence degradation: flag incomplete gastos in flujo label
+        if (st.gastos_missing_confirmed && fin.flujoLibre >= 0 && !sev.has_unpaid_debt) {
+          flujoSub = "estimado — gastos no declarados";
+        }
         return '<div class="metrics">'
           + [
               { l: "Plata que te sobra/mes",   v: fmt(fin.flujoLibre),               c: flujoColor, s: flujoSub },
@@ -1145,6 +1185,11 @@ function renderRadiografia() {
     }
   }
 
+  // Sprint 9 — confidence degradation: downgrade optimistic ratioCopy when gastos are missing
+  if (st.gastos_missing_confirmed && ratioPct <= 35) {
+    ratioCopy = "La carga de pagos sobre el ingreso parece limitada, pero sin gastos declarados el margen real puede ser menor.";
+  }
+
   // Sprint 8.3 — guard aggregate interest display
   var interesUnrealistic = PRE.ingreso > 0 && r.interesMensualTotal / PRE.ingreso > 1.5;
 
@@ -1199,7 +1244,7 @@ function renderRadiografia() {
     + '</div>'
     + '<div style="height:14px;background:rgba(255,255,255,.08);border-radius:7px;overflow:hidden;margin-bottom:8px;">'
     + '<div style="height:100%;border-radius:7px;width:' + ratioPct + '%;background:' + ratioColor + ';"></div></div>'
-    + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8390b5;"><span>Pagos activos: ' + fmt(Math.round(r.comprometido)) + '</span><span>Flujo libre: ' + fmt(Math.max(0, r.flujoLibreActivo)) + '</span></div>'
+    + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8390b5;"><span>Pagos activos: ' + fmt(Math.round(r.comprometido)) + '</span><span>' + (st.gastos_missing_confirmed ? 'Flujo libre est. (sin gastos)' : 'Flujo libre') + ': ' + fmt(Math.max(0, r.flujoLibreActivo)) + '</span></div>'
     + '</div>'
 
     + '</div>';
@@ -1973,8 +2018,37 @@ function renderAll() {
     if (typeof renderCommsOptIn === "function") renderCommsOptIn("main-content");
   }
 
+  if (st.step === 2) {
+    // Sprint 9 — fire gastos_missing_warning_shown once, right when warning first appears
+    if (st._showGastosWarning && !st._gastosWarningTracked) {
+      st._gastosWarningTracked = true;
+      trackEvent("gastos_missing_warning_shown", {
+        scoreReset:              null,
+        nivelR:                  null,
+        severity_level:          null,
+        gastos_missing_confirmed: false,
+      });
+    }
+  }
+
   if (st.step === 3) {
     renderTab();
+
+    // Sprint 9 — fire hidden_factor_cta_shown exactly once per diagnosis session
+    var _diag3 = st.diag;
+    if (!st._hfCtaShown
+        && _diag3
+        && typeof detectHiddenFactorOpportunity === "function"
+        && detectHiddenFactorOpportunity(_diag3)) {
+      st._hfCtaShown = true;
+      var _iv2CtaShown = _diag3.interpretacion_v2 || {};
+      trackEvent("hidden_factor_cta_shown", {
+        scoreReset:              _diag3.scoreReset,
+        nivelR:                  _diag3.nivelR,
+        severity_level:          _iv2CtaShown.severity_level || null,
+        gastos_missing_confirmed: !!st.gastos_missing_confirmed,
+      });
+    }
   }
 
   updateSticky();

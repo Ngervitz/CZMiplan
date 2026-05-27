@@ -1121,6 +1121,58 @@ function interpretarDiagnostico(diag) {
 }
 
 // =============================================================================
+// SPRINT 9 — HIDDEN FACTOR DETECTION ENGINE
+//
+// Returns true ONLY when the user appears financially healthy in declared data
+// but came from a rejection — suggesting external/invisible factors may explain
+// the rejection. Used to gate the Mi Plan Plus "hidden factor" CTA.
+//
+// Detection is purely local/contextual. This function makes NO claims about
+// actual credit bureau status, eligibility, or approval likelihood.
+// =============================================================================
+function detectHiddenFactorOpportunity(diag) {
+  if (!diag) return false;
+
+  // Rejection origin: arrived via survey funnel or with survey URL params
+  var vinoDeRechazo = (typeof TIENE_ENCUESTA !== "undefined" && TIENE_ENCUESTA === true)
+    || (typeof PRE !== "undefined"
+        && PRE.respuestas
+        && Object.keys(PRE.respuestas).filter(function(k) { return PRE.respuestas[k] !== null; }).length > 0);
+  if (!vinoDeRechazo) return false;
+
+  // Exclude all critical or compromised rendered states
+  if (diag.planId === 4)  return false;
+  if (diag.nivelR === "C") return false;
+
+  var iv2 = diag.interpretacion_v2 || {};
+  if (iv2.severity_level === "critico") return false;
+
+  // Incomplete data degrades confidence — don't promote CTA on noisy data
+  if (diag.gastos_missing_confirmed) return false;
+
+  // Must have positive cashflow (both measures)
+  var fin = diag.fin || {};
+  if ((fin.flujoLibre != null ? fin.flujoLibre : 0) < 0) return false;
+  var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
+  var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : (fin.flujoLibre != null ? fin.flujoLibre : 0);
+  if (fla < 0) return false;
+
+  // No suspended or collection-state debts
+  var deudas = (window.CZState && window.CZState.deudas) || [];
+  var hasBadDebt = deudas.some(function(d) {
+    return d.situacion_ui === "deje_pagar"
+      || d.situacion_ui === "mora_reclamo"
+      || d.pago_fuente  === "mora_sin_pago";
+  });
+  if (hasBadDebt) return false;
+
+  // Only A or B reset levels qualify (B+ excluded — already has clear trajectory)
+  if (diag.nivelR !== "A" && diag.nivelR !== "B") return false;
+
+  return true;
+}
+
+// =============================================================================
 // DIAGNOSIS SNAPSHOT SYSTEM
 // Captures a consolidated point-in-time view of the diagnosis state.
 //
@@ -1235,5 +1287,8 @@ function buildDiagnosisSnapshot() {
     legal_acceptance: (typeof getLegalAcceptancePayload === "function")
       ? getLegalAcceptancePayload()
       : null,
+
+    // Sprint 9 — incomplete data flag
+    gastos_missing_confirmed: !!(window.CZState && window.CZState.gastos_missing_confirmed),
   };
 }
