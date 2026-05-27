@@ -641,7 +641,32 @@ function renderTab() {
 // =============================================================================
 
 function renderBloqueadores(diag) {
-  var bl = diag.bloqueadores;
+  var bl  = diag.bloqueadores;
+  var iv2 = diag.interpretacion_v2 || {};
+
+  // Sprint 8.6 — critical coherence guard.
+  // A green "no blockers" card must never appear alongside Plan #4 / nivelR C.
+  // Compute severity the same way as renderHorizonteRecalificacion (stale-data safe).
+  var _sevLevel = iv2.severity_level;
+  if (_sevLevel == null && typeof calcularSeveridadFinanciera === "function") {
+    var _f = typeof calcularFinanciero === "function" ? calcularFinanciero() : {};
+    _sevLevel = calcularSeveridadFinanciera(_f, (_st().deudas || []), PRE.ingreso).severity_level;
+  }
+  var isCriticalRenderedState =
+    diag.planId === 4
+    || diag.nivelR === "C"
+    || _sevLevel === "critico"
+    || iv2.severity_level === "critico";
+
+  if (isCriticalRenderedState) {
+    return '<div class="plan-card" style="border-color:rgba(255,211,111,.22);">'
+      + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
+      + '<div style="padding:14px 16px;background:rgba(255,211,111,.06);border:1px solid rgba(255,211,111,.18);border-radius:12px;">'
+      + '<div style="font-size:15px;font-weight:700;color:#ffd36f;line-height:1.4;margin-bottom:6px;">Perfil en estabilización crítica</div>'
+      + '<div style="font-size:14px;color:#8390b5;line-height:1.6;">Hoy existen señales de deterioro financiero o inestabilidad suficientes como para frenar una evaluación normal de crédito.</div>'
+      + '</div></div>';
+  }
+
   if (!bl || bl.length === 0) {
     return '<div class="plan-card" style="border-color:rgba(52,255,175,.2);">'
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
