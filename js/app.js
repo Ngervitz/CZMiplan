@@ -116,7 +116,7 @@ function next() {
   if (st.step === 0 && SEGMENTO === 1) {
     st.step = 1;
     setRecoveryState("debt_refinement_started");
-    trackEvent("click_continue_analysis");
+    trackEvent(CZ_EVENT_NAMES.CLICK_CONTINUE_ANALYSIS);
     window.CredizonaUI.renderAll();
     return;
   }
@@ -170,9 +170,9 @@ function next() {
     setRecoveryState("dashboard_generated");
     trackEvent(CZ_EVENT_NAMES.EXPENSE_REFINEMENT_COMPLETED);
     trackEvent(CZ_EVENT_NAMES.DASHBOARD_GENERATED, {
-      score:   st.diag.scoreReset,
-      nivel:   st.diag.nivelR,
-      plan_id: st.diag.planId,
+      plan_id:      st.diag.planId,
+      funnel_stage: st.diag.nivelR,
+      has_gastos:   !st.gastos_missing_confirmed,
     });
 
     window.guardarLocal();
@@ -409,7 +409,7 @@ async function init() {
     window.CredizonaUI.renderAll();
   }
 
-  trackEvent("reset_started", { segmento: SEGMENTO, czuid: czuid });
+  trackEvent(CZ_EVENT_NAMES.RESET_STARTED, { source: "init" });
   window.guardarLocal();
 }
 
@@ -426,12 +426,9 @@ function handleMiPlanConsentAccepted() {
     : null;
 
   if (st.consent) {
-    trackEvent("miplan_consent_accepted", {
-      czuid:                    czuid,
-      entry_channel:            st.consent.entry_channel,
-      miplan_tc_version:        st.consent.miplan_tc_version,
-      miplan_privacy_version:   st.consent.miplan_privacy_version,
-      miplan_consent_timestamp: st.consent.miplan_consent_timestamp,
+    trackEvent(CZ_EVENT_NAMES.MIPLAN_CONSENT_ACCEPTED, {
+      entry_channel:  st.consent.entry_channel,
+      consent_source: st.consent.consent_source,
     });
   }
 
@@ -556,13 +553,9 @@ function handleMiPlanSuggestionSubmit() {
 
   st._lastFeedbackFingerprint = fingerprint;
 
-  trackEvent("miplan_suggestion_submitted", {
-    czuid:               czuid,
-    entry_channel:       entryChannel,
-    source:              "miplan_tab",
-    categories_selected: categories,
-    has_free_text:       !!freeText,
-    free_text_length:    freeText ? freeText.length : 0,
+  trackEvent(CZ_EVENT_NAMES.MIPLAN_SUGGESTION_SUBMITTED, {
+    entry_channel: entryChannel,
+    source:        "miplan_tab",
   });
 
   window.guardarLocal();
@@ -814,7 +807,8 @@ document.addEventListener("DOMContentLoaded", function() {
             }
             // Enrich + fire payment behavior classification event
             if (typeof enriquecerDeuda === "function") enriquecerDeuda(dC);
-            trackEvent("cz_mp_payment_behavior_classified", {
+            // CRM_ONLY — backend handles this
+            trackEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
               pago_fuente:              dC.pago_fuente,
               debt_status:              nuevoEstado,
               tipo:                     dC.tipo,
@@ -828,7 +822,8 @@ document.addEventListener("DOMContentLoaded", function() {
           // atraso_tiempo change: fire classification update
           if (deudaField === "atraso_tiempo") {
             if (typeof enriquecerDeuda === "function") enriquecerDeuda(dC);
-            trackEvent("cz_mp_payment_behavior_classified", {
+            // CRM_ONLY — backend handles this
+            trackEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
               pago_fuente:              dC.pago_fuente,
               debt_status:              dC.estado,
               tipo:                     dC.tipo,
@@ -867,7 +862,8 @@ document.addEventListener("DOMContentLoaded", function() {
           fecha: new Date().toISOString(),
         };
 
-        track("deuda_gestion", { acreedor: gestionKey, resultado: e.target.value });
+        // CRM_ONLY — backend handles this
+        trackEvent(CZ_EVENT_NAMES.DEUDA_GESTION, { acreedor: gestionKey, resultado: e.target.value });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -879,7 +875,8 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!st.herr.atrasos) st.herr.atrasos = {};
         st.herr.atrasos[atrasoKey] = e.target.value;
 
-        track("atraso_actualizado", { acreedor: atrasoKey, estado: e.target.value });
+        // CRM_ONLY — backend handles this
+        trackEvent(CZ_EVENT_NAMES.ATRASO_ACTUALIZADO, { acreedor: atrasoKey, estado: e.target.value });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -930,7 +927,7 @@ document.addEventListener("DOMContentLoaded", function() {
         setRecoveryState("miplan_started");
         setRecoveryState("debt_refinement_started");
         trackEvent(CZ_EVENT_NAMES.DEBT_REFINEMENT_STARTED, {
-          nivel: st.diag ? st.diag.enc.nivel : (calcularEncuesta(PRE.respuestas).nivel),
+          source: "diagnosis_screen",
         });
         window.guardarLocal();
         window.CredizonaUI.renderAll();
@@ -1010,11 +1007,8 @@ document.addEventListener("DOMContentLoaded", function() {
         st.gastos_missing_confirmed = true;
         st._showGastosWarning       = false;
         var _diagForTrack = st.diag;
-        trackEvent("gastos_missing_confirmed", {
-          scoreReset:              _diagForTrack ? _diagForTrack.scoreReset : null,
-          nivelR:                  _diagForTrack ? _diagForTrack.nivelR : null,
-          severity_level:          _diagForTrack && _diagForTrack.interpretacion_v2 ? _diagForTrack.interpretacion_v2.severity_level : null,
-          gastos_missing_confirmed: true,
+        trackEvent(CZ_EVENT_NAMES.GASTOS_MISSING_CONFIRMED, {
+          has_gastos: false,
         });
         next();
         return;
@@ -1024,11 +1018,8 @@ document.addEventListener("DOMContentLoaded", function() {
       if (e.target.id === "btn-hf-cta") {
         var _diagHF  = st.diag;
         var _iv2HF   = _diagHF && _diagHF.interpretacion_v2 ? _diagHF.interpretacion_v2 : {};
-        trackEvent("hidden_factor_cta_clicked", {
-          scoreReset:              _diagHF ? _diagHF.scoreReset : null,
-          nivelR:                  _diagHF ? _diagHF.nivelR : null,
-          severity_level:          _iv2HF.severity_level || null,
-          gastos_missing_confirmed: !!st.gastos_missing_confirmed,
+        trackEvent(CZ_EVENT_NAMES.HIDDEN_FACTOR_CTA_CLICKED, {
+          cta_source: "hidden_factor",
         });
         _abrirPremium();
         return;
@@ -1092,7 +1083,8 @@ document.addEventListener("DOMContentLoaded", function() {
           }
 
           if (typeof enriquecerDeuda === "function") enriquecerDeuda(dSit);
-          trackEvent("cz_mp_payment_behavior_classified", {
+          // CRM_ONLY — backend handles this
+          trackEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
             situacion_ui:             situacionVal,
             pago_fuente:              dSit.pago_fuente,
             debt_status:              dSit.estado,
@@ -1136,7 +1128,8 @@ document.addEventListener("DOMContentLoaded", function() {
           // atraso_tiempo in any case: re-classify event
           if (btnField === "atraso_tiempo" || btnField === "atraso_tiempo_aprox") {
             if (typeof enriquecerDeuda === "function") enriquecerDeuda(dBtn);
-            trackEvent("cz_mp_payment_behavior_classified", {
+            // CRM_ONLY — backend handles this
+            trackEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
               situacion_ui:    dBtn.situacion_ui,
               pago_fuente:     dBtn.pago_fuente,
               debt_status:     dBtn.estado,
@@ -1271,7 +1264,8 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!st.herr.gastos_cls) st.herr.gastos_cls = {};
         st.herr.gastos_cls[clsGasto] = clsTipo;
 
-        track("gasto_clasificado", { categoria: clsGasto, tipo: clsTipo });
+        // CRM_ONLY — backend handles this
+        trackEvent(CZ_EVENT_NAMES.GASTO_CLASIFICADO, { categoria: clsGasto, tipo: clsTipo });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -1285,7 +1279,8 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!st.herr.compromisos) st.herr.compromisos = {};
         st.herr.compromisos[idComp] = !st.herr.compromisos[idComp];
 
-        track("compromisos_actualizados", { id: idComp, valor: st.herr.compromisos[idComp] });
+        // CRM_ONLY — backend handles this
+        trackEvent(CZ_EVENT_NAMES.COMPROMISOS_ACTUALIZADOS, { id: idComp, valor: st.herr.compromisos[idComp] });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -1299,7 +1294,8 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!st.herr.semaforo) st.herr.semaforo = {};
         st.herr.semaforo[semId] = semVal === "true";
 
-        track("semaforo_actualizado", { pregunta: semId, respuesta: st.herr.semaforo[semId] });
+        // CRM_ONLY — backend handles this
+        trackEvent(CZ_EVENT_NAMES.SEMAFORO_ACTUALIZADO, { pregunta: semId, respuesta: st.herr.semaforo[semId] });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -1313,7 +1309,8 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!st.herr.habitos) st.herr.habitos = {};
         st.herr.habitos[fecha] = !st.herr.habitos[fecha];
 
-        track("habito_marcado", { fecha: fecha, cumplido: st.herr.habitos[fecha] });
+        // CRM_ONLY — backend handles this
+        trackEvent(CZ_EVENT_NAMES.HABITO_MARCADO, { fecha: fecha, cumplido: st.herr.habitos[fecha] });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -1390,7 +1387,8 @@ function recalcularIngresosLocal() {
 
   st.herr.ingresos.total = formal + extra;
 
-  track("ingreso_real_declarado", {
+  // CRM_ONLY — backend handles this
+  trackEvent(CZ_EVENT_NAMES.INGRESO_REAL_DECLARADO, {
     ingreso_formal: formal,
     ingreso_extra:  extra,
     total_real:     st.herr.ingresos.total,

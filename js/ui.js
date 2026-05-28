@@ -212,7 +212,7 @@ function renderDiagInicial() {
 function mostrarEvaluacion() {
   var el = document.getElementById("eval-card");
   if (el) { el.classList.remove("hidden"); setTimeout(function() { el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 50); }
-  track("view_initial_diagnosis", { segmento: SEGMENTO });
+  trackEvent(CZ_EVENT_NAMES.VIEW_INITIAL_DIAGNOSIS, { source: "diag_inicial" });
 }
 
 // =============================================================================
@@ -1875,7 +1875,7 @@ function abrirModalPremium() {
   var content = document.getElementById("modal-premium-content");
   var overlay = document.getElementById("modal-premium");
 
-  trackEvent(CZ_EVENT_NAMES.PREMIUM_OPENED, { plan: diag && diag.planId, score: diag && diag.scoreReset });
+  trackEvent(CZ_EVENT_NAMES.PREMIUM_OPENED, { plan_id: diag && diag.planId });
 
   if (content) content.innerHTML = renderModalPremium();
 
@@ -1905,10 +1905,12 @@ function abrirModalPremium() {
           window.CZState.temporal.payment_completed_at = null; // reset in case of re-entry
           setRecoveryState("checkout_started");
           trackEvent(CZ_EVENT_NAMES.CHECKOUT_STARTED, {
-            tipo: tipo, plan: diag && diag.planId,
+            plan_id: diag && diag.planId,
+            source:  tipo,
+            currency: "UYU",
           });
         }
-        track("click_reset_plus", { tipo: tipo, plan: diag && diag.planId });
+        trackEvent(CZ_EVENT_NAMES.CLICK_RESET_PLUS, { plan_id: diag && diag.planId, source: tipo });
 
         if (content) {
           content.innerHTML = '<div style="padding:48px 28px;text-align:center;">'
@@ -2101,11 +2103,8 @@ function renderAll() {
     if (!st._consentScreenTracked) {
       st._consentScreenTracked = true;
       var _czuidCS = (window.CZIdentity && window.CZIdentity.czuid) || null;
-      trackEvent("miplan_consent_screen_viewed", {
-        czuid:                  _czuidCS,
-        entry_channel:          (typeof detectEntryChannel === "function") ? detectEntryChannel() : "direct",
-        miplan_tc_version:      (typeof LEGAL_VERSION_TC      !== "undefined") ? LEGAL_VERSION_TC      : null,
-        miplan_privacy_version: (typeof LEGAL_VERSION_PRIVACY !== "undefined") ? LEGAL_VERSION_PRIVACY : null,
+      trackEvent(CZ_EVENT_NAMES.MIPLAN_CONSENT_SCREEN_VIEWED, {
+        entry_channel: (typeof detectEntryChannel === "function") ? detectEntryChannel() : "direct",
       });
     }
     return;
@@ -2144,11 +2143,8 @@ function renderAll() {
     // Sprint 9 — fire gastos_missing_warning_shown once, right when warning first appears
     if (st._showGastosWarning && !st._gastosWarningTracked) {
       st._gastosWarningTracked = true;
-      trackEvent("gastos_missing_warning_shown", {
-        scoreReset:              null,
-        nivelR:                  null,
-        severity_level:          null,
-        gastos_missing_confirmed: false,
+      trackEvent(CZ_EVENT_NAMES.GASTOS_MISSING_WARNING_SHOWN, {
+        has_gastos: false,
       });
     }
   }
@@ -2168,11 +2164,8 @@ function renderAll() {
       if (typeof showToast === "function") {
         showToast("✓ Tu diagnóstico quedó guardado. Podés volver a consultarlo cuando quieras.", 5000);
       }
-      trackEvent("dashboard_toast_shown", {
-        czuid:         _czuidT,
-        scoreReset:    _toastDiag ? _toastDiag.scoreReset : null,
-        nivelR:        _toastDiag ? _toastDiag.nivelR : null,
-        severity_level: _toastIv2.severity_level || null,
+      trackEvent(CZ_EVENT_NAMES.DASHBOARD_TOAST_SHOWN, {
+        source: "dashboard_first_view",
       });
     }
 
@@ -2184,11 +2177,8 @@ function renderAll() {
         && detectHiddenFactorOpportunity(_diag3)) {
       st._hfCtaShown = true;
       var _iv2CtaShown = _diag3.interpretacion_v2 || {};
-      trackEvent("hidden_factor_cta_shown", {
-        scoreReset:              _diag3.scoreReset,
-        nivelR:                  _diag3.nivelR,
-        severity_level:          _iv2CtaShown.severity_level || null,
-        gastos_missing_confirmed: !!st.gastos_missing_confirmed,
+      trackEvent(CZ_EVENT_NAMES.HIDDEN_FACTOR_CTA_SHOWN, {
+        cta_source: "hidden_factor",
       });
     }
   }

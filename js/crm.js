@@ -133,7 +133,7 @@ function buildCRMData(motor) {
 // =============================================================================
 async function loadBehavioralDataFromCRM(czuid) {
   if (!czuid) return null;
-  track("crm_hydration_attempted", { czuid: czuid });
+  // Hydration attempt tracked from app.js via CZ_EVENT_NAMES.CRM_HYDRATION_ATTEMPTED
   // TODO IT: uncomment and adapt when backend is ready
   // try {
   //   var res = await fetch(API.guardar + "?czuid=" + encodeURIComponent(czuid), {
@@ -151,8 +151,18 @@ async function loadBehavioralDataFromCRM(czuid) {
 }
 
 async function enviarCRM(evento, motor) {
+  // CRM data is backend-only.
+  // Never route through trackEvent() or dataLayer.
+  // Backend handles CRM persistence and CAPI dispatch.
   var payload = Object.assign({ evento: evento }, buildCRMData(motor));
-  track(evento, payload);
+
+  if (
+    typeof window !== "undefined" &&
+    window.location &&
+    window.location.search.indexOf("czdev=true") !== -1
+  ) {
+    console.log("[CZ CRM]", evento, payload);
+  }
   // TODO IT: descomentar cuando el backend este listo
   // try {
   //   await fetch(API.guardar, {
