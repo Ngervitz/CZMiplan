@@ -121,6 +121,60 @@ function getLegalAcceptancePayload() {
 }
 
 // ---------------------------------------------------------------------------
+// Sprint 10 — Mi Plan in-app consent gate
+//
+// SEPARATE from the Credizona funnel consent above.
+// The Credizona funnel consent (cz_tc=1, cz_disc=1) handled by initConsent()
+// validates that the user came through the rejection funnel.
+//
+// shouldShowMiPlanConsent() checks whether the user has explicitly accepted
+// Mi Plan's own TYC/Privacy in the in-app checkbox screen.
+//
+// Persisted via CZState.consent through guardarLocal() (STORAGE_KEY = "cr_v3"),
+// NOT through CONSENT_STORAGE_KEY. There is one Mi Plan consent flow only.
+// ---------------------------------------------------------------------------
+
+function detectEntryChannel() {
+  var p = new URLSearchParams(window.location.search);
+  if (p.get("utm_medium") === "email")    return "email";
+  if (p.get("utm_medium") === "whatsapp") return "whatsapp";
+  if (p.has("czuid"))                     return "crm_link";
+  return "direct";
+}
+
+// Returns true when the in-app Mi Plan consent screen should be displayed.
+// Triggers: no consent yet, or legal version mismatch (bump constants to force re-consent).
+function shouldShowMiPlanConsent() {
+  var st = window.CZState;
+  if (!st || !st.consent)                                               return true;
+  var c = st.consent;
+  if (c.miplan_tc_accepted !== true)                                    return true;
+  if (c.miplan_privacy_accepted !== true)                               return true;
+  if (c.miplan_tc_version      !== LEGAL_VERSION_TC)                   return true;
+  if (c.miplan_privacy_version !== LEGAL_VERSION_PRIVACY)              return true;
+  return false;
+}
+
+// Builds the consent record written to CZState.consent on acceptance.
+function buildMiPlanConsentRecord() {
+  var czuid = (window.CZIdentity && window.CZIdentity.czuid) || null;
+  return {
+    miplan_tc_accepted:       true,
+    miplan_privacy_accepted:  true,
+    miplan_tc_version:        LEGAL_VERSION_TC,
+    miplan_privacy_version:   LEGAL_VERSION_PRIVACY,
+    miplan_consent_timestamp: new Date().toISOString(),
+    consent_source:           "miplan_gate",
+    entry_channel:            detectEntryChannel(),
+    czuid:                    czuid,
+    // Future login implementation should associate this consent with authenticated user_id.
+    login_user_id:            null,
+    // Set to true when consent is confirmed persisted in CRM backend.
+    consent_crm_synced:       false,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // initConsent()
 // Entry point. Called once before init() in app.js.
 // Returns true if app can proceed, false if redirecting.

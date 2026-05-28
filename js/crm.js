@@ -99,6 +99,29 @@ function buildCRMData(motor) {
 
     // Sprint 9 — incomplete data flag
     gastos_missing_confirmed: !!(window.CZState && window.CZState.gastos_missing_confirmed),
+
+    // Sprint 10 — Mi Plan in-app consent record
+    miplan_consent: (function() {
+      var c = window.CZState && window.CZState.consent;
+      if (!c) return null;
+      return {
+        miplan_tc_accepted:       c.miplan_tc_accepted       || false,
+        miplan_privacy_accepted:  c.miplan_privacy_accepted  || false,
+        miplan_tc_version:        c.miplan_tc_version        || null,
+        miplan_privacy_version:   c.miplan_privacy_version   || null,
+        miplan_consent_timestamp: c.miplan_consent_timestamp || null,
+        consent_source:           c.consent_source           || null,
+        entry_channel:            c.entry_channel            || null,
+        // login_user_id is null until future login implementation
+        login_user_id:            c.login_user_id            || null,
+        consent_crm_synced:       c.consent_crm_synced       || false,
+      };
+    })(),
+
+    // Sprint 10.1 — user feedback suggestions (CRM only)
+    feedback_suggestions: (window.CZState && window.CZState.feedback_suggestions)
+      ? window.CZState.feedback_suggestions
+      : [],
   };
 }
 

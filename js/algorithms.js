@@ -1290,5 +1290,17 @@ function buildDiagnosisSnapshot() {
 
     // Sprint 9 — incomplete data flag
     gastos_missing_confirmed: !!(window.CZState && window.CZState.gastos_missing_confirmed),
+
+    // Sprint 10 — Mi Plan in-app consent (key fields for underwriting audit trail)
+    miplan_consent: (function() {
+      var c = window.CZState && window.CZState.consent;
+      if (!c) return null;
+      return {
+        miplan_tc_accepted:       c.miplan_tc_accepted       || false,
+        miplan_tc_version:        c.miplan_tc_version        || null,
+        miplan_privacy_version:   c.miplan_privacy_version   || null,
+        miplan_consent_timestamp: c.miplan_consent_timestamp || null,
+      };
+    })(),
   };
 }

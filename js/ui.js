@@ -9,6 +9,63 @@ function _diag()  { return _st().diag; }
 function _herr()  { return _st().herr || {}; }
 
 // =============================================================================
+// SPRINT 10 — Mi Plan in-app consent screen
+// Shown before any diagnosis, dashboard, score, horizon, or recommendation.
+// Separate from Credizona funnel consent (handled by consent.js / initConsent()).
+// Uses existing dark visual style only — no new CSS classes.
+// =============================================================================
+function renderMiPlanConsentScreen() {
+  return '<div style="padding:8px 0;">'
+    + '<div style="font-size:26px;font-weight:900;line-height:1.2;margin-bottom:20px;">Antes de ver tu diagnóstico</div>'
+    + '<div style="font-size:16px;color:rgba(255,255,255,.7);line-height:1.7;margin-bottom:28px;">'
+    + 'Mi Plan es una herramienta de diagnóstico orientativo basada en la información que ingresás. '
+    + 'No es una financiera, un banco ni un reporte oficial de Clearing, Equifax o BCU.'
+    + '</div>'
+
+    // Sprint 10.1 — free education banner (consent screen only)
+    + '<div style="background:rgba(64,215,255,.07);border:1px solid rgba(64,215,255,.22);border-radius:16px;padding:18px 20px;margin-bottom:24px;">'
+    + '<div style="font-size:16px;font-weight:800;color:#40d7ff;margin-bottom:10px;">🤝 "Mi Plan" es gratuito.</div>'
+    + '<div style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;">'
+    + 'Lo creamos para ayudarte a entender tu situación financiera real y que veas un camino de salida. '
+    + 'No tiene costo. Al final del diagnóstico nos gustaría saber qué te fue útil y qué te faltó.'
+    + '</div>'
+    + '</div>'
+
+    // Checkbox 1 — T&C
+    + '<label style="display:flex;align-items:flex-start;gap:14px;cursor:pointer;margin-bottom:18px;'
+    + 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px 18px;">'
+    + '<input type="checkbox" id="chk-miplan-tc" style="width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">'
+    + '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.55;">'
+    + 'Leí y acepto los '
+    + '<a href="/tyc.html" target="_blank" rel="noopener" style="color:#a78bfa;text-decoration:underline;">Términos y Condiciones de Mi Plan</a>'
+    + '</span>'
+    + '</label>'
+
+    // Checkbox 2 — Privacy
+    + '<label style="display:flex;align-items:flex-start;gap:14px;cursor:pointer;margin-bottom:24px;'
+    + 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px 18px;">'
+    + '<input type="checkbox" id="chk-miplan-privacy" style="width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">'
+    + '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.55;">'
+    + 'Leí y acepto la '
+    + '<a href="/privacidad.html" target="_blank" rel="noopener" style="color:#a78bfa;text-decoration:underline;">Política de Privacidad de Mi Plan</a>'
+    + '</span>'
+    + '</label>'
+
+    // Disclaimer
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:24px;'
+    + 'padding:14px 16px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;">'
+    + 'El diagnóstico, los scores y las proyecciones son orientativos. '
+    + 'No garantizan aprobación de crédito ni modifican registros externos.'
+    + '</div>'
+
+    // Accept button — disabled until both boxes are checked
+    + '<button class="btn btn-primary" id="btn-miplan-consent-accept" disabled '
+    + 'style="width:100%;height:64px;font-size:19px;opacity:.45;transition:opacity .2s;" '
+    + 'onclick="this.disabled&&event.preventDefault();">Ver mi diagnóstico</button>'
+    + '</div>';
+}
+
+// =============================================================================
 // STICKY BAR
 // =============================================================================
 function updateSticky() {
@@ -1141,7 +1198,53 @@ function renderTabPlan() {
     + '<div class="premium-title">Mi Plan Plus</div>'
     + '<div class="premium-text">Tu diagnostico parte de lo que analizamos juntos. El informe Clearing muestra lo que el banco ya tiene sobre vos — y la IA te dice que cambiar primero.</div>'
     + '<button class="btn btn-secondary" style="height:68px;font-size:20px;" id="btn-conocer-plus">Ver que incluye para mi caso</button>'
-    + '</div></div>';
+    + '</div>'
+
+    // Sprint 10.1 — suggestion box (last element in Mi Plan tab)
+    + renderMiPlanSuggestionBox()
+
+    + '</div>';
+}
+
+// =============================================================================
+// SPRINT 10.1 — Mi Plan tab suggestion box
+// =============================================================================
+var MIPLAN_FEEDBACK_CATEGORIES = [
+  "Por qué me rechazaron",
+  "Cómo mejorar mi situación en Clearing o BCU",
+  "Qué deuda conviene pagar primero",
+  "Cómo negociar con mis acreedores",
+  "Cuándo podría volver a pedir un crédito",
+  "Cómo organizar mejor mis gastos",
+  "Otro",
+];
+
+function renderMiPlanSuggestionBox() {
+  var checks = MIPLAN_FEEDBACK_CATEGORIES.map(function(cat, i) {
+    return '<label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin-bottom:12px;">'
+      + '<input type="checkbox" class="chk-fb-cat" data-cat="' + cat + '" id="chk-fb-' + i + '" '
+      + 'style="width:20px;height:20px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">'
+      + '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.5;">' + cat + '</span>'
+      + '</label>';
+  }).join("");
+
+  return '<div class="plan-card" id="cz-feedback-box" style="margin-top:28px;border-color:rgba(255,255,255,.1);">'
+    + '<div style="font-size:18px;font-weight:800;margin-bottom:10px;">💬 ¿Qué te gustaría entender mejor?</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:20px;">'
+    + 'Contanos qué información te faltó o qué te gustaría que Mi Plan pueda ayudarte a entender.'
+    + '</div>'
+    + checks
+    + '<div id="fb-otro-wrap" style="display:none;margin-top:8px;margin-bottom:16px;">'
+    + '<textarea id="fb-otro-text" maxlength="500" placeholder="Contanos qué necesitás entender..." '
+    + 'style="width:100%;min-height:96px;padding:14px 16px;background:rgba(255,255,255,.04);'
+    + 'border:1px solid rgba(255,255,255,.12);border-radius:12px;color:rgba(255,255,255,.9);'
+    + 'font-size:15px;line-height:1.5;resize:vertical;box-sizing:border-box;"></textarea>'
+    + '<div id="fb-char-count" style="font-size:12px;color:#8390b5;margin-top:6px;text-align:right;">0 / 500 caracteres</div>'
+    + '</div>'
+    + '<div id="fb-feedback-msg" style="display:none;font-size:14px;line-height:1.5;margin-bottom:12px;padding:10px 14px;border-radius:10px;"></div>'
+    + '<button class="btn btn-secondary" id="btn-feedback-submit" disabled '
+    + 'style="width:100%;height:52px;font-size:16px;opacity:.45;transition:opacity .2s;">Enviar sugerencia</button>'
+    + '</div>';
 }
 
 // =============================================================================
@@ -1989,6 +2092,25 @@ function renderAll() {
 
   updateHeader();
 
+  // Sprint 10 — Mi Plan in-app consent gate.
+  // Intercepts ALL render paths until the user has accepted the current legal versions.
+  // This fires BEFORE any step routing, ensuring no diagnosis/dashboard content is visible.
+  if (typeof shouldShowMiPlanConsent === "function" && shouldShowMiPlanConsent()) {
+    main.innerHTML = '<div class="fade">' + renderMiPlanConsentScreen() + '</div>';
+    // Fire tracking event only once per consent screen view in this session
+    if (!st._consentScreenTracked) {
+      st._consentScreenTracked = true;
+      var _czuidCS = (window.CZIdentity && window.CZIdentity.czuid) || null;
+      trackEvent("miplan_consent_screen_viewed", {
+        czuid:                  _czuidCS,
+        entry_channel:          (typeof detectEntryChannel === "function") ? detectEntryChannel() : "direct",
+        miplan_tc_version:      (typeof LEGAL_VERSION_TC      !== "undefined") ? LEGAL_VERSION_TC      : null,
+        miplan_privacy_version: (typeof LEGAL_VERSION_PRIVACY !== "undefined") ? LEGAL_VERSION_PRIVACY : null,
+      });
+    }
+    return;
+  }
+
   var html = "";
 
   if (st.step === 0 && SEGMENTO === 1) {
@@ -2033,6 +2155,26 @@ function renderAll() {
 
   if (st.step === 3) {
     renderTab();
+
+    // Sprint 10 — Dashboard confirmation toast.
+    // Shows only on first arrival (st._toastPending set by next()), never on reload/return.
+    // sessionStorage key dedupes across rerenders within the same page session.
+    if (st._toastPending && !sessionStorage.getItem("cz_toast_dashboard_shown")) {
+      st._toastPending = false;
+      sessionStorage.setItem("cz_toast_dashboard_shown", "1");
+      var _toastDiag = st.diag;
+      var _toastIv2  = _toastDiag && _toastDiag.interpretacion_v2 ? _toastDiag.interpretacion_v2 : {};
+      var _czuidT    = (window.CZIdentity && window.CZIdentity.czuid) || null;
+      if (typeof showToast === "function") {
+        showToast("✓ Tu diagnóstico quedó guardado. Podés volver a consultarlo cuando quieras.", 5000);
+      }
+      trackEvent("dashboard_toast_shown", {
+        czuid:         _czuidT,
+        scoreReset:    _toastDiag ? _toastDiag.scoreReset : null,
+        nivelR:        _toastDiag ? _toastDiag.nivelR : null,
+        severity_level: _toastIv2.severity_level || null,
+      });
+    }
 
     // Sprint 9 — fire hidden_factor_cta_shown exactly once per diagnosis session
     var _diag3 = st.diag;

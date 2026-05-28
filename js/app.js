@@ -24,6 +24,14 @@ window.CZState = {
   _hfCtaShown:               false,
   _gastosWarningTracked:     false,
 
+  // Sprint 10 — Mi Plan in-app legal consent (separate from Credizona funnel consent)
+  consent:                   null,
+  _consentScreenTracked:     false,
+
+  // Sprint 10.1 — user feedback suggestions (Mi Plan tab)
+  feedback_suggestions:      [],
+  _lastFeedbackFingerprint:  null,
+
   // Business state — SEPARATE from UI step navigation
   // Only mutate via setRecoveryState(). Never set directly across files.
   user_recovery_state: null,
@@ -80,6 +88,10 @@ window.guardarLocal = function(extra) {
       herr:                    st.herr,
       // Sprint 9 — persist incomplete-data flag across sessions
       gastos_missing_confirmed: !!st.gastos_missing_confirmed,
+      // Sprint 10 — persist Mi Plan in-app consent record
+      consent:                  st.consent || null,
+      // Sprint 10.1 — persist feedback suggestions
+      feedback_suggestions:     st.feedback_suggestions || [],
       fecha:                   new Date().toISOString(),
     }, extra)));
   } catch (e) {}
@@ -166,8 +178,9 @@ function next() {
     window.guardarLocal();
     enviarCRM("reset_plan_generated", st.diag);
 
-    st.step = 3;
-    st.tab  = "plan";
+    st.step         = 3;
+    st.tab          = "plan";
+    st._toastPending = true;   // Sprint 10 — dashboard confirmation toast (first arrival only)
 
     window.CredizonaUI.renderAll();
   }
@@ -206,6 +219,15 @@ function resetear() {
     _showGastosWarning:        false,
     _hfCtaShown:               false,
     _gastosWarningTracked:     false,
+
+    // Sprint 10 — Mi Plan in-app legal consent
+    consent:               null,
+    _consentScreenTracked: false,
+
+    // Sprint 10.1 — user feedback suggestions
+    feedback_suggestions:      [],
+    _lastFeedbackFingerprint:  null,
+
     temporal: {
       first_seen_at:           null,
       last_seen_at:            null,
@@ -352,6 +374,10 @@ async function init() {
     if (dataToUse.herr) st.herr = dataToUse.herr;
     // Sprint 9 — restore incomplete-data flag
     st.gastos_missing_confirmed = !!dataToUse.gastos_missing_confirmed;
+    // Sprint 10 — restore Mi Plan in-app consent record
+    if (dataToUse.consent) st.consent = dataToUse.consent;
+    // Sprint 10.1 — restore feedback suggestions
+    if (dataToUse.feedback_suggestions) st.feedback_suggestions = dataToUse.feedback_suggestions;
   }
 
   // Temporal tracking — update session fields
@@ -385,6 +411,163 @@ async function init() {
 
   trackEvent("reset_started", { segmento: SEGMENTO, czuid: czuid });
   window.guardarLocal();
+}
+
+// =============================================================================
+// SPRINT 10 — Mi Plan in-app consent acceptance handler
+// =============================================================================
+function handleMiPlanConsentAccepted() {
+  var st    = window.CZState;
+  var czuid = (window.CZIdentity && window.CZIdentity.czuid) || null;
+
+  // Build and persist the consent record
+  st.consent = (typeof buildMiPlanConsentRecord === "function")
+    ? buildMiPlanConsentRecord()
+    : null;
+
+  if (st.consent) {
+    trackEvent("miplan_consent_accepted", {
+      czuid:                    czuid,
+      entry_channel:            st.consent.entry_channel,
+      miplan_tc_version:        st.consent.miplan_tc_version,
+      miplan_privacy_version:   st.consent.miplan_privacy_version,
+      miplan_consent_timestamp: st.consent.miplan_consent_timestamp,
+    });
+  }
+
+  window.guardarLocal();
+  window.CredizonaUI.renderAll();
+}
+
+// =============================================================================
+// SPRINT 10.1 — Mi Plan tab feedback / suggestions
+// =============================================================================
+function getSelectedFeedbackCategories() {
+  var selected = [];
+  document.querySelectorAll(".chk-fb-cat:checked").forEach(function(el) {
+    var cat = el.getAttribute("data-cat");
+    if (cat) selected.push(cat);
+  });
+  return selected;
+}
+
+function buildFeedbackFingerprint(categories, freeText) {
+  var sorted = categories.slice().sort();
+  return JSON.stringify({ categories: sorted, free_text: (freeText || "").trim() });
+}
+
+function buildFeedbackCategoriesSummary() {
+  var arr = (window.CZState && window.CZState.feedback_suggestions) || [];
+  var summary = {};
+  arr.forEach(function(entry) {
+    (entry.categories || []).forEach(function(cat) {
+      summary[cat] = (summary[cat] || 0) + 1;
+    });
+  });
+  return summary;
+}
+
+function showFeedbackMessage(msg, isSuccess) {
+  var el = document.getElementById("fb-feedback-msg");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = "block";
+  el.style.color = isSuccess ? "#34ffaf" : "#ffd447";
+  el.style.background = isSuccess ? "rgba(52,255,175,.08)" : "rgba(255,196,0,.08)";
+  el.style.border = isSuccess ? "1px solid rgba(52,255,175,.2)" : "1px solid rgba(255,196,0,.25)";
+}
+
+function hideFeedbackMessage() {
+  var el = document.getElementById("fb-feedback-msg");
+  if (el) el.style.display = "none";
+}
+
+function updateFeedbackFormUI() {
+  var categories = getSelectedFeedbackCategories();
+  var hasOtro    = categories.indexOf("Otro") >= 0;
+  var otroWrap   = document.getElementById("fb-otro-wrap");
+  var otroText   = document.getElementById("fb-otro-text");
+  var btn        = document.getElementById("btn-feedback-submit");
+  var charCount  = document.getElementById("fb-char-count");
+
+  if (otroWrap) otroWrap.style.display = hasOtro ? "block" : "none";
+
+  if (otroText && charCount) {
+    var len = (otroText.value || "").length;
+    charCount.textContent = len + " / 500 caracteres";
+  }
+
+  if (!btn) return;
+
+  var canSubmit = categories.length > 0;
+  if (hasOtro && otroText && !(otroText.value || "").trim()) {
+    canSubmit = false;
+  }
+
+  btn.disabled      = !canSubmit;
+  btn.style.opacity = canSubmit ? "1" : ".45";
+}
+
+function clearFeedbackForm() {
+  document.querySelectorAll(".chk-fb-cat").forEach(function(el) { el.checked = false; });
+  var otroText = document.getElementById("fb-otro-text");
+  if (otroText) otroText.value = "";
+  var otroWrap = document.getElementById("fb-otro-wrap");
+  if (otroWrap) otroWrap.style.display = "none";
+  updateFeedbackFormUI();
+}
+
+function handleMiPlanSuggestionSubmit() {
+  var st         = window.CZState;
+  var categories = getSelectedFeedbackCategories();
+  var otroText   = document.getElementById("fb-otro-text");
+  var freeText   = (otroText && otroText.value) ? otroText.value.trim() : null;
+  var hasOtro    = categories.indexOf("Otro") >= 0;
+
+  if (categories.length === 0) {
+    showFeedbackMessage("Seleccioná al menos una opción antes de enviar.", false);
+    return;
+  }
+
+  if (hasOtro && !freeText) {
+    showFeedbackMessage("Escribí tu sugerencia antes de enviarla.", false);
+    return;
+  }
+
+  var fingerprint = buildFeedbackFingerprint(categories, hasOtro ? freeText : "");
+  if (st._lastFeedbackFingerprint === fingerprint) {
+    showFeedbackMessage("Ya enviaste esta sugerencia.", false);
+    return;
+  }
+
+  var czuid = (window.CZIdentity && window.CZIdentity.czuid) || null;
+  var entryChannel = (typeof detectEntryChannel === "function") ? detectEntryChannel() : "direct";
+
+  if (!st.feedback_suggestions) st.feedback_suggestions = [];
+
+  st.feedback_suggestions.push({
+    categories:    categories,
+    free_text:     hasOtro ? freeText : null,
+    timestamp:     new Date().toISOString(),
+    source:        "miplan_tab",
+    entry_channel: entryChannel,
+    czuid:         czuid,
+  });
+
+  st._lastFeedbackFingerprint = fingerprint;
+
+  trackEvent("miplan_suggestion_submitted", {
+    czuid:               czuid,
+    entry_channel:       entryChannel,
+    source:              "miplan_tab",
+    categories_selected: categories,
+    has_free_text:       !!freeText,
+    free_text_length:    freeText ? freeText.length : 0,
+  });
+
+  window.guardarLocal();
+  clearFeedbackForm();
+  showFeedbackMessage("Gracias. Tu sugerencia nos ayuda a mejorar Mi Plan.", true);
 }
 
 // =============================================================================
@@ -448,6 +631,13 @@ document.addEventListener("DOMContentLoaded", function() {
     // Inputs generados dinámicamente
     main.addEventListener("input", function(e) {
       var st = window.CZState;
+
+      // Sprint 10.1 — feedback "Otro" textarea + character counter
+      if (e.target.id === "fb-otro-text") {
+        hideFeedbackMessage();
+        updateFeedbackFormUI();
+        return;
+      }
 
       // Gastos
       var gastoKey = e.target.getAttribute("data-gasto");
@@ -575,6 +765,13 @@ document.addEventListener("DOMContentLoaded", function() {
     // Changes generados dinámicamente
     main.addEventListener("change", function(e) {
       var st = window.CZState;
+
+      // Sprint 10.1 — feedback category checkboxes
+      if (e.target.classList && e.target.classList.contains("chk-fb-cat")) {
+        hideFeedbackMessage();
+        updateFeedbackFormUI();
+        return;
+      }
 
       // Selects de deuda
       var deudaField = e.target.getAttribute("data-deuda-field");
@@ -773,6 +970,31 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
         if (id) switchTab(id);
+        return;
+      }
+
+      // Sprint 10.1 — Mi Plan tab feedback submit
+      if (e.target.id === "btn-feedback-submit") {
+        handleMiPlanSuggestionSubmit();
+        return;
+      }
+
+      // Sprint 10 — Mi Plan consent screen: accept button
+      if (e.target.id === "btn-miplan-consent-accept") {
+        handleMiPlanConsentAccepted();
+        return;
+      }
+
+      // Sprint 10 — Mi Plan consent checkboxes: enable/disable accept button
+      if (e.target.id === "chk-miplan-tc" || e.target.id === "chk-miplan-privacy") {
+        var _btnC = document.getElementById("btn-miplan-consent-accept");
+        if (_btnC) {
+          var _tcEl = document.getElementById("chk-miplan-tc");
+          var _ppEl = document.getElementById("chk-miplan-privacy");
+          var _both = !!((_tcEl && _tcEl.checked) && (_ppEl && _ppEl.checked));
+          _btnC.disabled       = !_both;
+          _btnC.style.opacity  = _both ? "1" : ".45";
+        }
         return;
       }
 
@@ -1119,7 +1341,7 @@ document.addEventListener("DOMContentLoaded", function() {
 // =============================================================================
 // TOAST NOTIFICATION
 // =============================================================================
-function showToast(msg) {
+function showToast(msg, ms) {
   var existing = document.getElementById("cz-toast");
   if (existing) existing.remove();
 
@@ -1148,7 +1370,7 @@ function showToast(msg) {
   ].join(";");
   el.textContent = msg;
   document.body.appendChild(el);
-  setTimeout(function() { if (el.parentNode) el.remove(); }, 3000);
+  setTimeout(function() { if (el.parentNode) el.remove(); }, ms || 3000);
 }
 
 // =============================================================================
@@ -1431,5 +1653,12 @@ window.CZDebugFinancial = function() {
     gastos_missing_confirmed:   !!(window.CZState && window.CZState.gastos_missing_confirmed),
     hidden_factor_cta_shown:    !!(window.CZState && window.CZState._hfCtaShown),
     hidden_factor_opportunity:  (typeof detectHiddenFactorOpportunity === "function" && diag) ? detectHiddenFactorOpportunity(diag) : false,
+    // Sprint 10 — Mi Plan in-app consent
+    miplan_consent: (window.CZState && window.CZState.consent) || null,
+    miplan_consent_required: (typeof shouldShowMiPlanConsent === "function") ? shouldShowMiPlanConsent() : "fn_unavailable",
+    // Sprint 10.1 — feedback suggestions (counts only — no free text in debug)
+    feedback_suggestions_count: (window.CZState && window.CZState.feedback_suggestions)
+      ? window.CZState.feedback_suggestions.length : 0,
+    feedback_categories_summary: buildFeedbackCategoriesSummary(),
   };
 };
