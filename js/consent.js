@@ -157,7 +157,7 @@ function shouldShowMiPlanConsent() {
 
 // Builds the consent record written to CZState.consent on acceptance.
 function buildMiPlanConsentRecord() {
-  var czuid = (window.CZIdentity && window.CZIdentity.czuid) || null;
+  var crmContactId = (window.CZIdentity && window.CZIdentity.crm_contact_id) || null;
   return {
     miplan_tc_accepted:       true,
     miplan_privacy_accepted:  true,
@@ -166,7 +166,7 @@ function buildMiPlanConsentRecord() {
     miplan_consent_timestamp: new Date().toISOString(),
     consent_source:           "miplan_gate",
     entry_channel:            detectEntryChannel(),
-    czuid:                    czuid,
+    crm_contact_id:           crmContactId,
     // Future login implementation should associate this consent with authenticated user_id.
     login_user_id:            null,
     // Set to true when consent is confirmed persisted in CRM backend.

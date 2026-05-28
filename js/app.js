@@ -327,13 +327,13 @@ function detectReturnSource() {
 //   3. Bridge screen (step 0) — when neither source has valid behavioral data
 // =============================================================================
 async function init() {
-  var czuid   = CZIdentity.czuid;  // identity layer owns czuid resolution
+  var crmContactId = CZIdentity.crm_contact_id;
   var crmData = null;
 
   // Step 1 — attempt CRM hydration if czuid is present
-  if (czuid) {
-    trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_ATTEMPTED, { czuid: czuid });
-    crmData = await loadBehavioralDataFromCRM(czuid);
+  if (crmContactId) {
+    trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_ATTEMPTED, { source: "crm_link" });
+    crmData = await loadBehavioralDataFromCRM(crmContactId);
   }
 
   // Step 2 — localStorage (always checked; authoritative when CRM returns null)
@@ -345,12 +345,12 @@ async function init() {
 
   if (crmData && crmData.diag) {
     dataToUse = crmData;
-    trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_APPLIED, { czuid: czuid });
+    trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_APPLIED, { source: "crm_link" });
 
   } else if (sesion && sesion.diag) {
     dataToUse = sesion;
-    if (czuid) {
-      trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_FALLBACK_TO_LOCAL, { czuid: czuid });
+    if (crmContactId) {
+      trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_FALLBACK_TO_LOCAL, { source: "crm_link" });
     }
   }
 
@@ -398,7 +398,7 @@ async function init() {
       setRecoveryState("dashboard_generated");
     } else if (TIENE_ENCUESTA) {
       setRecoveryState("survey_completed");
-    } else if (czuid) {
+    } else if (crmContactId) {
       setRecoveryState("lead_rejected");
     } else {
       setRecoveryState("survey_offered");
@@ -418,7 +418,7 @@ async function init() {
 // =============================================================================
 function handleMiPlanConsentAccepted() {
   var st    = window.CZState;
-  var czuid = (window.CZIdentity && window.CZIdentity.czuid) || null;
+  var crmContactId = (window.CZIdentity && window.CZIdentity.crm_contact_id) || null;
 
   // Build and persist the consent record
   st.consent = (typeof buildMiPlanConsentRecord === "function")
@@ -537,7 +537,7 @@ function handleMiPlanSuggestionSubmit() {
     return;
   }
 
-  var czuid = (window.CZIdentity && window.CZIdentity.czuid) || null;
+  var crmContactId = (window.CZIdentity && window.CZIdentity.crm_contact_id) || null;
   var entryChannel = (typeof detectEntryChannel === "function") ? detectEntryChannel() : "direct";
 
   if (!st.feedback_suggestions) st.feedback_suggestions = [];
@@ -548,7 +548,7 @@ function handleMiPlanSuggestionSubmit() {
     timestamp:     new Date().toISOString(),
     source:        "miplan_tab",
     entry_channel: entryChannel,
-    czuid:         czuid,
+    crm_contact_id: crmContactId,
   });
 
   st._lastFeedbackFingerprint = fingerprint;
@@ -808,7 +808,7 @@ document.addEventListener("DOMContentLoaded", function() {
             // Enrich + fire payment behavior classification event
             if (typeof enriquecerDeuda === "function") enriquecerDeuda(dC);
             // CRM_ONLY — backend handles this
-            trackEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
+            trackCRMEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
               pago_fuente:              dC.pago_fuente,
               debt_status:              nuevoEstado,
               tipo:                     dC.tipo,
@@ -823,7 +823,7 @@ document.addEventListener("DOMContentLoaded", function() {
           if (deudaField === "atraso_tiempo") {
             if (typeof enriquecerDeuda === "function") enriquecerDeuda(dC);
             // CRM_ONLY — backend handles this
-            trackEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
+            trackCRMEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
               pago_fuente:              dC.pago_fuente,
               debt_status:              dC.estado,
               tipo:                     dC.tipo,
@@ -863,7 +863,7 @@ document.addEventListener("DOMContentLoaded", function() {
         };
 
         // CRM_ONLY — backend handles this
-        trackEvent(CZ_EVENT_NAMES.DEUDA_GESTION, { acreedor: gestionKey, resultado: e.target.value });
+        trackCRMEvent(CZ_EVENT_NAMES.DEUDA_GESTION, { acreedor: gestionKey, resultado: e.target.value });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -876,7 +876,7 @@ document.addEventListener("DOMContentLoaded", function() {
         st.herr.atrasos[atrasoKey] = e.target.value;
 
         // CRM_ONLY — backend handles this
-        trackEvent(CZ_EVENT_NAMES.ATRASO_ACTUALIZADO, { acreedor: atrasoKey, estado: e.target.value });
+        trackCRMEvent(CZ_EVENT_NAMES.ATRASO_ACTUALIZADO, { acreedor: atrasoKey, estado: e.target.value });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -1084,7 +1084,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
           if (typeof enriquecerDeuda === "function") enriquecerDeuda(dSit);
           // CRM_ONLY — backend handles this
-          trackEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
+          trackCRMEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
             situacion_ui:             situacionVal,
             pago_fuente:              dSit.pago_fuente,
             debt_status:              dSit.estado,
@@ -1129,7 +1129,7 @@ document.addEventListener("DOMContentLoaded", function() {
           if (btnField === "atraso_tiempo" || btnField === "atraso_tiempo_aprox") {
             if (typeof enriquecerDeuda === "function") enriquecerDeuda(dBtn);
             // CRM_ONLY — backend handles this
-            trackEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
+            trackCRMEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
               situacion_ui:    dBtn.situacion_ui,
               pago_fuente:     dBtn.pago_fuente,
               debt_status:     dBtn.estado,
@@ -1265,7 +1265,7 @@ document.addEventListener("DOMContentLoaded", function() {
         st.herr.gastos_cls[clsGasto] = clsTipo;
 
         // CRM_ONLY — backend handles this
-        trackEvent(CZ_EVENT_NAMES.GASTO_CLASIFICADO, { categoria: clsGasto, tipo: clsTipo });
+        trackCRMEvent(CZ_EVENT_NAMES.GASTO_CLASIFICADO, { categoria: clsGasto, tipo: clsTipo });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -1280,7 +1280,7 @@ document.addEventListener("DOMContentLoaded", function() {
         st.herr.compromisos[idComp] = !st.herr.compromisos[idComp];
 
         // CRM_ONLY — backend handles this
-        trackEvent(CZ_EVENT_NAMES.COMPROMISOS_ACTUALIZADOS, { id: idComp, valor: st.herr.compromisos[idComp] });
+        trackCRMEvent(CZ_EVENT_NAMES.COMPROMISOS_ACTUALIZADOS, { id: idComp, valor: st.herr.compromisos[idComp] });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -1295,7 +1295,7 @@ document.addEventListener("DOMContentLoaded", function() {
         st.herr.semaforo[semId] = semVal === "true";
 
         // CRM_ONLY — backend handles this
-        trackEvent(CZ_EVENT_NAMES.SEMAFORO_ACTUALIZADO, { pregunta: semId, respuesta: st.herr.semaforo[semId] });
+        trackCRMEvent(CZ_EVENT_NAMES.SEMAFORO_ACTUALIZADO, { pregunta: semId, respuesta: st.herr.semaforo[semId] });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -1310,7 +1310,7 @@ document.addEventListener("DOMContentLoaded", function() {
         st.herr.habitos[fecha] = !st.herr.habitos[fecha];
 
         // CRM_ONLY — backend handles this
-        trackEvent(CZ_EVENT_NAMES.HABITO_MARCADO, { fecha: fecha, cumplido: st.herr.habitos[fecha] });
+        trackCRMEvent(CZ_EVENT_NAMES.HABITO_MARCADO, { fecha: fecha, cumplido: st.herr.habitos[fecha] });
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
@@ -1388,7 +1388,7 @@ function recalcularIngresosLocal() {
   st.herr.ingresos.total = formal + extra;
 
   // CRM_ONLY — backend handles this
-  trackEvent(CZ_EVENT_NAMES.INGRESO_REAL_DECLARADO, {
+  trackCRMEvent(CZ_EVENT_NAMES.INGRESO_REAL_DECLARADO, {
     ingreso_formal: formal,
     ingreso_extra:  extra,
     total_real:     st.herr.ingresos.total,

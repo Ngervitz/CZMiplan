@@ -1,46 +1,16 @@
 // =============================================================================
-// events.js — Identity layer, event names, centralized tracking
-// Depende de: config.js (generateUUID must be defined before this file loads)
-// Loaded before: ui.js, app.js
+// events.js — Event names, GTM-safe public analytics routing
+// Depende de: config.js, identity.js (must load before this file)
+// Loaded before: analytics.js, ui.js, app.js
 //
-// Channel architecture (Sprint 11):
-//   GTM      — allowlisted fields only, dataLayer.push()
-//   INTERNAL — enriched console log in czdev mode only
-//   CRM_ONLY — must never use trackEvent for dispatch; warn if misrouted
+// Channel architecture (Sprint 11 / 11.5):
+//   GTM      — allowlisted fields only, dataLayer.push() via trackEvent()
+//   INTERNAL — enriched console log in czdev mode only via trackEvent()
+//   CRM_ONLY — trackCRMEvent() in analytics.js ONLY (hard bypass in trackEvent)
 // =============================================================================
 
 // Defensive init — no-op if GTM already initialized dataLayer on host page
 window.dataLayer = window.dataLayer || [];
-
-// =============================================================================
-// IDENTITY LAYER
-// anonymous_id — stable identifier across sessions
-//   Rule: czuid (if in URL) takes precedence over stored UUID
-//   Rule: generated UUID is persisted as cz_anonymous_id in localStorage
-//   Rule: never overwrite a valid anonymous_id with null
-// session_id — per page lifecycle only, not persisted
-// =============================================================================
-var CZIdentity = (function() {
-  var czuid = new URLSearchParams(window.location.search).get("czuid") || null;
-
-  var anonId = null;
-  if (czuid) {
-    anonId = czuid;
-    try { localStorage.setItem("cz_anonymous_id", czuid); } catch (e) {}
-  } else {
-    try { anonId = localStorage.getItem("cz_anonymous_id"); } catch (e) {}
-    if (!anonId) {
-      anonId = generateUUID();
-      try { localStorage.setItem("cz_anonymous_id", anonId); } catch (e) {}
-    }
-  }
-
-  return {
-    anonymous_id: anonId,
-    session_id:   generateUUID(),
-    czuid:        czuid,
-  };
-})();
 
 // =============================================================================
 // EVENT CHANNEL REGISTRY
@@ -195,9 +165,16 @@ function safeGTMPayload(eventName, payload) {
     event: eventName,
   };
 
+  function isGTMPrimitive(v) {
+    if (v === null) return true;
+    var t = typeof v;
+    return t === "string" || t === "number" || t === "boolean";
+  }
+
   CZ_GTM_SAFE_FIELDS.forEach(function(field) {
-    if (payload[field] !== undefined) {
-      safe[field] = payload[field];
+    var val = payload[field];
+    if (val !== undefined && isGTMPrimitive(val)) {
+      safe[field] = val;
     }
   });
 
@@ -205,7 +182,7 @@ function safeGTMPayload(eventName, payload) {
   if (
     (eventName === "checkout_started" ||
      eventName === "payment_completed") &&
-    typeof payload.value !== "undefined"
+    isGTMPrimitive(payload.value)
   ) {
     safe.value = payload.value;
   }
@@ -217,6 +194,23 @@ function safeGTMPayload(eventName, payload) {
 // CENTRALIZED TRACK FUNCTION — neutral internal event layer
 // =============================================================================
 function trackEvent(eventName, payload) {
+
+  var CZ_DEBUG = (
+    typeof window !== "undefined" &&
+    window.location &&
+    window.location.search.indexOf("czdev=true") !== -1
+  );
+
+  // Sprint 11.5 — CRM_ONLY hard bypass: never enter analytics pipeline
+  if (CZ_CRM_ONLY_EVENTS.indexOf(eventName) !== -1) {
+    if (CZ_DEBUG) {
+      console.warn(
+        "[CZ] CRM_ONLY event must use trackCRMEvent(), not trackEvent():",
+        eventName
+      );
+    }
+    return null;
+  }
 
   payload = payload || {};
 
@@ -237,12 +231,6 @@ function trackEvent(eventName, payload) {
     step:
       ((window.CZState || {}).step != null ? window.CZState.step : null),
   });
-
-  var CZ_DEBUG = (
-    typeof window !== "undefined" &&
-    window.location &&
-    window.location.search.indexOf("czdev=true") !== -1
-  );
 
   if (CZ_DEBUG) {
     console.log("[CZ]", eventName, enriched);
@@ -270,17 +258,6 @@ function trackEvent(eventName, payload) {
     }
   }
 
-  // CRM_ONLY should never route through GTM
-  if (
-    CZ_CRM_ONLY_EVENTS.indexOf(eventName) !== -1
-  ) {
-
-    console.warn(
-      "[CZ] CRITICAL SECURITY WARNING: CRM_ONLY event fired through trackEvent():",
-      eventName
-    );
-  }
-
   return enriched;
 }
 
@@ -289,15 +266,4 @@ function track(evento, datos) {
   trackEvent(evento, datos);
 }
 
-// =============================================================================
-// DEBUG — analytics channel inspection (?czdev=true)
-// =============================================================================
-window.CZDebugAnalytics = function() {
-  return {
-    gtm_events:        CZ_GTM_EVENTS,
-    internal_events:   CZ_INTERNAL_EVENTS,
-    crm_only_events:   CZ_CRM_ONLY_EVENTS,
-    gtm_safe_fields:   CZ_GTM_SAFE_FIELDS,
-    dataLayer:         window.dataLayer || [],
-  };
-};
+// CZDebugAnalytics() — defined in analytics.js (loads after this file)

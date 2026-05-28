@@ -2102,7 +2102,6 @@ function renderAll() {
     // Fire tracking event only once per consent screen view in this session
     if (!st._consentScreenTracked) {
       st._consentScreenTracked = true;
-      var _czuidCS = (window.CZIdentity && window.CZIdentity.czuid) || null;
       trackEvent(CZ_EVENT_NAMES.MIPLAN_CONSENT_SCREEN_VIEWED, {
         entry_channel: (typeof detectEntryChannel === "function") ? detectEntryChannel() : "direct",
       });
@@ -2160,7 +2159,6 @@ function renderAll() {
       sessionStorage.setItem("cz_toast_dashboard_shown", "1");
       var _toastDiag = st.diag;
       var _toastIv2  = _toastDiag && _toastDiag.interpretacion_v2 ? _toastDiag.interpretacion_v2 : {};
-      var _czuidT    = (window.CZIdentity && window.CZIdentity.czuid) || null;
       if (typeof showToast === "function") {
         showToast("✓ Tu diagnóstico quedó guardado. Podés volver a consultarlo cuando quieras.", 5000);
       }

@@ -6,6 +6,7 @@
 function buildCRMData(motor) {
   const st = window.CZState || {};
   return {
+    crm_contact_id: (window.CZIdentity && window.CZIdentity.crm_contact_id) || null,
     user: {
       nombre:           PRE.nombre,
       cedula:           PRE.cedula,
@@ -150,11 +151,27 @@ async function loadBehavioralDataFromCRM(czuid) {
   return null;
 }
 
-async function enviarCRM(evento, motor) {
+async function enviarCRM(evento, motorOrTelemetry) {
   // CRM data is backend-only.
   // Never route through trackEvent() or dataLayer.
   // Backend handles CRM persistence and CAPI dispatch.
-  var payload = Object.assign({ evento: evento }, buildCRMData(motor));
+
+  var isDiagMotor = motorOrTelemetry && (
+    motorOrTelemetry.fin != null ||
+    motorOrTelemetry.planId != null ||
+    motorOrTelemetry.enc != null
+  );
+
+  var payload;
+  if (isDiagMotor) {
+    payload = Object.assign({ evento: evento }, buildCRMData(motorOrTelemetry));
+  } else {
+    payload = Object.assign(
+      { evento: evento },
+      buildCRMData((window.CZState && window.CZState.diag) || null),
+      { crm_telemetry: motorOrTelemetry || {} }
+    );
+  }
 
   if (
     typeof window !== "undefined" &&
