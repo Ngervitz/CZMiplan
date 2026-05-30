@@ -97,6 +97,193 @@ function scrollDeudaCardIntoView(idx) {
   }, 80);
 }
 
+// Sprint 12.2 Fix — refresh debt cards on step 2 (deudas-container) or step 3 (tab)
+function refreshDebtCardsUI() {
+  var st = window.CZState;
+  if (!window.CredizonaUI) return;
+  if (st.step === 3 && typeof window.CredizonaUI.renderTab === "function") {
+    window.CredizonaUI.renderTab();
+    return;
+  }
+  var cont = document.getElementById("deudas-container");
+  if (cont && typeof window.CredizonaUI.renderDeudaCard === "function") {
+    cont.innerHTML = st.deudas.map(window.CredizonaUI.renderDeudaCard).join("");
+  }
+}
+
+// Clear only fields incompatible with current situacion_ui (preserve when still valid)
+function sanitizeDebtFieldsForSituacion(d) {
+  if (!d) return;
+  var sit = d.situacion_ui || "";
+
+  if (sit === "pagando_normal") {
+    d.atraso_tiempo         = null;
+    d.atraso_tiempo_aprox   = null;
+    d.ultimo_pago_declarado = null;
+    d.estado                = "al_dia";
+    if (d.pago_fuente === "mora_sin_pago" || d.pago_fuente === "no_paga"
+        || d.pago_fuente === "ultimo_pago_declarado") {
+      d.pago_fuente = parseFloat(d.pago) > 0 ? "declarado"
+        : (d.pago_clarificacion ? "no_declarado" : "declarado");
+    }
+  } else if (sit === "atrasado_pagando") {
+    d.pago_clarificacion  = null;
+    d.atraso_tiempo_aprox  = null;
+    d.estado               = "atraso_leve";
+    if (!d.pago_fuente || d.pago_fuente === "declarado"
+        || d.pago_fuente === "mora_sin_pago" || d.pago_fuente === "no_paga") {
+      d.pago_fuente = "ultimo_pago_declarado";
+    }
+    if (d.ultimo_pago_declarado != null && d.ultimo_pago_declarado !== "") {
+      d.pago = d.ultimo_pago_declarado;
+    }
+  } else if (sit === "deje_pagar") {
+    d.pago                  = 0;
+    d.ultimo_pago_declarado = null;
+    d.pago_clarificacion    = null;
+    d.atraso_tiempo_aprox   = null;
+    d.pago_fuente           = "no_paga";
+    d.estado                = (d.atraso_tiempo === "mas_90") ? "mora" : "atraso_grave";
+  } else if (sit === "mora_reclamo") {
+    d.pago                  = 0;
+    d.atraso_tiempo         = null;
+    d.atraso_tiempo_aprox   = null;
+    d.ultimo_pago_declarado = null;
+    d.pago_clarificacion    = null;
+    d.pago_fuente           = "mora_sin_pago";
+    d.estado                = "mora";
+  } else if (sit === "no_seguro") {
+    d.pago_clarificacion  = null;
+    d.atraso_tiempo       = null;
+    d.ultimo_pago_declarado = null;
+    d.estado              = "atraso_leve";
+    if (!d.pago_fuente || d.pago_fuente === "declarado"
+        || d.pago_fuente === "mora_sin_pago" || d.pago_fuente === "no_paga") {
+      d.pago_fuente = "no_declarado";
+    }
+  }
+}
+
+function applySituacionUiChange(d, newSit) {
+  var prev = d.situacion_ui || null;
+  if (newSit === prev) return false;
+
+  d.situacion_ui = newSit;
+
+  if (newSit === "pagando_normal") {
+    d.atraso_tiempo         = null;
+    d.atraso_tiempo_aprox   = null;
+    d.ultimo_pago_declarado = null;
+    if (prev === "deje_pagar" || prev === "mora_reclamo") {
+      d.pago               = 0;
+      d.pago_clarificacion = null;
+    }
+    d.estado          = "al_dia";
+    d.pago_fuente     = "declarado";
+    d.debt_confidence = (parseFloat(d.pago) > 0) ? "high" : "medium";
+  } else if (newSit === "atrasado_pagando") {
+    d.pago_clarificacion = null;
+    d.atraso_tiempo_aprox = null;
+    if (prev === "deje_pagar" || prev === "mora_reclamo" || prev === "no_seguro") {
+      d.pago          = 0;
+      d.atraso_tiempo = null;
+    }
+    d.estado          = "atraso_leve";
+    d.pago_fuente     = "ultimo_pago_declarado";
+    d.debt_confidence = (parseFloat(d.ultimo_pago_declarado) > 0 || parseFloat(d.pago) > 0)
+      ? "high" : "medium";
+  } else if (newSit === "deje_pagar") {
+    d.pago                  = 0;
+    d.ultimo_pago_declarado = null;
+    d.pago_clarificacion    = null;
+    if (prev !== "deje_pagar") d.atraso_tiempo = null;
+    d.estado          = "atraso_grave";
+    d.pago_fuente     = "no_paga";
+    d.debt_confidence = "medium";
+  } else if (newSit === "mora_reclamo") {
+    d.pago                  = 0;
+    d.atraso_tiempo         = null;
+    d.atraso_tiempo_aprox   = null;
+    d.ultimo_pago_declarado = null;
+    d.pago_clarificacion    = null;
+    d.estado                = "mora";
+    d.pago_fuente           = "mora_sin_pago";
+    d.debt_confidence       = "high";
+  } else if (newSit === "no_seguro") {
+    d.pago_clarificacion  = null;
+    d.atraso_tiempo       = null;
+    d.ultimo_pago_declarado = null;
+    d.estado              = "atraso_leve";
+    d.pago_fuente         = "no_declarado";
+    d.debt_confidence     = "low";
+  }
+
+  return true;
+}
+
+function normalizeDebtCreditorFields(d) {
+  if (!d) return;
+  var raw = d.acreedor_raw != null ? d.acreedor_raw : (d.acreedor || "");
+  if (typeof normalizarAcreedor === "function") {
+    var norm = normalizarAcreedor(raw);
+    d.acreedor_raw         = norm.acreedor_raw;
+    d.acreedor_key         = norm.acreedor_key;
+    d.acreedor_normalizado = norm.acreedor_normalizado;
+    d.acreedor_display     = norm.acreedor_display;
+    d.acreedor             = norm.acreedor_display;
+  }
+}
+
+function countDebtFieldsChanged(before, after) {
+  if (!before || !after) return 1;
+  var keys = [
+    "tipo", "acreedor", "acreedor_raw", "acreedor_display", "acreedor_key",
+    "acreedor_normalizado", "monto", "situacion_ui", "pago", "pago_fuente",
+    "atraso_tiempo", "ultimo_pago_declarado", "debt_confidence", "estado",
+    "pago_clarificacion", "atraso_tiempo_aprox",
+  ];
+  var n = 0;
+  keys.forEach(function(k) {
+    if (String(before[k] != null ? before[k] : "") !== String(after[k] != null ? after[k] : "")) {
+      n += 1;
+    }
+  });
+  return n || 1;
+}
+
+function finalizeDebtEdit(saveIdx) {
+  var st = window.CZState;
+  var d  = st.deudas[saveIdx];
+  if (!d) return;
+
+  normalizeDebtCreditorFields(d);
+  sanitizeDebtFieldsForSituacion(d);
+  if (typeof enriquecerDeuda === "function") enriquecerDeuda(d);
+
+  d.updated_at = new Date().toISOString();
+  st.temporal.last_debt_update_at = d.updated_at;
+
+  var changed = countDebtFieldsChanged(st._deuda_edit_snapshot, d);
+  st.editing_debt_index = null;
+  st._deuda_edit_snapshot = null;
+  st._deuda_delete_confirm_index = null;
+
+  trackCRMDebtEvent("debt_edited", {
+    debt_index: saveIdx,
+    fields_changed_count: changed,
+  });
+
+  recalcDiagYGuardar();
+  if (st.step === 3 && typeof window.CredizonaUI.renderAll === "function") {
+    window.CredizonaUI.renderAll();
+  } else {
+    refreshDebtCardsUI();
+    if (typeof window.CredizonaUI.actualizarMetrics === "function") {
+      window.CredizonaUI.actualizarMetrics();
+    }
+  }
+}
+
 // =============================================================================
 // STORAGE
 // =============================================================================
@@ -790,8 +977,11 @@ document.addEventListener("DOMContentLoaded", function() {
         editarIdx = parseInt(editarIdx, 10);
 
         if (st.deudas[editarIdx]) {
-          st.deudas[editarIdx].monto = e.target.value;
-          st.deudas[editarIdx].cancelada = false;
+          var dQuick = st.deudas[editarIdx];
+          dQuick.monto = e.target.value;
+          dQuick.cancelada = false;
+
+          if (typeof enriquecerDeuda === "function") enriquecerDeuda(dQuick);
 
           if (typeof calcularMotor === "function") {
             st.diag = calcularMotor();
@@ -921,12 +1111,13 @@ document.addEventListener("DOMContentLoaded", function() {
           st.temporal.last_debt_update_at = new Date().toISOString();
           window.guardarLocal();
 
-          var cont = document.getElementById("deudas-container");
-          if (cont) {
-            cont.innerHTML = st.deudas.map(window.CredizonaUI.renderDeudaCard).join("");
+          if (deudaField === "tipo" || deudaField === "monto") {
+            refreshDebtCardsUI();
           }
 
-          window.CredizonaUI.actualizarMetrics();
+          if (typeof window.CredizonaUI.actualizarMetrics === "function") {
+            window.CredizonaUI.actualizarMetrics();
+          }
         }
 
         return;
@@ -1202,42 +1393,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (situacionVal && situacionIdx !== null) {
         situacionIdx = parseInt(situacionIdx, 10);
         var dSit = st.deudas[situacionIdx];
-        if (dSit) {
-          dSit.situacion_ui = situacionVal;
-          // Reset payment fields on situacion change for clean capture
-          dSit.pago                   = 0;
-          dSit.pago_fuente            = null;
-          dSit.atraso_tiempo          = null;
-          dSit.atraso_tiempo_aprox    = null;
-          dSit.pago_clarificacion     = null;
-          dSit.ultimo_pago_declarado  = null;
-
-          // Infer internal estado + set pago_fuente defaults
-          if (situacionVal === "pagando_normal") {
-            dSit.estado          = "al_dia";
-            dSit.pago_fuente     = "declarado";
-            dSit.debt_confidence = "medium"; // upgraded to high when pago > 0
-          } else if (situacionVal === "atrasado_pagando") {
-            dSit.estado          = "atraso_leve";
-            dSit.pago_fuente     = "ultimo_pago_declarado";
-            dSit.debt_confidence = "medium";
-          } else if (situacionVal === "deje_pagar") {
-            // estado depends on atraso_tiempo; default to atraso_grave until range is selected
-            dSit.estado          = "atraso_grave";
-            dSit.pago            = 0;
-            dSit.pago_fuente     = "no_paga";
-            dSit.debt_confidence = "medium";
-          } else if (situacionVal === "mora_reclamo") {
-            dSit.estado          = "mora";
-            dSit.pago            = 0;
-            dSit.pago_fuente     = "mora_sin_pago";
-            dSit.debt_confidence = "high"; // unambiguous declaration
-          } else if (situacionVal === "no_seguro") {
-            dSit.estado          = "atraso_leve";
-            dSit.pago_fuente     = "no_declarado";
-            dSit.debt_confidence = "low";
-          }
-
+        if (dSit && applySituacionUiChange(dSit, situacionVal)) {
           if (typeof enriquecerDeuda === "function") enriquecerDeuda(dSit);
           // CRM_ONLY — backend handles this
           trackCRMEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
@@ -1250,9 +1406,10 @@ document.addEventListener("DOMContentLoaded", function() {
           });
           st.temporal.last_debt_update_at = new Date().toISOString();
           window.guardarLocal();
-          var contSit = document.getElementById("deudas-container");
-          if (contSit) contSit.innerHTML = st.deudas.map(window.CredizonaUI.renderDeudaCard).join("");
-          window.CredizonaUI.actualizarMetrics();
+          refreshDebtCardsUI();
+          if (typeof window.CredizonaUI.actualizarMetrics === "function") {
+            window.CredizonaUI.actualizarMetrics();
+          }
         }
         return;
       }
@@ -1298,32 +1455,19 @@ document.addEventListener("DOMContentLoaded", function() {
           if (typeof enriquecerDeuda === "function") enriquecerDeuda(dBtn);
           st.temporal.last_debt_update_at = new Date().toISOString();
           window.guardarLocal();
-          var contBtn = document.getElementById("deudas-container");
-          if (contBtn) contBtn.innerHTML = st.deudas.map(window.CredizonaUI.renderDeudaCard).join("");
-          window.CredizonaUI.actualizarMetrics();
+          refreshDebtCardsUI();
+          if (typeof window.CredizonaUI.actualizarMetrics === "function") {
+            window.CredizonaUI.actualizarMetrics();
+          }
         }
         return;
       }
 
-      // Sprint 12.2 — guardar edición de deuda (no push)
+      // Sprint 12.2 Fix — guardar edición de deuda (no push; full field persist)
       if (e.target.id === "btn-guardar-deuda-edicion") {
         var saveIdx = st.editing_debt_index;
         if (saveIdx !== null && saveIdx !== undefined && st.deudas[saveIdx]) {
-          if (typeof enriquecerDeuda === "function") enriquecerDeuda(st.deudas[saveIdx]);
-          st.editing_debt_index = null;
-          st._deuda_edit_snapshot = null;
-          st._deuda_delete_confirm_index = null;
-          st.temporal.last_debt_update_at = new Date().toISOString();
-          trackCRMDebtEvent("debt_edited", {
-            debt_index: saveIdx,
-            fields_changed_count: 1,
-          });
-          recalcDiagYGuardar();
-          if (st.step === 3) {
-            window.CredizonaUI.renderTab();
-          } else {
-            window.CredizonaUI.renderAll();
-          }
+          finalizeDebtEdit(saveIdx);
         }
         return;
       }
@@ -1795,6 +1939,24 @@ window.CZDebugFinancial = function() {
     plan_guardrail_applied:        motor ? motor.plan_guardrail_applied : null,
     plan_guardrail_reason:         motor ? motor.plan_guardrail_reason  : null,
     nivelR:                        motor ? motor.nivelR              : null,
+    // Sprint 12.2 Fix — debt edit debug
+    editing_debt_index:            st.editing_debt_index,
+    debt_count:                    deudas.length,
+    last_edited_debt_summary:      (function() {
+      var idx = st.editing_debt_index;
+      if (idx == null || !deudas[idx]) return null;
+      var dd = deudas[idx];
+      return {
+        index:           idx,
+        tipo:            dd.tipo,
+        situacion_ui:    dd.situacion_ui,
+        monto:           parseFloat(dd.monto) || 0,
+        pago:            parseFloat(dd.pago) || 0,
+        pago_fuente:     dd.pago_fuente,
+        atraso_tiempo:   dd.atraso_tiempo,
+        debt_confidence: dd.debt_confidence,
+      };
+    })(),
     // Sprint 8.1 + 8.4 + 8.5 — horizon + copy override fields
     flujo_libre_activo: (function() {
       var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};

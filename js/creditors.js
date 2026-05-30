@@ -108,6 +108,49 @@ function getTotalMonthlyExpenses() {
   return getCategoryGastosTotal(st.gastos) + getCustomExpensesIncludedTotal();
 }
 
+// =============================================================================
+// Sprint 12.3 — Gastos vs ingreso (presentación / radiografía; no scoring)
+// =============================================================================
+function getExpensePercent(amount, income) {
+  var amt = parseFloat(amount) || 0;
+  var ing = parseFloat(income) || 0;
+  if (ing <= 0) return 0;
+  return Math.round((amt / ing) * 1000) / 10;
+}
+
+function collectPresentableExpenseItems() {
+  var st     = window.CZState || {};
+  var gastos = typeof migrateGastosKeys === "function"
+    ? migrateGastosKeys(Object.assign({}, st.gastos || {}))
+    : (st.gastos || {});
+  var items  = [];
+
+  EXPENSE_CATS.forEach(function(c) {
+    var amount = parseFloat(gastos[c.k]) || 0;
+    if (amount > 0) items.push({ label: c.l, amount: amount });
+  });
+
+  (st.custom_expenses || []).forEach(function(exp, i) {
+    if (!isCustomExpenseIncluded(exp, i)) return;
+    var amount = parseFloat(exp.amount) || 0;
+    if (amount > 0) {
+      var desc = String(exp.description || "").trim();
+      items.push({ label: desc || "Gasto personalizado", amount: amount });
+    }
+  });
+
+  return items;
+}
+
+function getTopExpenses(expenses, limit) {
+  var list = (expenses || []).slice();
+  list.sort(function(a, b) {
+    if (b.amount !== a.amount) return b.amount - a.amount;
+    return String(a.label).localeCompare(String(b.label), "es");
+  });
+  return list.slice(0, limit || 3);
+}
+
 function sanitizeCustomExpensesForSave(arr) {
   return (arr || []).map(function(e) {
     return {

@@ -1491,6 +1491,56 @@ function renderMiPlanSuggestionBox() {
 }
 
 // =============================================================================
+// RADIOGRAFIA FINANCIERA — Sprint 12.3 gastos vs ingreso (solo diagnóstico)
+// =============================================================================
+function renderRadiografiaGastosInsights() {
+  var st = _st();
+  if (st.step !== 3) return "";
+  var ingreso = PRE.ingreso || 0;
+  if (ingreso <= 0) return "";
+
+  var items = typeof collectPresentableExpenseItems === "function"
+    ? collectPresentableExpenseItems()
+    : [];
+  if (!items.length) return "";
+
+  var totalGastos = typeof getTotalMonthlyExpenses === "function"
+    ? getTotalMonthlyExpenses()
+    : items.reduce(function(s, x) { return s + x.amount; }, 0);
+  if (totalGastos <= 0) return "";
+
+  var pctTotal = getExpensePercent(totalGastos, ingreso);
+  var top      = getTopExpenses(items, 3);
+  var card     = "background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px;margin-bottom:12px;";
+
+  var edu = '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:12px;">'
+    + "Estos porcentajes muestran cuánto representa cada gasto respecto a tu ingreso mensual."
+    + "</div>";
+
+  var totalCard = '<div style="' + card + '">'
+    + '<div style="font-size:13px;font-weight:800;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Total de gastos</div>'
+    + '<div style="font-size:34px;font-weight:900;color:rgba(255,255,255,.9);line-height:1;letter-spacing:-1px;margin-bottom:6px;">' + fmt(Math.round(totalGastos)) + "</div>"
+    + '<div style="font-size:15px;color:#8390b5;">' + pctTotal.toFixed(1) + "% de tus ingresos</div>"
+    + "</div>";
+
+  var topRows = top.map(function(item, idx) {
+    var pct = getExpensePercent(item.amount, ingreso);
+    return '<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06);">'
+      + '<div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:6px;">' + (idx + 1) + ". " + item.label + "</div>"
+      + '<div style="font-size:22px;font-weight:900;color:rgba(255,255,255,.9);line-height:1;margin-bottom:4px;">' + fmt(Math.round(item.amount)) + "</div>"
+      + '<div style="font-size:14px;color:#8390b5;">' + pct.toFixed(1) + "% de tus ingresos</div>"
+      + "</div>";
+  }).join("");
+
+  var topCard = '<div style="' + card + '">'
+    + '<div style="font-size:13px;font-weight:800;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">¿Dónde se va tu dinero?</div>'
+    + topRows
+    + "</div>";
+
+  return edu + totalCard + topCard;
+}
+
+// =============================================================================
 // RADIOGRAFIA FINANCIERA
 // =============================================================================
 function renderRadiografia() {
@@ -1592,6 +1642,9 @@ function renderRadiografia() {
     + '<div style="height:100%;border-radius:7px;width:' + ratioPct + '%;background:' + ratioColor + ';"></div></div>'
     + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8390b5;"><span>Pagos activos: ' + fmt(Math.round(r.comprometido)) + '</span><span>' + (st.gastos_missing_confirmed ? 'Flujo libre est. (sin gastos)' : 'Flujo libre') + ': ' + fmt(Math.max(0, r.flujoLibreActivo)) + '</span></div>'
     + '</div>'
+
+    // Sprint 12.3 — contexto de gastos vs ingreso (solo step 3, ingreso > 0, gastos > 0)
+    + renderRadiografiaGastosInsights()
 
     + '</div>';
 }
