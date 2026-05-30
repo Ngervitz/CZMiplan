@@ -37,6 +37,29 @@ const EXPENSE_CATS = [
   { k: "ocio",          l: "Ocio y entretenimiento",     h: "(Ej: gimnasio, salidas, streaming)" },
 ];
 
+// Sprint 12.3 — iconografía Unicode (pantalla gastos; solo presentación)
+var EXPENSE_CAT_ICONS = {
+  vivienda:      "🏠",
+  alimentacion:  "🍎",
+  transporte:    "🚗",
+  servicios:     "💡",
+  salud:         "💊",
+  educacion:     "📚",
+  hijos_familia: "👨‍👩‍👧",
+  ocio:          "🎬",
+  otros:         "📦",
+};
+
+// Sprint 12.3 — benchmarks orientativos (% del ingreso); null = sin benchmark
+var EXPENSE_BENCHMARKS = {
+  vivienda:      { min: 25, max: 35 },
+  alimentacion:  { min: 15, max: 25 },
+  transporte:    { min: 5,  max: 15 },
+  servicios:     { min: 5,  max: 10 },
+  salud:         { min: 5,  max: 15 },
+  ocio:          { min: 5,  max: 10 },
+};
+
 // Sprint 12 — gasto vs deuda keyword detection (custom expense descriptions)
 var EXPENSE_DEBT_KEYWORDS = [
   "oca", "visa", "mastercard", "creditel", "pronto", "anda",
@@ -127,7 +150,14 @@ function collectPresentableExpenseItems() {
 
   EXPENSE_CATS.forEach(function(c) {
     var amount = parseFloat(gastos[c.k]) || 0;
-    if (amount > 0) items.push({ label: c.l, amount: amount });
+    if (amount > 0) {
+      items.push({
+        key:    c.k,
+        label:  c.l,
+        amount: amount,
+        icon:   EXPENSE_CAT_ICONS[c.k] || "",
+      });
+    }
   });
 
   (st.custom_expenses || []).forEach(function(exp, i) {
@@ -135,7 +165,12 @@ function collectPresentableExpenseItems() {
     var amount = parseFloat(exp.amount) || 0;
     if (amount > 0) {
       var desc = String(exp.description || "").trim();
-      items.push({ label: desc || "Gasto personalizado", amount: amount });
+      items.push({
+        key:    "custom_" + i,
+        label:  desc || "Otros gastos",
+        amount: amount,
+        icon:   EXPENSE_CAT_ICONS.otros,
+      });
     }
   });
 
@@ -149,6 +184,12 @@ function getTopExpenses(expenses, limit) {
     return String(a.label).localeCompare(String(b.label), "es");
   });
   return list.slice(0, limit || 3);
+}
+
+function getExpenseBenchmarkStatus(pct, benchmark) {
+  if (!benchmark) return "Sin referencia disponible";
+  if (pct > benchmark.max) return "Por encima de la referencia orientativa";
+  return "Dentro de la referencia orientativa";
 }
 
 function sanitizeCustomExpensesForSave(arr) {

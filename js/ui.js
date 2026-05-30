@@ -218,16 +218,111 @@ function mostrarEvaluacion() {
 // =============================================================================
 // STEP 1 — GASTOS
 // =============================================================================
-function updateGastosTotalDisplay() {
-  var el = document.getElementById("total-gastos-val");
-  if (!el) return;
-  var total = typeof getTotalMonthlyExpenses === "function"
+function renderGastoCategoryInsight(catKey, amount) {
+  var ingreso = PRE.ingreso || 0;
+  var amt     = parseFloat(amount) || 0;
+  if (ingreso <= 0 || amt <= 0) return "";
+
+  var pct    = typeof getExpensePercent === "function"
+    ? getExpensePercent(amt, ingreso)
+    : Math.round((amt / ingreso) * 1000) / 10;
+  var bench  = typeof EXPENSE_BENCHMARKS !== "undefined" ? EXPENSE_BENCHMARKS[catKey] : null;
+  var status = typeof getExpenseBenchmarkStatus === "function"
+    ? getExpenseBenchmarkStatus(pct, bench)
+    : "Sin referencia disponible";
+
+  var html = '<div style="margin-top:12px;font-size:14px;color:rgba(255,255,255,.78);line-height:1.5;">'
+    + pct.toFixed(1) + "% de tus ingresos</div>";
+
+  if (bench) {
+    html += '<div style="margin-top:8px;font-size:12px;color:#8390b5;line-height:1.55;">Referencia orientativa:<br>'
+      + bench.min + "% - " + bench.max + "%</div>";
+  }
+
+  html += '<div style="margin-top:6px;font-size:12px;color:#8390b5;line-height:1.5;">' + status + "</div>";
+  return html;
+}
+
+function renderGastosEducacionBlock() {
+  var ingreso = PRE.ingreso || 0;
+  var total   = typeof getTotalMonthlyExpenses === "function"
     ? getTotalMonthlyExpenses()
     : Object.values(_st().gastos || {}).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0);
-  var pct = PRE.ingreso > 0 ? total / PRE.ingreso : 0;
-  var pc  = pct > 0.9 ? "#ff4e72" : pct > 0.7 ? "#ffd36f" : "#34ffaf";
-  el.textContent = fmt(total);
-  el.style.color = pc;
+  var pctTotal = ingreso > 0 && typeof getExpensePercent === "function"
+    ? getExpensePercent(total, ingreso)
+    : 0;
+
+  var html = '<div class="plan-card" style="margin-top:20px;border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
+    + '<div style="font-size:15px;font-weight:800;color:rgba(255,255,255,.88);margin-bottom:14px;">💸 Resumen de gastos</div>'
+    + '<div style="font-size:14px;color:#8390b5;margin-bottom:4px;">Total gastos</div>'
+    + '<div style="font-size:32px;font-weight:900;color:rgba(255,255,255,.92);line-height:1;margin-bottom:14px;">' + fmt(Math.round(total)) + "</div>";
+
+  if (ingreso > 0) {
+    html += '<div style="font-size:14px;color:#8390b5;margin-bottom:4px;">Peso sobre ingresos</div>'
+      + '<div style="font-size:22px;font-weight:800;color:rgba(255,255,255,.88);margin-bottom:18px;">'
+      + pctTotal.toFixed(1) + "% de tus ingresos</div>";
+  }
+
+  var items = typeof collectPresentableExpenseItems === "function"
+    ? collectPresentableExpenseItems()
+    : [];
+  var top   = typeof getTopExpenses === "function" ? getTopExpenses(items, 3) : [];
+
+  if (top.length > 0 && ingreso > 0) {
+    html += '<div style="font-size:14px;font-weight:800;color:rgba(255,255,255,.85);margin-bottom:10px;">¿Dónde se va tu dinero?</div>';
+    html += top.map(function(item, idx) {
+      var pct = getExpensePercent(item.amount, ingreso);
+      var pctLabel = Math.round(pct);
+      var icon = item.icon ? item.icon + " " : "";
+      return '<div style="font-size:15px;color:rgba(255,255,255,.82);line-height:1.5;padding:6px 0;word-break:break-word;">'
+        + (idx + 1) + ". " + icon + item.label + " — " + pctLabel + "% de tus ingresos</div>";
+    }).join("");
+    html += '<div style="margin-top:14px;font-size:13px;color:#8390b5;line-height:1.6;">'
+      + "Los gastos más grandes suelen tener mayor impacto sobre tu situación financiera que los gastos pequeños."
+      + "</div>";
+  }
+
+  return html + "</div>";
+}
+
+function updateGastosCategoryInsights() {
+  var ingreso = PRE.ingreso || 0;
+  var gastos  = _st().gastos || {};
+
+  if (typeof EXPENSE_CATS !== "undefined") {
+    EXPENSE_CATS.forEach(function(c) {
+      var slot = document.querySelector('[data-gasto-insight="' + c.k + '"]');
+      if (!slot) return;
+      var amt = parseFloat(gastos[c.k]) || 0;
+      slot.innerHTML = ingreso > 0 && amt > 0 ? renderGastoCategoryInsight(c.k, amt) : "";
+    });
+  }
+
+  (_st().custom_expenses || []).forEach(function(exp, idx) {
+    var slot = document.querySelector('[data-custom-expense-insight="' + idx + '"]');
+    if (!slot) return;
+    var amt = parseFloat(exp.amount) || 0;
+    if (!isCustomExpenseIncluded(exp, idx)) {
+      slot.innerHTML = "";
+      return;
+    }
+    slot.innerHTML = ingreso > 0 && amt > 0 ? renderGastoCategoryInsight("otros", amt) : "";
+  });
+
+  var edu = document.getElementById("gastos-educacion-block");
+  if (edu) edu.innerHTML = renderGastosEducacionBlock();
+}
+
+function updateGastosTotalDisplay() {
+  var el = document.getElementById("total-gastos-val");
+  if (el) {
+    var total = typeof getTotalMonthlyExpenses === "function"
+      ? getTotalMonthlyExpenses()
+      : Object.values(_st().gastos || {}).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0);
+    el.textContent = fmt(total);
+    el.style.color = "rgba(255,255,255,.92)";
+  }
+  updateGastosCategoryInsights();
 }
 
 function renderCustomExpenseClassification(idx, exp) {
@@ -274,28 +369,27 @@ function updateCustomExpenseClassificationUI(idx) {
 function renderCustomExpenseRow(exp, idx) {
   var desc = exp.description || "";
   var amt  = exp.amount ? String(exp.amount) : "";
+  var icon = typeof EXPENSE_CAT_ICONS !== "undefined" ? EXPENSE_CAT_ICONS.otros : "📦";
   return '<div class="custom-expense-row" data-custom-expense-row="' + idx + '" style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
-    + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.85);">Otro gasto</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'
+    + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.85);">' + icon + ' Otros gastos</div>'
     + '<button type="button" class="btn btn-secondary" data-custom-expense-remove="' + idx + '" style="height:40px;font-size:14px;padding:0 14px;">Eliminar</button>'
     + '</div>'
     + '<label style="font-size:13px;color:#8390b5;display:block;margin-bottom:6px;">Descripción</label>'
-    + '<input type="text" data-custom-expense-field="description" data-custom-idx="' + idx + '" placeholder="Ej: medicamentos, club, etc." value="' + desc.replace(/"/g, "&quot;") + '" style="width:100%;margin-bottom:12px;"/>'
+    + '<input type="text" data-custom-expense-field="description" data-custom-idx="' + idx + '" placeholder="Ej: medicamentos, club, etc." value="' + desc.replace(/"/g, "&quot;") + '" style="width:100%;max-width:100%;margin-bottom:12px;box-sizing:border-box;"/>'
     + '<div data-custom-expense-classify-slot="' + idx + '">' + renderCustomExpenseClassification(idx, exp) + '</div>'
     + '<label style="font-size:13px;color:#8390b5;display:block;margin-bottom:6px;">Monto mensual</label>'
-    + '<div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
-    + '<input type="number" data-custom-expense-field="amount" data-custom-idx="' + idx + '" placeholder="0" value="' + amt + '" style="width:100%;padding-left:36px;"/>'
-    + '</div></div>';
+    + '<div style="position:relative;max-width:100%;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
+    + '<input type="number" data-custom-expense-field="amount" data-custom-idx="' + idx + '" placeholder="0" value="' + amt + '" style="width:100%;max-width:100%;padding-left:36px;box-sizing:border-box;"/>'
+    + '</div>'
+    + '<div data-custom-expense-insight="' + idx + '">' + renderGastoCategoryInsight("otros", parseFloat(exp.amount) || 0) + '</div>'
+    + '</div>';
 }
 
 function renderGastos() {
   var gastos = _st().gastos || {};
   var custom = _st().custom_expenses || [];
-  var total  = typeof getTotalMonthlyExpenses === "function"
-    ? getTotalMonthlyExpenses()
-    : Object.values(gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0);
-  var pct    = PRE.ingreso > 0 ? total / PRE.ingreso : 0;
-  var pc     = pct > 0.9 ? "#ff4e72" : pct > 0.7 ? "#ffd36f" : "#34ffaf";
+  var icons  = typeof EXPENSE_CAT_ICONS !== "undefined" ? EXPENSE_CAT_ICONS : {};
 
   // New flow: Gastos is step index 2 for SEGMENTO 1, index 1 for others
   var html = renderStepPills(SEGMENTO === 1 ? 2 : 1, SEGMENTO === 1 ? 3 : 2);
@@ -319,28 +413,26 @@ function renderGastos() {
     + EXPENSE_CATS.map(function(c, i) {
         var val    = parseFloat(gastos[c.k]) || 0;
         var isOpen = val > 0 || i === 0;
+        var icon   = icons[c.k] ? icons[c.k] + " " : "";
         return '<div class="accordion-item">'
           + '<button class="accordion-trigger' + (isOpen ? " open" : "") + '" data-accordion>'
-          + '<div style="flex:1;text-align:left;">'
-          + '<div>' + c.l + (val > 0 ? ' <span style="color:#40d7ff;font-size:17px;">' + fmt(val) + '</span>' : "") + '</div>'
+          + '<div style="flex:1;text-align:left;min-width:0;">'
+          + '<div style="word-break:break-word;">' + icon + c.l + (val > 0 ? ' <span style="color:#40d7ff;font-size:17px;">' + fmt(val) + '</span>' : "") + '</div>'
           + (c.h ? '<div style="font-size:12px;color:#8390b5;font-weight:400;line-height:1.4;margin-top:4px;">' + c.h + '</div>' : "")
           + '</div>'
           + '<span class="chevron">&#9660;</span></button>'
           + '<div class="accordion-body' + (isOpen ? " open" : "") + '">'
-          + '<div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
-          + '<input type="number" style="padding-left:36px;" placeholder="0" value="' + (gastos[c.k] || "") + '" data-gasto="' + c.k + '"/>'
-          + '</div></div></div>';
+          + '<div style="position:relative;max-width:100%;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
+          + '<input type="number" style="padding-left:36px;width:100%;max-width:100%;box-sizing:border-box;" placeholder="0" value="' + (gastos[c.k] || "") + '" data-gasto="' + c.k + '"/>'
+          + '</div>'
+          + '<div data-gasto-insight="' + c.k + '">' + renderGastoCategoryInsight(c.k, val) + '</div>'
+          + '</div></div>';
       }).join("")
     + '<div id="custom-expenses-block" style="margin-top:8px;">'
     + custom.map(function(exp, idx) { return renderCustomExpenseRow(exp, idx); }).join("")
     + '<button type="button" class="btn btn-secondary" id="btn-agregar-gasto-custom" style="width:100%;height:60px;font-size:17px;margin-top:18px;">Agregar otro gasto</button>'
     + '</div>'
-    + (total > 0
-        ? '<div style="margin-top:20px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.2);border-radius:18px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;">'
-          + '<span style="font-size:19px;font-weight:700;color:rgba(255,255,255,.8);">Total gastos</span>'
-          + '<span id="total-gastos-val" style="font-size:36px;font-weight:900;color:' + pc + ';">' + fmt(total) + '</span>'
-          + '</div>'
-        : "")
+    + '<div id="gastos-educacion-block">' + renderGastosEducacionBlock() + '</div>'
     + '</div>';
 
   // Sprint 9 — inline warning when user tries to continue with no gastos
