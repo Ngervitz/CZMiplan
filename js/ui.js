@@ -218,9 +218,82 @@ function mostrarEvaluacion() {
 // =============================================================================
 // STEP 1 — GASTOS
 // =============================================================================
+function updateGastosTotalDisplay() {
+  var el = document.getElementById("total-gastos-val");
+  if (!el) return;
+  var total = typeof getTotalMonthlyExpenses === "function"
+    ? getTotalMonthlyExpenses()
+    : Object.values(_st().gastos || {}).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0);
+  var pct = PRE.ingreso > 0 ? total / PRE.ingreso : 0;
+  var pc  = pct > 0.9 ? "#ff4e72" : pct > 0.7 ? "#ffd36f" : "#34ffaf";
+  el.textContent = fmt(total);
+  el.style.color = pc;
+}
+
+function renderCustomExpenseClassification(idx, exp) {
+  var st = _st();
+  var excluded = (st._custom_expense_debt_excluded || {})[String(idx)];
+  var needsClassify = detectDebtKeywordsInDescription(exp.description)
+    && !exp.classification_override
+    && !excluded;
+
+  if (excluded) {
+    return '<div data-custom-expense-debt-msg="' + idx + '" style="margin-top:10px;background:rgba(255,196,0,.09);border:1px solid rgba(255,196,0,.28);border-radius:14px;padding:16px 18px;">'
+      + '<div style="font-size:14px;color:rgba(255,255,255,.85);line-height:1.55;margin-bottom:14px;">'
+      + 'Este concepto parece corresponder a una deuda financiera. Para que el diagnóstico sea más preciso, ingresalo en la sección Mis deudas.'
+      + '</div>'
+      + '<button type="button" class="btn btn-secondary" data-ir-mis-deudas style="height:48px;font-size:15px;color:#ffd447;border-color:rgba(255,196,0,.35);">Ir a Mis deudas</button>'
+      + '</div>';
+  }
+
+  if (!needsClassify) return "";
+
+  return '<div data-custom-expense-classify="' + idx + '" style="margin-top:10px;background:rgba(255,196,0,.09);border:1px solid rgba(255,196,0,.28);border-radius:14px;padding:16px 18px;">'
+    + '<div style="font-size:14px;font-weight:800;color:#ffd447;margin-bottom:8px;">Antes de continuar, ayudanos a clasificar este concepto</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.8);line-height:1.5;margin-bottom:14px;">¿Esto corresponde a un gasto mensual o a una deuda financiera?</div>'
+    + '<label style="display:flex;align-items:center;gap:10px;font-size:15px;color:rgba(255,255,255,.9);margin-bottom:10px;cursor:pointer;">'
+    + '<input type="radio" name="custom-expense-classify-' + idx + '" data-classify-expense-gasto data-custom-idx="' + idx + '" style="width:18px;height:18px;"/> Gasto mensual'
+    + '</label>'
+    + '<label style="display:flex;align-items:center;gap:10px;font-size:15px;color:rgba(255,255,255,.9);cursor:pointer;">'
+    + '<input type="radio" name="custom-expense-classify-' + idx + '" data-classify-expense-deuda data-custom-idx="' + idx + '" style="width:18px;height:18px;"/> Deuda o préstamo'
+    + '</label>'
+    + '</div>';
+}
+
+function updateCustomExpenseClassificationUI(idx) {
+  var slot = document.querySelector('[data-custom-expense-classify-slot="' + idx + '"]');
+  if (!slot) return;
+  var exp = (_st().custom_expenses || [])[idx];
+  if (!exp) {
+    slot.innerHTML = "";
+    return;
+  }
+  slot.innerHTML = renderCustomExpenseClassification(idx, exp);
+}
+
+function renderCustomExpenseRow(exp, idx) {
+  var desc = exp.description || "";
+  var amt  = exp.amount ? String(exp.amount) : "";
+  return '<div class="custom-expense-row" data-custom-expense-row="' + idx + '" style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+    + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.85);">Otro gasto</div>'
+    + '<button type="button" class="btn btn-secondary" data-custom-expense-remove="' + idx + '" style="height:40px;font-size:14px;padding:0 14px;">Eliminar</button>'
+    + '</div>'
+    + '<label style="font-size:13px;color:#8390b5;display:block;margin-bottom:6px;">Descripción</label>'
+    + '<input type="text" data-custom-expense-field="description" data-custom-idx="' + idx + '" placeholder="Ej: medicamentos, club, etc." value="' + desc.replace(/"/g, "&quot;") + '" style="width:100%;margin-bottom:12px;"/>'
+    + '<div data-custom-expense-classify-slot="' + idx + '">' + renderCustomExpenseClassification(idx, exp) + '</div>'
+    + '<label style="font-size:13px;color:#8390b5;display:block;margin-bottom:6px;">Monto mensual</label>'
+    + '<div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
+    + '<input type="number" data-custom-expense-field="amount" data-custom-idx="' + idx + '" placeholder="0" value="' + amt + '" style="width:100%;padding-left:36px;"/>'
+    + '</div></div>';
+}
+
 function renderGastos() {
   var gastos = _st().gastos || {};
-  var total  = Object.values(gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0);
+  var custom = _st().custom_expenses || [];
+  var total  = typeof getTotalMonthlyExpenses === "function"
+    ? getTotalMonthlyExpenses()
+    : Object.values(gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0);
   var pct    = PRE.ingreso > 0 ? total / PRE.ingreso : 0;
   var pc     = pct > 0.9 ? "#ff4e72" : pct > 0.7 ? "#ffd36f" : "#34ffaf";
 
@@ -248,13 +321,20 @@ function renderGastos() {
         var isOpen = val > 0 || i === 0;
         return '<div class="accordion-item">'
           + '<button class="accordion-trigger' + (isOpen ? " open" : "") + '" data-accordion>'
-          + '<span>' + c.l + (val > 0 ? ' <span style="color:#40d7ff;font-size:17px;">' + fmt(val) + '</span>' : "") + '</span>'
+          + '<div style="flex:1;text-align:left;">'
+          + '<div>' + c.l + (val > 0 ? ' <span style="color:#40d7ff;font-size:17px;">' + fmt(val) + '</span>' : "") + '</div>'
+          + (c.h ? '<div style="font-size:12px;color:#8390b5;font-weight:400;line-height:1.4;margin-top:4px;">' + c.h + '</div>' : "")
+          + '</div>'
           + '<span class="chevron">&#9660;</span></button>'
           + '<div class="accordion-body' + (isOpen ? " open" : "") + '">'
           + '<div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
           + '<input type="number" style="padding-left:36px;" placeholder="0" value="' + (gastos[c.k] || "") + '" data-gasto="' + c.k + '"/>'
           + '</div></div></div>';
       }).join("")
+    + '<div id="custom-expenses-block" style="margin-top:8px;">'
+    + custom.map(function(exp, idx) { return renderCustomExpenseRow(exp, idx); }).join("")
+    + '<button type="button" class="btn btn-secondary" id="btn-agregar-gasto-custom" style="width:100%;height:60px;font-size:17px;margin-top:18px;">Agregar otro gasto</button>'
+    + '</div>'
     + (total > 0
         ? '<div style="margin-top:20px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.2);border-radius:18px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;">'
           + '<span style="font-size:19px;font-weight:700;color:rgba(255,255,255,.8);">Total gastos</span>'
@@ -713,6 +793,76 @@ function renderTab() {
 // SPRINT 2 — HELPERS DE RECUPERACION
 // =============================================================================
 
+function _finFromDiag(diag) {
+  var fin = (diag && diag.fin) ? diag.fin : {};
+  if (fin.dti_ratio == null && typeof calcularFinanciero === "function") {
+    fin = calcularFinanciero();
+  }
+  return fin;
+}
+
+function _dtiRatioDisplay(ratio) {
+  if (ratio == null || isNaN(ratio)) return "—";
+  return (Math.round(ratio * 10) / 10) + "x";
+}
+
+function _dtiLevelLabel(level) {
+  var labels = {
+    normal:    "Normal",
+    moderado:  "Moderada",
+    elevado:   "Elevada",
+    alto:      "Alta",
+    critico:   "Crítica",
+  };
+  return labels[level] || level || "—";
+}
+
+var CZ_DTI_ACCION_PRIORITARIA =
+  "Confirmar el saldo actualizado y definir si esta deuda debe estabilizarse, refinanciarse o atacarse primero.";
+
+function renderRelacionDeudaIngreso(diag) {
+  var fin = _finFromDiag(diag);
+  if (fin.dti_ratio == null) return "";
+
+  return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
+    + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Relación deuda / ingreso</div>'
+    + '<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px;">'
+    + '<div style="font-size:32px;font-weight:900;color:rgba(255,255,255,.92);">' + _dtiRatioDisplay(fin.dti_ratio) + '</div>'
+    + '<div style="font-size:17px;font-weight:700;color:#a0b0ff;">' + _dtiLevelLabel(fin.dti_level) + '</div>'
+    + '</div>'
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;">Este indicador compara el total de deuda declarada contra un ingreso mensual.</div>'
+    + '</div>';
+}
+
+function renderDtiStockBlockerCard() {
+  return '<div style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:rgba(255,211,111,.07);border:1px solid rgba(255,211,111,.2);border-radius:12px;">'
+    + '<div style="width:8px;height:8px;border-radius:50%;background:#ffd36f;flex-shrink:0;margin-top:6px;"></div>'
+    + '<div>'
+    + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.9);line-height:1.4;">Deuda acumulada relevante</div>'
+    + '<div style="font-size:13px;color:#8390b5;margin-top:6px;line-height:1.55;">El total de deuda declarado supera un ingreso mensual completo. Aunque el pago mensual informado sea bajo o cero, este nivel de deuda puede seguir influyendo en una evaluación crediticia.</div>'
+    + '</div></div>';
+}
+
+function renderConfianzaDiagnostico(diag) {
+  var fin  = (diag && diag.fin) ? diag.fin : {};
+  var conf = fin.confianza_diagnostico;
+  if (conf == null) return "";
+
+  var nivelLabel;
+  if (conf >= 90)      nivelLabel = "Alta";
+  else if (conf >= 70) nivelLabel = "Media";
+  else                 nivelLabel = "Reducida";
+
+  return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
+    + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Confianza del diagnóstico</div>'
+    + '<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px;">'
+    + '<div style="font-size:32px;font-weight:900;color:rgba(255,255,255,.92);">' + conf + '</div>'
+    + '<div style="font-size:17px;font-weight:700;color:#a0b0ff;">' + nivelLabel + '</div>'
+    + '</div>'
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;">Este indicador refleja cuánta información tiene el sistema para interpretar tu situación.</div>'
+    + '</div>';
+}
+
 function renderBloqueadores(diag) {
   var bl  = diag.bloqueadores;
   var iv2 = diag.interpretacion_v2 || {};
@@ -740,17 +890,28 @@ function renderBloqueadores(diag) {
       + '</div></div>';
   }
 
+  var finBl = _finFromDiag(diag);
+  var hasElevatedDti = (finBl.dti_ratio || 0) >= 1;
+
   if (!bl || bl.length === 0) {
-    return '<div class="plan-card" style="border-color:rgba(52,255,175,.2);">'
+    if (hasElevatedDti) {
+      return '<div class="plan-card" style="border-color:rgba(255,211,111,.22);">'
+        + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
+        + renderDtiStockBlockerCard()
+        + '</div>';
+    }
+    return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);">'
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
-      + '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(52,255,175,.06);border:1px solid rgba(52,255,175,.15);border-radius:12px;">'
-      + '<div style="font-size:18px;color:#34ffaf;">✓</div>'
-      + '<div style="font-size:15px;color:rgba(255,255,255,.8);line-height:1.5;">Sin factores criticos detectados en tu perfil actual. Puede haber condiciones para intentar una solicitud.</div>'
+      + '<div style="padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;">'
+      + '<div style="font-size:15px;color:rgba(255,255,255,.8);line-height:1.55;">Con la información declarada, no se detectan factores críticos adicionales en este diagnóstico. Eso no explica por sí solo una solicitud rechazada ni garantiza que una nueva evaluación sea viable.</div>'
       + '</div></div>';
   }
   return '<div class="plan-card">'
     + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
     + bl.map(function(b) {
+        if (b.tipo === "stock_deuda_alto") {
+          return renderDtiStockBlockerCard();
+        }
         var isAlto = b.impacto === "alto";
         var bc   = isAlto ? "rgba(255,78,114,.09)"  : "rgba(255,211,111,.07)";
         var bord = isAlto ? "rgba(255,78,114,.22)"  : "rgba(255,211,111,.18)";
@@ -759,7 +920,11 @@ function renderBloqueadores(diag) {
           + '<div style="width:8px;height:8px;border-radius:50%;background:' + col + ';flex-shrink:0;margin-top:6px;"></div>'
           + '<div>'
           + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.9);line-height:1.4;">' + b.etiqueta + '</div>'
-          + '<div style="font-size:13px;color:#8390b5;margin-top:3px;">' + (b.tipo === "informal" ? 'Puede generar presion financiera aunque no aparezca directamente en Clearing o BCU.' : isAlto ? 'Dificulta directamente la aprobacion de credito.' : 'Puede dificultar la aprobacion segun el criterio del banco.') + '</div>'
+          + '<div style="font-size:13px;color:#8390b5;margin-top:3px;">' + (b.tipo === "informal"
+              ? 'Puede generar presión financiera aunque no aparezca directamente en Clearing o BCU.'
+              : isAlto
+              ? 'Este factor puede influir en cómo se interpreta tu situación en una evaluación crediticia.'
+              : 'Este factor puede sumar presión al interpretar tu situación financiera declarada.') + '</div>'
           + '</div></div>';
       }).join("")
     + '</div>';
@@ -833,13 +998,29 @@ function renderHorizonteRecalificacion(diag) {
   }
 
   // ── 3. NORMAL HORIZON ─────────────────────────────────────────────────────
+  var finHorizon = _finFromDiag(diag);
+
+  // Sprint 12.1.b — rejection-aware horizon when debt stock exceeds income
+  if ((finHorizon.dti_ratio || 0) >= 1) {
+    return '<div class="plan-card" style="border-color:rgba(255,211,111,.22);background:rgba(255,211,111,.05);">'
+      + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
+      + '<div style="font-size:24px;font-weight:900;color:#ffd36f;line-height:1.3;margin-bottom:12px;">Tu deuda acumulada ya puede estar pesando en la evaluación</div>'
+      + '<div style="font-size:13px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:10px;">El total de deuda que declaraste supera tu ingreso mensual. Aunque no tengas pagos activos registrados, este nivel de deuda puede influir en una futura evaluación.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Como este diagnóstico parte de una solicitud rechazada, conviene revisar si esta deuda tiene pagos, refinanciaciones o información adicional que todavía no fue incorporada.</div>'
+      + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
+      + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
+      + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
+      + '</div></div>';
+  }
+
+  var horizonLabel = h.label;
   var col  = (h.banda === "inmediato" || h.banda === "corto") ? "#34ffaf" : h.banda === "medio" ? "#ffd36f" : "#8390b5";
   var bg   = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.06)"  : h.banda === "medio" ? "rgba(255,211,111,.06)"  : "rgba(255,255,255,.03)";
   var bord = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.2)"   : h.banda === "medio" ? "rgba(255,211,111,.18)"  : "rgba(255,255,255,.08)";
   return '<div class="plan-card" style="border-color:' + bord + ';background:' + bg + ';">'
     + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
-    + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + h.label + '</div>'
-    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Basado en la informacion analizada, sin nuevas deudas, siguiendo el plan. El historial real del sistema financiero puede incluir otros elementos que modifiquen este calculo.</div>'
+    + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + horizonLabel + '</div>'
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Basado en la información declarada, sin nuevas deudas y siguiendo el plan. El historial del sistema financiero puede incluir elementos que esta simulación no alcanza a ver.</div>'
     + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
     + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
     + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
@@ -901,6 +1082,10 @@ function renderNarrativaInterpretacion(diag) {
   var nPresion   = getNarrativaByTipo(iv2.narrativa_jerarquizada, "presion_dominante");
   var nRecup     = getNarrativaByTipo(iv2.narrativa_jerarquizada, "recuperabilidad");
   var nPaso      = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
+  var finNar     = _finFromDiag(diag);
+  var textoPaso  = ((finNar.dti_ratio || 0) >= 1)
+    ? CZ_DTI_ACCION_PRIORITARIA
+    : (nPaso ? nPaso.texto : null);
 
   var block = function(label, text) {
     if (!text) return "";
@@ -934,7 +1119,7 @@ function renderNarrativaInterpretacion(diag) {
     + block("Qué está pasando",        nPrincipal ? nPrincipal.texto : null)
     + (showPresion ? block("Presión principal",          nPresion  ? nPresion.texto  : null) : "")
     + block("Capacidad de recuperación", nRecup     ? nRecup.texto    : null)
-    + block("Primer paso recomendado",   nPaso      ? nPaso.texto     : null)
+    + block("Primer paso recomendado",   textoPaso)
     + confidenceNote
     + '</div>';
 }
@@ -990,6 +1175,12 @@ function renderTabPlan() {
     // 2. Interpretacion v2 — narrative blocks (Sprint 7B)
     + renderNarrativaInterpretacion(diag)
 
+    // Sprint 12.1 — confianza del diagnóstico (DTI / stock de deuda)
+    + renderConfianzaDiagnostico(diag)
+
+    // Sprint 12.1.b — relación deuda / ingreso (educational)
+    + renderRelacionDeudaIngreso(diag)
+
     // 3. Bloqueadores activos
     + renderBloqueadores(diag)
 
@@ -1001,9 +1192,9 @@ function renderTabPlan() {
     // Reuses existing Mi Plan Plus flow. No new checkout or route created.
     + (typeof detectHiddenFactorOpportunity === "function" && detectHiddenFactorOpportunity(diag)
         ? '<div class="plan-card" id="cz-hf-cta" style="background:rgba(64,215,255,.05);border-color:rgba(64,215,255,.2);">'
-          + '<div style="font-size:13px;font-weight:800;color:#40d7ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">🔍 Tu perfil declarado no muestra un bloqueo evidente</div>'
-          + '<div style="font-size:16px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:12px;">Con la información que ingresaste, no aparece una causa clara para el rechazo. Puede haber factores externos que esta simulación no puede ver.</div>'
-          + '<div style="font-size:14px;color:#8390b5;line-height:1.6;margin-bottom:20px;">Mi Plan Plus puede ayudarte a revisar información externa y entender mejor qué puede estar frenando la solicitud.</div>'
+          + '<div style="font-size:13px;font-weight:800;color:#40d7ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">🔍 Puede haber factores que esta simulación no alcanza a ver</div>'
+          + '<div style="font-size:16px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:12px;">Partís de una solicitud rechazada. Con lo declarado acá, todavía puede haber información externa o registros del sistema financiero que no entraron en este diagnóstico.</div>'
+          + '<div style="font-size:14px;color:#8390b5;line-height:1.6;margin-bottom:20px;">Mi Plan Plus puede ayudarte a revisar esa información y aclarar qué pudo influir en la evaluación.</div>'
           + '<button class="btn btn-primary" id="btn-hf-cta" style="width:100%;height:60px;font-size:18px;">Ver mi informe completo</button>'
           + '</div>'
         : '')
@@ -1027,14 +1218,18 @@ function renderTabPlan() {
         var iv2 = diag.interpretacion_v2;
         if (!iv2 || !iv2.narrativa_jerarquizada) return "";
         var nPaso = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
-        if (!nPaso || !nPaso.texto) return "";
+        var finAccion = _finFromDiag(diag);
+        var textoAccion = ((finAccion.dti_ratio || 0) >= 1)
+          ? CZ_DTI_ACCION_PRIORITARIA
+          : (nPaso && nPaso.texto ? nPaso.texto : null);
+        if (!textoAccion) return "";
         return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);">'
           + '<div style="font-size:13px;font-weight:800;color:#8390b5;'
           + 'text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Acción prioritaria</div>'
           + '<div style="padding:14px 16px;background:rgba(255,255,255,.04);'
           + 'border:1px solid rgba(255,255,255,.09);border-radius:12px;">'
           + '<div style="font-size:15px;color:rgba(255,255,255,.9);line-height:1.65;">'
-          + nPaso.texto
+          + textoAccion
           + '</div></div></div>';
       })()
 
@@ -1493,7 +1688,9 @@ function renderHerramientasPlan1() {
   var gc   = herr.gastos_cls || {};
   var gastos = _st().gastos || {};
   var totalA = EXPENSE_CATS.filter(function(c) { return gc[c.k] === "ajustable"; }).reduce(function(s, c) { return s + (parseFloat(gastos[c.k]) || 0); }, 0);
-  var flujoR = (ing.total || PRE.ingreso) - Object.values(gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0) - (_diag() ? _diag().fin.totalPago : 0);
+  var flujoR = (ing.total || PRE.ingreso)
+    - (typeof getTotalMonthlyExpenses === "function" ? getTotalMonthlyExpenses() : Object.values(gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0))
+    - (_diag() ? _diag().fin.totalPago : 0);
   var c1 = ing.total > 0;
   var c2 = Object.keys(gc).length > 0;
   var gCV = EXPENSE_CATS.filter(function(c) { return parseFloat(gastos[c.k]) > 0; });
@@ -1679,7 +1876,9 @@ function renderHerramientasPlan4() {
   var gastos     = _st().gastos || {};
   var diag       = _diag();
   var flujoBase  = diag ? diag.fin.flujoLibre : 0;
-  var maxSlider  = Math.max(2000, Object.values(gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0));
+  var maxSlider  = Math.max(2000, typeof getTotalMonthlyExpenses === "function"
+    ? getTotalMonthlyExpenses()
+    : Object.values(gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0));
   var flujoColor = flujoBase >= 0 ? "#34ffaf" : "#ff4e72";
 
   var h1 = renderToolCard(1, "Semaforo de tu situacion", "Tres preguntas para saber como estas esta semana.",
@@ -2192,7 +2391,9 @@ window.CredizonaUI = {
   bindTabEvents: bindTabEvents,
   abrirModalPremium: abrirModalPremium,
   abrirModalInformeCompleto: abrirModalPremium,
-  mostrarEvaluacion: mostrarEvaluacion
+  mostrarEvaluacion: mostrarEvaluacion,
+  updateGastosTotalDisplay: updateGastosTotalDisplay,
+  updateCustomExpenseClassificationUI: updateCustomExpenseClassificationUI,
 };
 
 window.renderAll = renderAll;

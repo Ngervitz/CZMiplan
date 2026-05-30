@@ -25,15 +25,98 @@ const DEBT_TYPES = [
   { v: "mora",        l: "Deuda en mora",         tasa: 140 },
 ];
 
-// Categorias de gastos mensuales
+// Categorias de gastos mensuales (Sprint 12)
 const EXPENSE_CATS = [
-  { k: "alquiler",     l: "Alquiler / Vivienda"          },
-  { k: "servicios",    l: "Servicios (UTE, OSE, ANTEL)"  },
-  { k: "alimentacion", l: "Alimentacion"                 },
-  { k: "transporte",   l: "Transporte"                   },
-  { k: "salud",        l: "Salud / mutualista"           },
-  { k: "otros",        l: "Otros gastos"                 },
+  { k: "vivienda",      l: "Vivienda",                   h: "(Ej: alquiler, hipoteca, cooperativa, aporte familiar)" },
+  { k: "alimentacion",  l: "Alimentación",               h: "(Ej: supermercado, feria, comida del trabajo)" },
+  { k: "servicios",     l: "Servicios",                  h: "(Ej: UTE, OSE, ANTEL, internet, celular)" },
+  { k: "transporte",    l: "Transporte",                 h: "(Ej: combustible, boleto, peaje, mantenimiento)" },
+  { k: "salud",         l: "Salud",                      h: "(Ej: mutualista, medicamentos, consultas)" },
+  { k: "educacion",     l: "Educación",                  h: "(Ej: colegio, facultad, cursos)" },
+  { k: "hijos_familia", l: "Hijos y familia",            h: "(Ej: pensión, niñera, apoyo escolar)" },
+  { k: "ocio",          l: "Ocio y entretenimiento",     h: "(Ej: gimnasio, salidas, streaming)" },
 ];
+
+// Sprint 12 — gasto vs deuda keyword detection (custom expense descriptions)
+var EXPENSE_DEBT_KEYWORDS = [
+  "oca", "visa", "mastercard", "creditel", "pronto", "anda",
+  "prestamo", "credito", "financiera", "cuota", "tarjeta", "banco",
+  "brou", "itau", "santander", "scotiabank", "bbva", "cofac", "fucerep",
+  "cooperativa", "deuda", "mora", "atraso", "refinanciacion",
+];
+
+function normalizeExpenseText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function detectDebtKeywordsInDescription(description) {
+  var norm = normalizeExpenseText(description);
+  if (!norm) return false;
+  for (var i = 0; i < EXPENSE_DEBT_KEYWORDS.length; i++) {
+    if (norm.indexOf(EXPENSE_DEBT_KEYWORDS[i]) !== -1) return true;
+  }
+  return false;
+}
+
+function migrateGastosKeys(gastos) {
+  gastos = gastos || {};
+  if (gastos.alquiler != null && gastos.vivienda == null) {
+    gastos.vivienda = gastos.alquiler;
+    delete gastos.alquiler;
+  }
+  if (gastos.otros != null) {
+    var otrosVal = parseFloat(gastos.otros) || 0;
+    if (otrosVal > 0) {
+      gastos.ocio = (parseFloat(gastos.ocio) || 0) + otrosVal;
+    }
+    delete gastos.otros;
+  }
+  return gastos;
+}
+
+function getCategoryGastosTotal(gastos) {
+  gastos = gastos || {};
+  return Object.keys(gastos).reduce(function(s, k) {
+    return s + (parseFloat(gastos[k]) || 0);
+  }, 0);
+}
+
+function isCustomExpenseIncluded(exp, idx) {
+  var st = window.CZState || {};
+  var excluded = st._custom_expense_debt_excluded || {};
+  if (excluded[String(idx)]) return false;
+  if (detectDebtKeywordsInDescription(exp.description) && !exp.classification_override) {
+    return false;
+  }
+  return true;
+}
+
+function getCustomExpensesIncludedTotal() {
+  var arr = (window.CZState && window.CZState.custom_expenses) || [];
+  return arr.reduce(function(s, exp, i) {
+    if (!isCustomExpenseIncluded(exp, i)) return s;
+    return s + (parseFloat(exp.amount) || 0);
+  }, 0);
+}
+
+function getTotalMonthlyExpenses() {
+  var st = window.CZState || {};
+  return getCategoryGastosTotal(st.gastos) + getCustomExpensesIncludedTotal();
+}
+
+function sanitizeCustomExpensesForSave(arr) {
+  return (arr || []).map(function(e) {
+    return {
+      description:             String(e.description || ""),
+      amount:                  parseFloat(e.amount) || 0,
+      classification_override: !!e.classification_override,
+    };
+  });
+}
 
 // Estados de atraso con semaforo
 const ESTADOS_DEUDA = [

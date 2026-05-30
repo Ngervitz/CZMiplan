@@ -70,13 +70,52 @@ const PLANES = {
 };
 
 // =============================================================================
+// SPRINT 12.1 — STOCK DE DEUDA (DTI) — interpretation layer only
+// Does NOT affect scoreFinanciero, scoreReset, guardrails, or plan assignment.
+// =============================================================================
+function evaluarStockDeuda(fin, ingreso) {
+  var ing         = ingreso || 0;
+  var deudaTotal  = fin.totalDeuda || 0;
+  var dti_ratio   = ing > 0 ? deudaTotal / ing : (deudaTotal > 0 ? 999 : 0);
+
+  var dti_level;
+  if (dti_ratio < 0.5)       dti_level = "normal";
+  else if (dti_ratio < 1)    dti_level = "moderado";
+  else if (dti_ratio < 2)    dti_level = "elevado";
+  else if (dti_ratio < 5)    dti_level = "alto";
+  else                       dti_level = "critico";
+
+  var confianzaMap = {
+    normal:    100,
+    moderado:  90,
+    elevado:   80,
+    alto:      70,
+    critico:   50,
+  };
+
+  fin.dti_ratio             = Math.round(dti_ratio * 100) / 100;
+  fin.dti_level             = dti_level;
+  fin.confianza_diagnostico = confianzaMap[dti_level];
+  return fin;
+}
+
+function etiquetaStockDeuda(dti_ratio) {
+  if (dti_ratio >= 5) return "El nivel de deuda acumulada es muy elevado respecto al ingreso.";
+  if (dti_ratio >= 2) return "El nivel total de deuda equivale a varios ingresos mensuales.";
+  if (dti_ratio >= 1) return "El nivel total de deuda supera un ingreso mensual completo.";
+  return null;
+}
+
+// =============================================================================
 // MOTOR FINANCIERO
 // =============================================================================
 function calcularFinanciero() {
   const gastos = _gastos();
   const deudas = _deudas();
 
-  const totalGastos = Object.values(gastos).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+  const totalGastos = typeof getTotalMonthlyExpenses === "function"
+    ? getTotalMonthlyExpenses()
+    : Object.values(gastos).reduce((s, v) => s + (parseFloat(v) || 0), 0);
   const totalDeuda  = deudas.reduce((s, d) => s + (parseFloat(d.monto) || 0), 0);
   const totalPago   = deudas.reduce((s, d) => s + (parseFloat(d.pago)  || 0), 0);
   const ingreso     = PRE.ingreso;
@@ -114,11 +153,14 @@ function calcularFinanciero() {
   if (totalPago > 50000 || interesProm > 90) nivelRiesgo = "Critico";
   else if (totalPago > 25000 || interesProm > 60) nivelRiesgo = "Medio";
 
-  return {
+  var fin = {
     totalGastos, totalDeuda, totalPago, flujoLibre, ratio,
     interesProm, scoreFinanciero: score, nivelRiesgo,
     cantMoras: moras, cantInformales: informales,
   };
+
+  evaluarStockDeuda(fin, ingreso);
+  return fin;
 }
 
 // =============================================================================
@@ -242,6 +284,14 @@ function calcularBloqueadores(fin) {
     bl.push({ tipo: "ratio_critico", etiqueta: "Carga de pagos sobre el 50% del ingreso", impacto: "alto" });
   } else if (fin.ratio > 0.35) {
     bl.push({ tipo: "ratio_alto", etiqueta: "Carga de pagos entre el 35% y 50% del ingreso", impacto: "medio" });
+  }
+  var stockEtiqueta = etiquetaStockDeuda(fin.dti_ratio || 0);
+  if (stockEtiqueta) {
+    bl.push({
+      tipo:     "stock_deuda_alto",
+      etiqueta: stockEtiqueta,
+      impacto:  (fin.dti_ratio || 0) >= 2 ? "alto" : "medio",
+    });
   }
   return bl;
 }
@@ -739,6 +789,7 @@ function textoParaNarrativa(entry) {
     var cp = {
       flujo_negativo:    "Los pagos actuales superan el ingreso disponible. El margen mensual real es negativo.",
       mora_activa:       "Hay deudas en atraso o mora activa que están afectando el perfil financiero hoy.",
+      stock_deuda_alto:  "El flujo mensual puede parecer manejable, pero el volumen total de deuda acumulada sigue siendo un factor importante.",
       estres_alto:       "El nivel de presión financiera declarado es alto. Eso puede dificultar la toma de decisiones.",
       presion_informal:  "Parte de la presión financiera ocurre fuera del sistema formal, sin registro en Clearing o BCU.",
       deuda_cara:        "La deuda prioritaria tiene un costo financiero alto en relación al ingreso disponible.",
@@ -763,7 +814,7 @@ function textoParaNarrativa(entry) {
 
   if (entry.tipo === "recuperabilidad") {
     var rc = {
-      recuperable_rapido:      "El perfil muestra condiciones para una recuperación relativamente rápida si se actúa sobre la causa principal.",
+      recuperable_rapido:      "El perfil muestra margen para trabajar la recuperación con un plan sostenido, si se actúa sobre la causa principal.",
       recuperable_medio:       "La recuperación es posible pero requiere un plan sostenido en el tiempo.",
       recuperable_largo:       "La situación requiere estabilización antes de poder pensar en recalificación.",
       requiere_estabilizacion: "Antes de recuperar el perfil, el objetivo es estabilizar la presión financiera actual.",
@@ -781,6 +832,7 @@ function textoParaNarrativa(entry) {
       formalizar_informal:       "Formalizar o reestructurar el compromiso informal reduce presión fuera del sistema y mejora el perfil.",
       definir_primer_paso:       "Definir una acción concreta esta semana es más valioso que planificar sin ejecutar.",
       ordenar_panorama:          "Ordenar el panorama completo de deudas y flujo es el punto de partida más útil ahora.",
+      confirmar_saldo_stock_deuda: "Confirmar el saldo actualizado y definir si esta deuda debe estabilizarse, refinanciarse o atacarse primero.",
     };
     return sp[entry.accion] || null;
   }
@@ -834,6 +886,10 @@ function interpretarDiagnostico(diag) {
     {
       id:    "mora_activa",
       match: function() { return cantMoras > 0 || behav.tiene_mora_declarada; },
+    },
+    {
+      id:    "stock_deuda_alto",
+      match: function() { return (fin.dti_ratio || 0) >= 1; },
     },
     {
       id:    "estres_alto",
@@ -946,6 +1002,15 @@ function interpretarDiagnostico(diag) {
     });
   }
 
+  var stockDesc = etiquetaStockDeuda(fin.dti_ratio || 0);
+  if (stockDesc) {
+    bloqueadores.push({
+      tipo:        "stock_deuda_alto",
+      severidad:   (fin.dti_ratio || 0) >= 2 ? "alta" : "media",
+      descripcion: stockDesc,
+    });
+  }
+
   if (behav.debt_data_quality === "low") {
     bloqueadores.push({
       tipo:        "datos_insuficientes",
@@ -1006,6 +1071,10 @@ function interpretarDiagnostico(diag) {
   var next_best_action = NBA_MAP[causa_principal] || "ordenar_panorama";
   if (sev.severity_level === "critico") {
     next_best_action = "estabilizar_atraso";
+  }
+  // Sprint 12.1.b — debt stock priority (interpretation only; no score/plan change)
+  if ((fin.dti_ratio || 0) >= 1) {
+    next_best_action = "confirmar_saldo_stock_deuda";
   }
 
   // ── 6. BEHAVIORAL CONTRADICTION DETECTION ────────────────────────────────
@@ -1117,6 +1186,9 @@ function interpretarDiagnostico(diag) {
     has_unpaid_debt:          sev.has_unpaid_debt,
     has_mora_or_deje_pagar:   sev.has_mora_or_deje_pagar,
     severe_latent_pressure:   sev.severe_latent_pressure,
+    dti_ratio:                fin.dti_ratio             != null ? fin.dti_ratio             : null,
+    dti_level:                fin.dti_level             || null,
+    confianza_diagnostico:    fin.confianza_diagnostico != null ? fin.confianza_diagnostico : null,
   };
 }
 
@@ -1140,6 +1212,12 @@ function detectHiddenFactorOpportunity(diag) {
         && Object.keys(PRE.respuestas).filter(function(k) { return PRE.respuestas[k] !== null; }).length > 0);
   if (!vinoDeRechazo) return false;
 
+  var fin = diag.fin || {};
+  // Sprint 12.1.b — visible debt stock is not a "hidden factor"
+  if ((fin.dti_ratio || 0) >= 1) return false;
+  var dtiLevel = fin.dti_level || "";
+  if (dtiLevel === "elevado" || dtiLevel === "alto" || dtiLevel === "critico") return false;
+
   // Exclude all critical or compromised rendered states
   if (diag.planId === 4)  return false;
   if (diag.nivelR === "C") return false;
@@ -1151,7 +1229,6 @@ function detectHiddenFactorOpportunity(diag) {
   if (diag.gastos_missing_confirmed) return false;
 
   // Must have positive cashflow (both measures)
-  var fin = diag.fin || {};
   if ((fin.flujoLibre != null ? fin.flujoLibre : 0) < 0) return false;
   var rad = typeof calcularRadiografia === "function" ? calcularRadiografia() : {};
   var fla = rad.flujoLibreActivo != null ? rad.flujoLibreActivo : (fin.flujoLibre != null ? fin.flujoLibre : 0);
@@ -1226,6 +1303,9 @@ function buildDiagnosisSnapshot() {
     guardrail_reason:       motor.guardrail_reason    || null,
     debt_ratio:             fin.ratio            != null ? fin.ratio              : null,
     free_cash_flow:         fin.flujoLibre       != null ? fin.flujoLibre         : null,
+    dti_ratio:              fin.dti_ratio        != null ? fin.dti_ratio          : null,
+    dti_level:              fin.dti_level        || null,
+    confianza_diagnostico:  fin.confianza_diagnostico != null ? fin.confianza_diagnostico : null,
 
     // Blockers and horizon
     blockers:          motor.bloqueadores || [],

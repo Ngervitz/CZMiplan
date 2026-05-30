@@ -26,6 +26,7 @@ function buildCRMData(motor) {
       version_algoritmo: "reset_v2_simple",
     },
     expenses: st.gastos || {},
+    custom_expenses: sanitizeCustomExpensesForSave(st.custom_expenses || []),
     debts: (st.deudas || []).map(function(d) {
       var isUnknown = d.acreedor_normalizado === "otro";
       // Ensure enrichment is current (handles legacy debts without Sprint 6 fields)
@@ -84,6 +85,9 @@ function buildCRMData(motor) {
       severe_latent_pressure:    motor.interpretacion_v2 ? motor.interpretacion_v2.severe_latent_pressure    : null,
       deuda_total_ingreso_ratio: motor.interpretacion_v2 ? motor.interpretacion_v2.deuda_total_ingreso_ratio : null,
       recuperabilidad_class:     motor.interpretacion_v2 ? motor.interpretacion_v2.recuperabilidad_class     : null,
+      dti_ratio:                 motor.fin ? motor.fin.dti_ratio             : null,
+      dti_level:                 motor.fin ? motor.fin.dti_level             : null,
+      confianza_diagnostico:     motor.fin ? motor.fin.confianza_diagnostico : null,
     } : {},
     reset_plus: {
       estado: st.plusEstado || "sin_pago",

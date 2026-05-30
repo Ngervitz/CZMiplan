@@ -8,8 +8,9 @@
 // =============================================================================
 window.CZState = {
   step:          0,
-  gastos:        {},
-  deudas:        [],
+  gastos:          {},
+  custom_expenses: [],
+  deudas:          [],
   diag:          null,
   snap:          null,
   saldoIni:      0,
@@ -75,6 +76,7 @@ window.guardarLocal = function(extra) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.assign({
       step:                    st.step,
       gastos:                  st.gastos,
+      custom_expenses:         sanitizeCustomExpensesForSave(st.custom_expenses || []),
       deudas:                  st.deudas,
       diag:                    st.diag,
       snap:                    st.snap,
@@ -138,9 +140,11 @@ function next() {
 
   // step 2 (gastos) → step 3 (dashboard)
   if (st.step === 2) {
-    var total = Object.values(st.gastos).reduce(function(s, v) {
-      return s + (parseFloat(v) || 0);
-    }, 0);
+    var total = typeof getTotalMonthlyExpenses === "function"
+      ? getTotalMonthlyExpenses()
+      : Object.values(st.gastos).reduce(function(s, v) {
+          return s + (parseFloat(v) || 0);
+        }, 0);
 
     // Sprint 9 — Show inline warning when gastos are empty and user hasn't confirmed skip
     if (total === 0 && !st.gastos_missing_confirmed) {
@@ -204,6 +208,7 @@ function resetear() {
   window.CZState = {
     step:                0,
     gastos:              {},
+    custom_expenses:     [],
     deudas:              [],
     diag:                null,
     snap:                null,
@@ -360,7 +365,10 @@ async function init() {
   // Restore saved state (including new infrastructure fields)
   if (dataToUse) {
     st.step               = 3;
-    st.gastos             = dataToUse.gastos              || {};
+    st.gastos             = typeof migrateGastosKeys === "function"
+      ? migrateGastosKeys(dataToUse.gastos || {})
+      : (dataToUse.gastos || {});
+    st.custom_expenses    = dataToUse.custom_expenses || [];
     st.deudas             = dataToUse.deudas              || [];
     st.diag               = dataToUse.diag;
     st.snap               = dataToUse.snap                || null;
@@ -632,11 +640,48 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Gastos
+      // Gastos — categorías
       var gastoKey = e.target.getAttribute("data-gasto");
       if (gastoKey) {
         st.gastos[gastoKey] = e.target.value;
         window.guardarLocal();
+        if (window.CredizonaUI && typeof window.CredizonaUI.updateGastosTotalDisplay === "function") {
+          window.CredizonaUI.updateGastosTotalDisplay();
+        }
+        return;
+      }
+
+      // Sprint 12 — gastos personalizados
+      var customField = e.target.getAttribute("data-custom-expense-field");
+      var customIdx   = e.target.getAttribute("data-custom-idx");
+      if (customField && customIdx !== null) {
+        customIdx = parseInt(customIdx, 10);
+        if (!st.custom_expenses) st.custom_expenses = [];
+        if (!st.custom_expenses[customIdx]) {
+          st.custom_expenses[customIdx] = {
+            description: "",
+            amount: 0,
+            classification_override: false,
+          };
+        }
+        var cexp = st.custom_expenses[customIdx];
+        if (customField === "amount") {
+          cexp.amount = parseFloat(e.target.value) || 0;
+        } else {
+          cexp.description = e.target.value;
+          if (!detectDebtKeywordsInDescription(cexp.description)) {
+            if (!st._custom_expense_debt_excluded) st._custom_expense_debt_excluded = {};
+            delete st._custom_expense_debt_excluded[String(customIdx)];
+          }
+        }
+        window.guardarLocal();
+        if (customField === "description" && window.CredizonaUI
+            && typeof window.CredizonaUI.updateCustomExpenseClassificationUI === "function") {
+          window.CredizonaUI.updateCustomExpenseClassificationUI(customIdx);
+        }
+        if (window.CredizonaUI && typeof window.CredizonaUI.updateGastosTotalDisplay === "function") {
+          window.CredizonaUI.updateGastosTotalDisplay();
+        }
         return;
       }
 
@@ -1022,6 +1067,83 @@ document.addEventListener("DOMContentLoaded", function() {
           cta_source: "hidden_factor",
         });
         _abrirPremium();
+        return;
+      }
+
+      // Sprint 12 — agregar gasto personalizado
+      if (e.target.id === "btn-agregar-gasto-custom") {
+        if (!st.custom_expenses) st.custom_expenses = [];
+        st.custom_expenses.push({
+          description: "",
+          amount: 0,
+          classification_override: false,
+        });
+        window.guardarLocal();
+        window.CredizonaUI.renderAll();
+        return;
+      }
+
+      var customRemoveIdx = e.target.getAttribute("data-custom-expense-remove");
+      if (customRemoveIdx !== null) {
+        customRemoveIdx = parseInt(customRemoveIdx, 10);
+        if (st.custom_expenses && st.custom_expenses[customRemoveIdx] !== undefined) {
+          st.custom_expenses.splice(customRemoveIdx, 1);
+          if (st._custom_expense_debt_excluded) {
+            st._custom_expense_debt_excluded = {};
+          }
+          window.guardarLocal();
+          window.CredizonaUI.renderAll();
+        }
+        return;
+      }
+
+      var classifyGastoEl = e.target.closest
+        ? e.target.closest("[data-classify-expense-gasto]")
+        : null;
+      if (classifyGastoEl) {
+        var idxG = parseInt(classifyGastoEl.getAttribute("data-custom-idx"), 10);
+        if (st.custom_expenses && st.custom_expenses[idxG]) {
+          st.custom_expenses[idxG].classification_override = true;
+          if (st._custom_expense_debt_excluded) {
+            delete st._custom_expense_debt_excluded[String(idxG)];
+          }
+          window.guardarLocal();
+          if (window.CredizonaUI && typeof window.CredizonaUI.updateCustomExpenseClassificationUI === "function") {
+            window.CredizonaUI.updateCustomExpenseClassificationUI(idxG);
+          }
+          if (window.CredizonaUI && typeof window.CredizonaUI.updateGastosTotalDisplay === "function") {
+            window.CredizonaUI.updateGastosTotalDisplay();
+          }
+        }
+        return;
+      }
+
+      var classifyDeudaEl = e.target.closest
+        ? e.target.closest("[data-classify-expense-deuda]")
+        : null;
+      if (classifyDeudaEl) {
+        var idxD = parseInt(classifyDeudaEl.getAttribute("data-custom-idx"), 10);
+        if (st.custom_expenses && st.custom_expenses[idxD]) {
+          if (!st._custom_expense_debt_excluded) st._custom_expense_debt_excluded = {};
+          st._custom_expense_debt_excluded[String(idxD)] = true;
+          st.custom_expenses[idxD].classification_override = false;
+          window.guardarLocal();
+          if (window.CredizonaUI && typeof window.CredizonaUI.updateCustomExpenseClassificationUI === "function") {
+            window.CredizonaUI.updateCustomExpenseClassificationUI(idxD);
+          }
+          if (window.CredizonaUI && typeof window.CredizonaUI.updateGastosTotalDisplay === "function") {
+            window.CredizonaUI.updateGastosTotalDisplay();
+          }
+        }
+        return;
+      }
+
+      var irDeudasEl = e.target.closest
+        ? e.target.closest("[data-ir-mis-deudas]")
+        : null;
+      if (irDeudasEl) {
+        st.step = 1;
+        window.CredizonaUI.renderAll();
         return;
       }
 
@@ -1431,9 +1553,19 @@ window.CZDebugFinancial = function() {
   var gastos = st.gastos || {};
   var ingreso = (window.PRE && PRE.ingreso) || 0;
 
-  var totalGastos = Object.values(gastos).reduce(function(s, v) {
-    return s + (parseFloat(v) || 0);
-  }, 0);
+  var totalGastos = typeof getTotalMonthlyExpenses === "function"
+    ? getTotalMonthlyExpenses()
+    : Object.values(gastos).reduce(function(s, v) {
+        return s + (parseFloat(v) || 0);
+      }, 0);
+
+  var customArr = st.custom_expenses || [];
+  var customTotal = typeof getCustomExpensesIncludedTotal === "function"
+    ? getCustomExpensesIncludedTotal()
+    : 0;
+  var customOverrideCount = customArr.filter(function(e) {
+    return !!e.classification_override;
+  }).length;
 
   var deudaTotal = deudas.reduce(function(s, d) {
     return s + (parseFloat(d.monto) || 0);
@@ -1486,6 +1618,12 @@ window.CZDebugFinancial = function() {
   return {
     ingreso:                       ingreso,
     total_gastos:                  totalGastos,
+    dti_ratio:                     (motor && motor.fin) ? motor.fin.dti_ratio             : null,
+    dti_level:                     (motor && motor.fin) ? motor.fin.dti_level             : null,
+    confianza_diagnostico:         (motor && motor.fin) ? motor.fin.confianza_diagnostico : null,
+    custom_expenses_count:         customArr.length,
+    custom_expenses_total:         customTotal,
+    custom_expenses_with_override: customOverrideCount,
     deuda_total:                   deudaTotal,
     pagos_mensuales_activos:       pagosMensualesActivos,
     presion_latente_total_estimada:presionLatenteTotalEstimada,
