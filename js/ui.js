@@ -368,13 +368,22 @@ function renderGastos() {
 function renderDeudas() {
   // New flow: Deudas is step index 1 for SEGMENTO 1, index 0 for others
   var html = renderStepPills(SEGMENTO === 1 ? 1 : 0, SEGMENTO === 1 ? 3 : 2);
-  var deudas = _st().deudas || [];
+  var st     = _st();
+  var deudas = st.deudas || [];
+  var editing = st.editing_debt_index;
+  var btnPrimaryId    = editing != null ? "btn-guardar-deuda-edicion" : "btn-agregar-deuda";
+  var btnPrimaryLabel = editing != null ? "Guardar cambios" : "+ Agregar deuda";
 
   html += '<div class="card">'
     + '<div class="section-title">Tus deudas actuales</div>'
     + '<div class="section-text">Identificamos el acreedor, el monto y el comportamiento de pago para detectar donde esta hoy la mayor presion financiera.</div>'
     + '<div id="deudas-container">' + deudas.map(renderDeudaCard).join("") + '</div>'
-    + '<button class="btn btn-secondary" style="height:68px;font-size:20px;margin-bottom:0;" id="btn-agregar-deuda">+ Agregar deuda</button>'
+    + '<div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">'
+    + '<button class="btn btn-secondary" style="height:68px;font-size:20px;margin-bottom:0;" id="' + btnPrimaryId + '">' + btnPrimaryLabel + '</button>'
+    + (editing != null
+        ? '<button type="button" class="btn btn-secondary" id="btn-cancelar-edicion-deuda" style="height:52px;font-size:17px;">Cancelar edición</button>'
+        : "")
+    + '</div>'
     + '<div class="metrics" id="metrics-live">' + renderMetricsLive() + '</div>'
     + '<div class="result" id="result-live"><h3 id="result-title">Todavia no analizamos tus deudas</h3>'
     + '<p id="result-text">Completa tus deudas para detectar que acreedor esta generando mas presion financiera.</p></div>'
@@ -613,14 +622,52 @@ function _renderPresionNote(d) {
   return wrap('Esta deuda representa una salida mensual aproximada de <strong style="color:rgba(255,255,255,.8);">' + fmt(pago) + '</strong>.');
 }
 
+function _deudaDisplayName(d, i) {
+  return d.acreedor_display || d.acreedor || (DEBT_TYPES.find(function(t) { return t.v === d.tipo; }) || {}).l || ("Deuda #" + (i + 1));
+}
+
+function _isDeudaPagadaUI(d) {
+  return typeof isDeudaPagada === "function"
+    ? isDeudaPagada(d)
+    : !!(d.cancelada || d.situacion_ui === "pagada" || parseFloat(d.monto) === 0);
+}
+
+function renderDeudaDeleteConfirm(i) {
+  return '<div data-deuda-delete-confirm="' + i + '" style="margin-top:14px;padding:16px 18px;background:rgba(255,78,114,.08);border:1px solid rgba(255,78,114,.25);border-radius:14px;">'
+    + '<div style="font-size:15px;color:rgba(255,255,255,.88);line-height:1.55;margin-bottom:14px;">¿Seguro que querés eliminar esta deuda? Esta acción no se puede deshacer.</div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+    + '<button type="button" class="btn btn-secondary" data-deuda-delete-volver="' + i + '" style="flex:1;min-width:120px;height:48px;font-size:15px;">Volver</button>'
+    + '<button type="button" class="btn" data-deuda-delete-confirmar="' + i + '" style="flex:1;min-width:120px;height:48px;font-size:15px;background:rgba(255,78,114,.2);border:1px solid rgba(255,78,114,.35);color:#ff4e72;">Sí, eliminar</button>'
+    + '</div></div>';
+}
+
+function renderDeudaActionButtons(i, d) {
+  var st = _st();
+  if (st._deuda_delete_confirm_index === i) {
+    return renderDeudaDeleteConfirm(i);
+  }
+  if (_isDeudaPagadaUI(d)) return "";
+
+  return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;padding-bottom:4px;">'
+    + '<button type="button" class="btn btn-secondary" data-deuda-editar="' + i + '" style="flex:1;min-width:100px;height:48px;font-size:15px;">Editar</button>'
+    + '<button type="button" class="btn btn-secondary" data-deuda-eliminar="' + i + '" style="flex:1;min-width:100px;height:48px;font-size:15px;">Eliminar</button>'
+    + '<button type="button" class="btn btn-secondary" data-deuda-pagada="' + i + '" style="flex:1;min-width:100px;height:48px;font-size:15px;color:#34ffaf;border-color:rgba(52,255,175,.3);">Ya la pagué</button>'
+    + '</div>';
+}
+
 function renderDeudaCard(d, i) {
   var est         = getEstado(d.estado);  // reflects inferred internal estado
   var borderColor = est ? est.color : "rgba(61,220,255,.25)";
   var insight     = d.tipo ? getMicroInsight(d.tipo) : null;
+  var pagada      = _isDeudaPagadaUI(d);
+  var st          = _st();
+  var editBanner  = (st.editing_debt_index === i)
+    ? '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.22);border-radius:12px;font-size:15px;font-weight:700;color:#40d7ff;">Editando deuda: ' + _deudaDisplayName(d, i) + '</div>'
+    : "";
 
-  return '<div class="debt-card" id="debt-card-' + i + '" style="border-left:3px solid ' + borderColor + ';">'
-    + '<div class="debt-top"><div class="debt-name">Deuda #' + (i + 1) + (d.acreedor ? " — " + d.acreedor : "") + '</div>'
-    + '<button class="remove-btn" data-remove-deuda="' + i + '">&#215;</button></div>'
+  return '<div class="debt-card" id="debt-card-' + i + '" style="border-left:3px solid ' + borderColor + ';opacity:' + (pagada ? "0.7" : "1") + ';">'
+    + editBanner
+    + '<div class="debt-top"><div class="debt-name">' + (pagada ? "✅ " : "") + "Deuda #" + (i + 1) + (d.acreedor ? " — " + d.acreedor : "") + (pagada ? " — Pagada" : "") + '</div></div>'
     + '<div class="grid">'
 
     // Tipo — TASAS remain internal; no rate labels shown
@@ -661,6 +708,7 @@ function renderDeudaCard(d, i) {
     + _renderPresionNote(d)
 
     + (insight ? '<div class="micro-insight micro-' + insight.cls + '">' + insight.txt + '</div>' : "")
+    + renderDeudaActionButtons(i, d)
     + '</div>';
 }
 
@@ -1556,13 +1604,13 @@ function renderTabDeudas() {
   var diag   = _diag();
   var deudas = st.deudas || [];
   var total  = deudas.reduce(function(s, d) { return s + (parseFloat(d.monto) || 0); }, 0);
-  var canc   = deudas.filter(function(d) { return parseFloat(d.monto) === 0 || d.cancelada; }).length;
+  var canc   = deudas.filter(function(d) { return _isDeudaPagadaUI(d); }).length;
 
   return '<div class="fade">'
     + '<div class="section-text">Actualiza tus saldos a medida que vas pagando. El plan y el puntaje se recalculan solos.</div>'
     + '<div class="metrics" style="margin-bottom:22px;">'
     + '<div class="metric"><small>Deuda total</small><strong style="color:#ff4e72;">' + fmt(total) + '</strong></div>'
-    + '<div class="metric"><small>Canceladas</small><strong style="color:#34ffaf;">' + canc + '/' + deudas.length + '</strong></div>'
+    + '<div class="metric"><small>Pagadas</small><strong style="color:#34ffaf;">' + canc + '/' + deudas.length + '</strong></div>'
     + '<div class="metric"><small>Puntaje actual</small><strong style="color:' + colorScore(diag.scoreReset) + ';">' + diag.scoreReset + '</strong></div>'
     // SPRINT 7B.2 — V1 RISK BADGE HIDDEN (not deleted)
     // Reason: color-coded risk damages premium tone
@@ -1576,13 +1624,25 @@ function renderTabDeudas() {
 }
 
 function renderDeudaLive(d, i) {
-  var canc = parseFloat(d.monto) === 0 || d.cancelada;
-  return '<div class="debt-card" id="dlive-' + i + '" style="border-color:' + (canc ? "rgba(52,255,175,.3)" : "rgba(255,255,255,.1)") + ';opacity:' + (canc ? 0.65 : 1) + ';">'
+  var pagada = _isDeudaPagadaUI(d);
+  var st     = _st();
+  var montoMostrar = d.monto_original != null ? d.monto_original : d.monto;
+  var editBanner = (st.editing_debt_index === i)
+    ? '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.22);border-radius:12px;font-size:15px;font-weight:700;color:#40d7ff;">Editando deuda: ' + _deudaDisplayName(d, i) + '</div>'
+    : "";
+
+  if (st.editing_debt_index === i) {
+    return '<div id="dlive-' + i + '">' + editBanner + renderDeudaCard(d, i) + '</div>';
+  }
+
+  return '<div class="debt-card" id="dlive-' + i + '" style="border-color:' + (pagada ? "rgba(52,255,175,.3)" : "rgba(255,255,255,.1)") + ';opacity:' + (pagada ? 0.7 : 1) + ';">'
     + '<div class="debt-top">'
-    + '<div class="debt-name">' + (canc ? "✅ " : "") + (d.acreedor || (DEBT_TYPES.find(function(t) { return t.v === d.tipo; }) || {}).l || "Deuda #" + (i + 1)) + (canc ? " — Cancelada!" : "") + '</div>'
-    + (!canc ? '<button class="btn btn-secondary" style="height:44px;font-size:14px;padding:0 16px;color:#34ffaf;border-color:rgba(52,255,175,.3);" data-cancelar-deuda="' + i + '">&#10003; Cancelar</button>' : "")
+    + '<div class="debt-name">' + (pagada ? "✅ " : "") + _deudaDisplayName(d, i) + (pagada ? " — Pagada" : "") + '</div>'
     + '</div>'
-    + (!canc ? '<div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span><input type="number" style="padding-left:36px;" value="' + (d.monto || "") + '" placeholder="0" data-editar-deuda="' + i + '"/></div>' : "")
+    + (!pagada
+        ? '<div style="position:relative;margin-bottom:4px;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span><input type="number" style="padding-left:36px;" value="' + (d.monto || "") + '" placeholder="0" data-editar-deuda="' + i + '"/></div>'
+        : '<div style="font-size:15px;color:#8390b5;margin-bottom:4px;">Saldo histórico: ' + fmt(parseFloat(montoMostrar) || 0) + '</div>')
+    + renderDeudaActionButtons(i, d)
     + '</div>';
 }
 

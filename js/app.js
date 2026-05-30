@@ -11,6 +11,8 @@ window.CZState = {
   gastos:          {},
   custom_expenses: [],
   deudas:          [],
+  editing_debt_index:       null,
+  _deuda_delete_confirm_index: null,
   diag:          null,
   snap:          null,
   saldoIni:      0,
@@ -64,6 +66,36 @@ window.CZState = {
     vencimientos: {},
   },
 };
+
+// =============================================================================
+// Sprint 12.2 — debt edit / delete / paid helpers
+// =============================================================================
+function recalcDiagYGuardar() {
+  var st = window.CZState;
+  if (typeof calcularMotor === "function") {
+    st.diag = calcularMotor();
+  }
+  window.guardarLocal();
+}
+
+function trackCRMDebtEvent(eventName, payload) {
+  if (typeof trackCRMEvent !== "function") return;
+  var p = { debt_index: payload.debt_index };
+  if (payload.fields_changed_count != null) {
+    p.fields_changed_count = payload.fields_changed_count;
+  }
+  trackCRMEvent(eventName, p);
+}
+
+function scrollDeudaCardIntoView(idx) {
+  setTimeout(function() {
+    var el = document.getElementById("debt-card-" + idx)
+      || document.getElementById("dlive-" + idx);
+    if (el && el.scrollIntoView) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, 80);
+}
 
 // =============================================================================
 // STORAGE
@@ -210,6 +242,8 @@ function resetear() {
     gastos:              {},
     custom_expenses:     [],
     deudas:              [],
+    editing_debt_index:       null,
+    _deuda_delete_confirm_index: null,
     diag:                null,
     snap:                null,
     saldoIni:            0,
@@ -1271,8 +1305,49 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Agregar deuda
+      // Sprint 12.2 — guardar edición de deuda (no push)
+      if (e.target.id === "btn-guardar-deuda-edicion") {
+        var saveIdx = st.editing_debt_index;
+        if (saveIdx !== null && saveIdx !== undefined && st.deudas[saveIdx]) {
+          if (typeof enriquecerDeuda === "function") enriquecerDeuda(st.deudas[saveIdx]);
+          st.editing_debt_index = null;
+          st._deuda_edit_snapshot = null;
+          st._deuda_delete_confirm_index = null;
+          st.temporal.last_debt_update_at = new Date().toISOString();
+          trackCRMDebtEvent("debt_edited", {
+            debt_index: saveIdx,
+            fields_changed_count: 1,
+          });
+          recalcDiagYGuardar();
+          if (st.step === 3) {
+            window.CredizonaUI.renderTab();
+          } else {
+            window.CredizonaUI.renderAll();
+          }
+        }
+        return;
+      }
+
+      // Sprint 12.2 — cancelar edición (restaura snapshot)
+      if (e.target.id === "btn-cancelar-edicion-deuda") {
+        var cancelEditIdx = st.editing_debt_index;
+        if (cancelEditIdx !== null && st._deuda_edit_snapshot) {
+          st.deudas[cancelEditIdx] = st._deuda_edit_snapshot;
+        }
+        st.editing_debt_index = null;
+        st._deuda_edit_snapshot = null;
+        st._deuda_delete_confirm_index = null;
+        if (st.step === 3) {
+          window.CredizonaUI.renderTab();
+        } else {
+          window.CredizonaUI.renderAll();
+        }
+        return;
+      }
+
+      // Agregar deuda (solo modo alta — no cuando se está editando)
       if (e.target.id === "btn-agregar-deuda") {
+        if (st.editing_debt_index != null) return;
         st.deudas.push({
           tipo: "", acreedor: "", monto: "", pago: "", estado: "",
           acreedor_raw: "", acreedor_key: "", acreedor_normalizado: "otro", acreedor_display: "",
@@ -1308,20 +1383,73 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Eliminar deuda
-      var removeIdx = e.target.getAttribute("data-remove-deuda");
-      if (removeIdx !== null) {
-        removeIdx = parseInt(removeIdx, 10);
-
-        st.deudas.splice(removeIdx, 1);
-
-        var cont2 = document.getElementById("deudas-container");
-        if (cont2) {
-          cont2.innerHTML = st.deudas.map(window.CredizonaUI.renderDeudaCard).join("");
+      // Sprint 12.2 — solicitar eliminar deuda (confirmación inline)
+      var eliminarIdx = e.target.getAttribute("data-deuda-eliminar");
+      if (eliminarIdx !== null) {
+        st._deuda_delete_confirm_index = parseInt(eliminarIdx, 10);
+        if (st.step === 3) {
+          window.CredizonaUI.renderTab();
+        } else {
+          window.CredizonaUI.renderAll();
         }
+        return;
+      }
 
-        window.CredizonaUI.actualizarMetrics();
-        window.guardarLocal();
+      var deleteVolverIdx = e.target.getAttribute("data-deuda-delete-volver");
+      if (deleteVolverIdx !== null) {
+        st._deuda_delete_confirm_index = null;
+        if (st.step === 3) {
+          window.CredizonaUI.renderTab();
+        } else {
+          window.CredizonaUI.renderAll();
+        }
+        return;
+      }
+
+      var deleteConfirmIdx = e.target.getAttribute("data-deuda-delete-confirmar");
+      if (deleteConfirmIdx !== null) {
+        deleteConfirmIdx = parseInt(deleteConfirmIdx, 10);
+        if (st.deudas[deleteConfirmIdx] !== undefined) {
+          st.deudas.splice(deleteConfirmIdx, 1);
+          if (st.editing_debt_index === deleteConfirmIdx) {
+            st.editing_debt_index = null;
+            st._deuda_edit_snapshot = null;
+          } else if (st.editing_debt_index != null && st.editing_debt_index > deleteConfirmIdx) {
+            st.editing_debt_index -= 1;
+          }
+          st._deuda_delete_confirm_index = null;
+          st.temporal.last_debt_update_at = new Date().toISOString();
+          trackCRMDebtEvent("debt_deleted", { debt_index: deleteConfirmIdx });
+          recalcDiagYGuardar();
+          if (st.step === 3) {
+            window.CredizonaUI.renderTab();
+          } else {
+            var contDel = document.getElementById("deudas-container");
+            if (contDel) {
+              contDel.innerHTML = st.deudas.map(window.CredizonaUI.renderDeudaCard).join("");
+            }
+            window.CredizonaUI.actualizarMetrics();
+          }
+        }
+        return;
+      }
+
+      // Sprint 12.2 — editar deuda (modo edición por índice)
+      var editarDeudaIdx = e.target.getAttribute("data-deuda-editar");
+      if (editarDeudaIdx !== null) {
+        editarDeudaIdx = parseInt(editarDeudaIdx, 10);
+        if (st.deudas[editarDeudaIdx]) {
+          st._deuda_edit_snapshot = JSON.parse(JSON.stringify(st.deudas[editarDeudaIdx]));
+          st.editing_debt_index = editarDeudaIdx;
+          st._deuda_delete_confirm_index = null;
+          if (st.step === 3) {
+            st.tab = "deudas";
+            window.CredizonaUI.renderAll();
+          } else {
+            window.CredizonaUI.renderAll();
+          }
+          scrollDeudaCardIntoView(editarDeudaIdx);
+        }
         return;
       }
 
@@ -1335,21 +1463,37 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Cancelar deuda dashboard
-      var cancelarIdx = e.target.getAttribute("data-cancelar-deuda");
-      if (cancelarIdx !== null) {
-        cancelarIdx = parseInt(cancelarIdx, 10);
+      // Sprint 12.2 — marcar deuda como pagada (antes "Cancelar")
+      var pagadaIdx = e.target.getAttribute("data-deuda-pagada")
+        || e.target.getAttribute("data-cancelar-deuda");
+      if (pagadaIdx !== null) {
+        pagadaIdx = parseInt(pagadaIdx, 10);
 
-        if (st.deudas[cancelarIdx]) {
-          st.deudas[cancelarIdx].monto = "0";
-          st.deudas[cancelarIdx].cancelada = true;
-
-          if (typeof calcularMotor === "function") {
-            st.diag = calcularMotor();
+        if (st.deudas[pagadaIdx]) {
+          var dPag = st.deudas[pagadaIdx];
+          var montoPrev = parseFloat(dPag.monto) || 0;
+          if (dPag.monto_original == null && montoPrev > 0) {
+            dPag.monto_original = montoPrev;
           }
+          dPag.situacion_ui = "pagada";
+          dPag.pago         = 0;
+          dPag.pago_fuente  = "pagada";
+          dPag.cancelada    = true;
+          dPag.estado       = "al_dia";
+          if (typeof enriquecerDeuda === "function") enriquecerDeuda(dPag);
 
-          window.guardarLocal();
-          window.CredizonaUI.renderTab();
+          st.editing_debt_index = null;
+          st._deuda_edit_snapshot = null;
+          st._deuda_delete_confirm_index = null;
+          st.temporal.last_debt_update_at = new Date().toISOString();
+          trackCRMDebtEvent("debt_marked_paid", { debt_index: pagadaIdx });
+          recalcDiagYGuardar();
+
+          if (st.step === 3) {
+            window.CredizonaUI.renderTab();
+          } else {
+            window.CredizonaUI.renderAll();
+          }
         }
 
         return;
@@ -1646,6 +1790,10 @@ window.CZDebugFinancial = function() {
     guardrail_applied:             motor ? motor.guardrail_applied   : null,
     guardrail_reason:              motor ? motor.guardrail_reason    : null,
     plan_id:                       motor ? motor.planId              : null,
+    assigned_plan_raw:             motor ? motor.assigned_plan_raw   : null,
+    assigned_plan_final:           motor ? motor.assigned_plan_final : null,
+    plan_guardrail_applied:        motor ? motor.plan_guardrail_applied : null,
+    plan_guardrail_reason:         motor ? motor.plan_guardrail_reason  : null,
     nivelR:                        motor ? motor.nivelR              : null,
     // Sprint 8.1 + 8.4 + 8.5 — horizon + copy override fields
     flujo_libre_activo: (function() {

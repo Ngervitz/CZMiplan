@@ -8,6 +8,17 @@ function _gastos()  { return window.CZState ? window.CZState.gastos : {}; }
 function _deudas()  { return window.CZState ? window.CZState.deudas : []; }
 function _snap()    { return window.CZState ? window.CZState.snap   : null; }
 
+// Sprint 12.2 — paid/settled debts stay in array but skip active calculations
+function deudasActivasParaCalculo(deudas) {
+  return (deudas || []).filter(function(d) {
+    return !d.cancelada && d.situacion_ui !== "pagada";
+  });
+}
+
+function isDeudaPagada(d) {
+  return !!(d && (d.cancelada || d.situacion_ui === "pagada"));
+}
+
 // =============================================================================
 // PLANES
 // =============================================================================
@@ -111,7 +122,7 @@ function etiquetaStockDeuda(dti_ratio) {
 // =============================================================================
 function calcularFinanciero() {
   const gastos = _gastos();
-  const deudas = _deudas();
+  const deudas = deudasActivasParaCalculo(_deudas());
 
   const totalGastos = typeof getTotalMonthlyExpenses === "function"
     ? getTotalMonthlyExpenses()
@@ -194,7 +205,7 @@ function calcularPrioridad(d) {
 }
 
 function deudaPrioritaria() {
-  const deudas = _deudas();
+  const deudas = deudasActivasParaCalculo(_deudas());
   if (!deudas.length) return null;
   return [...deudas].sort((a, b) => calcularPrioridad(b) - calcularPrioridad(a))[0];
 }
@@ -358,6 +369,45 @@ function aplicarGuardrailSeveridad(scores, severityLevel) {
   };
 }
 
+// =============================================================================
+// PLAN GUARDRAIL — Sprint 12.1.c
+//
+// Post-processes planId after interpretarDiagnostico() resolves severity_level.
+// Does NOT modify asignarPlan(). First matching rule wins (critico → DTI≥24 → DTI≥10 cap).
+// =============================================================================
+function applyPlanGuardrail(planIdRaw, diag) {
+  var iv2      = diag.interpretacion_v2 || {};
+  var fin      = diag.fin || {};
+  var severity = iv2.severity_level;
+  var dti      = fin.dti_ratio != null ? fin.dti_ratio : 0;
+  var finalId  = planIdRaw;
+  var reason   = null;
+
+  if (severity === "critico") {
+    finalId = 4;
+    reason  = "severity_critico";
+  } else if (dti >= 24) {
+    finalId = 4;
+    reason  = "dti_extremo";
+  } else if (dti >= 10) {
+    if (finalId === 3 || finalId === 5) {
+      finalId = 2;
+      reason  = "dti_alto_cap_plan_2";
+    }
+  }
+
+  var applied = finalId !== planIdRaw;
+  if (!applied) reason = null;
+
+  return {
+    planId:                 finalId,
+    assigned_plan_raw:      planIdRaw,
+    assigned_plan_final:    finalId,
+    plan_guardrail_applied: applied,
+    plan_guardrail_reason:  reason,
+  };
+}
+
 function calcularMotor() {
   const enc = calcularEncuesta(PRE.respuestas);
   const fin = calcularFinanciero();
@@ -369,9 +419,9 @@ function calcularMotor() {
   // nivelR / planId derived from raw first so interpretarDiagnostico() gets a
   // consistent diag object. Both will be recomputed after guardrail below.
   let nivelR = scoreResetRaw >= 21 ? "A" : scoreResetRaw >= 13 ? "B" : "C";
-  const planId = asignarPlan(enc, fin);
-  if (planId === 4) nivelR = "C";
-  if (planId === 2 && nivelR === "A") nivelR = "B";
+  const planIdRaw = asignarPlan(enc, fin);
+  if (planIdRaw === 4) nivelR = "C";
+  if (planIdRaw === 2 && nivelR === "A") nivelR = "B";
   const snap = _snap();
   const diasRec = snap
     ? Math.floor((Date.now() - new Date(snap.fecha_inicio).getTime()) / 86400000)
@@ -418,13 +468,22 @@ function calcularMotor() {
     scoreReset: scoreResetRaw,       // raw — will be replaced by capped below
     scoreFinancieroRaw, scoreResetRaw,
     nivelR,
-    planId, plan: PLANES[planId],
+    planId: planIdRaw, plan: PLANES[planIdRaw],
     prio: deudaPrioritaria(), diasRec,
     bloqueadores, horizonte, interpretacion,
   };
 
   // Run interpretation engine (needs raw scores + behavioral signals).
   result.interpretacion_v2 = interpretarDiagnostico(result);
+
+  // ── Sprint 12.1.c plan guardrail — after severity, before score cap ────────
+  var planGuardrail = applyPlanGuardrail(planIdRaw, result);
+  result.planId                    = planGuardrail.planId;
+  result.plan                      = PLANES[planGuardrail.planId];
+  result.assigned_plan_raw         = planGuardrail.assigned_plan_raw;
+  result.assigned_plan_final       = planGuardrail.assigned_plan_final;
+  result.plan_guardrail_applied    = planGuardrail.plan_guardrail_applied;
+  result.plan_guardrail_reason     = planGuardrail.plan_guardrail_reason;
 
   // ── Sprint 8 guardrail — post-processing cap ───────────────────────────────
   const guardrail = aplicarGuardrailSeveridad(
@@ -440,8 +499,8 @@ function calcularMotor() {
   result.nivelR = guardrail.scoreReset >= 21 ? "A"
                 : guardrail.scoreReset >= 13 ? "B"
                 : "C";
-  if (planId === 4) result.nivelR = "C";
-  if (planId === 2 && result.nivelR === "A") result.nivelR = "B";
+  if (result.planId === 4) result.nivelR = "C";
+  if (result.planId === 2 && result.nivelR === "A") result.nivelR = "B";
 
   // Persist raw + guardrail metadata on result.
   result.scoreFinancieroRaw = guardrail.scoreFinancieroRaw;
@@ -509,6 +568,7 @@ function calcularRadiografia() {
   // debt payments were small. Gastos are already reflected in flujoLibre.
   // presion_latente_estimada and deuda_total are NOT included here.
   var pagosMensualesActivos = deudas.reduce(function(s, d) {
+    if (isDeudaPagada(d)) return s;
     var sit = d.situacion_ui;
     // Explicitly stopped or in mora: payment is 0 (guard against legacy stale values)
     if (sit === "deje_pagar" || sit === "mora_reclamo") return s;
