@@ -1756,26 +1756,32 @@ function showToast(msg, ms) {
   el.id = "cz-toast";
   el.style.cssText = [
     "position:fixed",
-    "bottom:90px",
+    "top:calc(env(safe-area-inset-top, 0px) + 72px)",
+    "bottom:auto",
     "left:50%",
     "transform:translateX(-50%)",
     "background:rgba(15,23,56,.97)",
     "border:1px solid rgba(255,211,111,.3)",
     "color:#ffd36f",
-    "padding:14px 22px",
+    "padding:14px 18px",
     "border-radius:14px",
-    "font-size:16px",
+    "font-size:15px",
     "font-weight:700",
     "z-index:9999",
     "text-align:center",
-    "max-width:320px",
-    "width:calc(100% - 48px)",
-    "line-height:1.4",
+    "max-width:90vw",
+    "width:auto",
+    "min-width:0",
+    "box-sizing:border-box",
+    "white-space:normal",
+    "overflow-wrap:anywhere",
+    "word-break:break-word",
+    "line-height:1.45",
     "box-shadow:0 8px 24px rgba(0,0,0,.4)",
     "animation:fadeUp .2s ease both",
     "pointer-events:none",
   ].join(";");
-  el.textContent = msg;
+  el.innerHTML = msg;
   document.body.appendChild(el);
   setTimeout(function() { if (el.parentNode) el.remove(); }, ms || 3000);
 }

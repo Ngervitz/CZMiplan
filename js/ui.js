@@ -851,7 +851,39 @@ function _finFromDiag(diag) {
 
 function _dtiRatioDisplay(ratio) {
   if (ratio == null || isNaN(ratio)) return "—";
-  return (Math.round(ratio * 10) / 10) + "x";
+  return Number(ratio).toFixed(1) + "x";
+}
+
+function buildDebtIncomeNarrative(dtiRatio) {
+  var r = parseFloat(dtiRatio) || 0;
+  if (r < 0.5) {
+    return {
+      primary:   "Tu deuda equivale a menos de medio mes de ingresos.",
+      secondary: "Esto suele dejar margen para ahorrar o enfrentar imprevistos.",
+    };
+  }
+  if (r < 1) {
+    return {
+      primary:   "Tu deuda equivale aproximadamente a un mes de ingresos.",
+      secondary: "Es una situación generalmente manejable si mantenés estabilidad en tus ingresos.",
+    };
+  }
+  if (r < 3) {
+    return {
+      primary:   "Tu deuda equivale a varios meses de ingresos.",
+      secondary: "En este nivel, cada nueva deuda reduce el margen financiero disponible.",
+    };
+  }
+  if (r < 12) {
+    return {
+      primary:   "Tu deuda representa un compromiso importante respecto a tu nivel actual de ingresos.",
+      secondary: "Una parte significativa de tu capacidad financiera puede estar comprometida por deuda acumulada.",
+    };
+  }
+  return {
+    primary:   "Tu deuda acumulada supera ampliamente tu capacidad mensual de generación de ingresos.",
+    secondary: "En estos casos suele ser útil revisar alternativas como refinanciaciones, acuerdos de pago o reestructuración de deuda.",
+  };
 }
 
 function _dtiLevelLabel(level) {
@@ -869,16 +901,32 @@ var CZ_DTI_ACCION_PRIORITARIA =
   "Confirmar el saldo actualizado y definir si esta deuda debe estabilizarse, refinanciarse o atacarse primero.";
 
 function renderRelacionDeudaIngreso(diag) {
-  var fin = _finFromDiag(diag);
-  if (fin.dti_ratio == null) return "";
+  var fin      = _finFromDiag(diag);
+  var deudas   = (_st().deudas || []);
+  var totalDeuda = fin.totalDeuda != null ? fin.totalDeuda : 0;
+  var dtiRatio   = fin.dti_ratio;
 
-  return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
-    + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Relación deuda / ingreso</div>'
-    + '<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px;">'
-    + '<div style="font-size:32px;font-weight:900;color:rgba(255,255,255,.92);">' + _dtiRatioDisplay(fin.dti_ratio) + '</div>'
-    + '<div style="font-size:17px;font-weight:700;color:#a0b0ff;">' + _dtiLevelLabel(fin.dti_level) + '</div>'
-    + '</div>'
-    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;">Este indicador compara el total de deuda declarada contra un ingreso mensual.</div>'
+  var isZeroDebt = deudas.length === 0
+    || totalDeuda <= 0
+    || (dtiRatio != null && dtiRatio <= 0);
+
+  var cardOpen = '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
+    + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Relación deuda / ingreso</div>';
+
+  if (isZeroDebt) {
+    return cardOpen
+      + '<div style="font-size:17px;font-weight:700;color:rgba(255,255,255,.9);line-height:1.45;margin-bottom:10px;">Sin deuda declarada</div>'
+      + '<div style="font-size:15px;color:#8390b5;line-height:1.65;">No registramos deuda activa en la información que ingresaste.</div>'
+      + '</div>';
+  }
+
+  if (dtiRatio == null) return "";
+
+  var narr = buildDebtIncomeNarrative(dtiRatio);
+  return cardOpen
+    + '<div style="font-size:17px;font-weight:700;color:rgba(255,255,255,.9);line-height:1.45;margin-bottom:10px;">' + narr.primary + '</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:14px;">' + narr.secondary + '</div>'
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.5;">Indicador técnico: ' + _dtiRatioDisplay(dtiRatio) + '</div>'
     + '</div>';
 }
 
@@ -897,17 +945,22 @@ function renderConfianzaDiagnostico(diag) {
   if (conf == null) return "";
 
   var nivelLabel;
-  if (conf >= 90)      nivelLabel = "Alta";
-  else if (conf >= 70) nivelLabel = "Media";
-  else                 nivelLabel = "Reducida";
+  var explicacion;
+  if (conf >= 90) {
+    nivelLabel  = "Alta";
+    explicacion = "La información disponible permite construir una interpretación consistente de tu situación.";
+  } else if (conf >= 70) {
+    nivelLabel  = "Media";
+    explicacion = "Hay suficiente información para orientarte, aunque algunos datos podrían mejorar la precisión.";
+  } else {
+    nivelLabel  = "Reducida";
+    explicacion = "Faltan datos o existen señales que limitan la precisión de este diagnóstico.";
+  }
 
   return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
     + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Confianza del diagnóstico</div>'
-    + '<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px;">'
-    + '<div style="font-size:32px;font-weight:900;color:rgba(255,255,255,.92);">' + conf + '</div>'
-    + '<div style="font-size:17px;font-weight:700;color:#a0b0ff;">' + nivelLabel + '</div>'
-    + '</div>'
-    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;">Este indicador refleja cuánta información tiene el sistema para interpretar tu situación.</div>'
+    + '<div style="font-size:20px;font-weight:800;color:rgba(255,255,255,.92);margin-bottom:10px;">' + nivelLabel + '</div>'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.65;">' + explicacion + '</div>'
     + '</div>';
 }
 
@@ -2472,7 +2525,7 @@ function renderAll() {
       var _toastDiag = st.diag;
       var _toastIv2  = _toastDiag && _toastDiag.interpretacion_v2 ? _toastDiag.interpretacion_v2 : {};
       if (typeof showToast === "function") {
-        showToast("✓ Tu diagnóstico quedó guardado. Podés volver a consultarlo cuando quieras.", 5000);
+        showToast("✓ Diagnóstico guardado<br>Podés volver cuando quieras.", 5000);
       }
       trackEvent(CZ_EVENT_NAMES.DASHBOARD_TOAST_SHOWN, {
         source: "dashboard_first_view",
