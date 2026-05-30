@@ -894,8 +894,22 @@ function actualizarMetrics() {
 }
 
 // =============================================================================
-// DASHBOARD
+// DASHBOARD — Sprint 12.4a (iconografía + jerarquía visual; solo presentación)
 // =============================================================================
+function _dashCardTitle(icon, label) {
+  return '<div style="font-size:14px;font-weight:900;color:rgba(255,255,255,.92);'
+    + 'letter-spacing:.03em;margin-bottom:12px;line-height:1.35;max-width:100%;">'
+    + '<span style="display:inline-flex;align-items:flex-start;gap:0.4em;flex-wrap:wrap;max-width:100%;">'
+    + '<span style="flex-shrink:0;line-height:1.25;" aria-hidden="true">' + icon + '</span>'
+    + '<span style="min-width:0;word-break:break-word;">' + label + '</span>'
+    + '</span></div>';
+}
+
+function _dashTechIndicator(text) {
+  return '<div style="font-size:11px;font-weight:500;color:rgba(131,144,181,.75);line-height:1.5;">'
+    + text + "</div>";
+}
+
 function renderDashboard() {
   var st     = _st();
   var tab    = st.tab || "plan";
@@ -903,8 +917,8 @@ function renderDashboard() {
   var locked = function(id) { return (id === "ia" || id === "plus") && plus === "sin_pago"; };
 
   var TABS = [
-    { id: "plan",   l: "Mi plan",     icon: "🎯" },
-    { id: "deudas", l: "Mis deudas",  icon: "✏️" },
+    { id: "plan",   l: "Mi Plan",     icon: "📋" },
+    { id: "deudas", l: "Tus deudas",  icon: "💳" },
     { id: "ia",     l: "Asistente IA", icon: "🤖", lock: true },
     { id: "plus",   l: "Mi Plan Plus",  icon: "⭐", lock: true },
   ];
@@ -1003,7 +1017,7 @@ function renderRelacionDeudaIngreso(diag) {
     || (dtiRatio != null && dtiRatio <= 0);
 
   var cardOpen = '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
-    + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Relación deuda / ingreso</div>';
+    + _dashCardTitle("⚖️", "Relación deuda / ingreso");
 
   if (isZeroDebt) {
     return cardOpen
@@ -1018,7 +1032,7 @@ function renderRelacionDeudaIngreso(diag) {
   return cardOpen
     + '<div style="font-size:17px;font-weight:700;color:rgba(255,255,255,.9);line-height:1.45;margin-bottom:10px;">' + narr.primary + '</div>'
     + '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:14px;">' + narr.secondary + '</div>'
-    + '<div style="font-size:13px;color:#8390b5;line-height:1.5;">Indicador técnico: ' + _dtiRatioDisplay(dtiRatio) + '</div>'
+    + _dashTechIndicator("Indicador técnico: " + _dtiRatioDisplay(dtiRatio))
     + '</div>';
 }
 
@@ -1050,7 +1064,7 @@ function renderConfianzaDiagnostico(diag) {
   }
 
   return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
-    + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Confianza del diagnóstico</div>'
+    + _dashCardTitle("🎯", "Confianza del diagnóstico")
     + '<div style="font-size:20px;font-weight:800;color:rgba(255,255,255,.92);margin-bottom:10px;">' + nivelLabel + '</div>'
     + '<div style="font-size:15px;color:#8390b5;line-height:1.65;">' + explicacion + '</div>'
     + '</div>';
@@ -1337,6 +1351,7 @@ function renderTabPlan() {
 
   return '<div class="fade">'
     + _gastosMissingCard
+    + _dashCardTitle("📋", "Mi Plan")
     + '<div style="margin-bottom:20px;padding:14px 18px;'
     + 'background:rgba(255,255,255,.03);'
     + 'border:1px solid rgba(255,255,255,.07);'
@@ -1417,8 +1432,7 @@ function renderTabPlan() {
           : (nPaso && nPaso.texto ? nPaso.texto : null);
         if (!textoAccion) return "";
         return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);">'
-          + '<div style="font-size:13px;font-weight:800;color:#8390b5;'
-          + 'text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Acción prioritaria</div>'
+          + _dashCardTitle("📍", "Acción prioritaria")
           + '<div style="padding:14px 16px;background:rgba(255,255,255,.04);'
           + 'border:1px solid rgba(255,255,255,.09);border-radius:12px;">'
           + '<div style="font-size:15px;color:rgba(255,255,255,.9);line-height:1.65;">'
@@ -1617,7 +1631,7 @@ function renderMiPlanSuggestionBox() {
   }).join("");
 
   return '<div class="plan-card" id="cz-feedback-box" style="margin-top:28px;border-color:rgba(255,255,255,.1);">'
-    + '<div style="font-size:18px;font-weight:800;margin-bottom:10px;">💬 ¿Qué te gustaría entender mejor?</div>'
+    + _dashCardTitle("💬", "Sugerencias")
     + '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:20px;">'
     + 'Contanos qué información te faltó o qué te gustaría que Mi Plan pueda ayudarte a entender.'
     + '</div>'
@@ -1734,8 +1748,8 @@ function renderRadiografia() {
   // Sprint 8.3 — guard aggregate interest display
   var interesUnrealistic = PRE.ingreso > 0 && r.interesMensualTotal / PRE.ingreso > 1.5;
 
-  return '<div style="margin-bottom:20px;">'
-    + '<div style="font-size:11px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px;">Tu radiografia financiera</div>'
+  return '<div style="margin-bottom:20px;max-width:100%;">'
+    + _dashCardTitle("📊", "Radiografía financiera")
 
     // 1. Interes puro / costo latente
     + '<div style="background:rgba(255,78,114,.07);border:1px solid rgba(255,78,114,.2);border-radius:18px;padding:20px;margin-bottom:12px;">'
@@ -1805,6 +1819,7 @@ function renderTabDeudas() {
   var canc   = deudas.filter(function(d) { return _isDeudaPagadaUI(d); }).length;
 
   return '<div class="fade">'
+    + _dashCardTitle("💳", "Tus deudas")
     + '<div class="section-text">Actualiza tus saldos a medida que vas pagando. El plan y el puntaje se recalculan solos.</div>'
     + '<div class="metrics" style="margin-bottom:22px;">'
     + '<div class="metric"><small>Deuda total</small><strong style="color:#ff4e72;">' + fmt(total) + '</strong></div>'
