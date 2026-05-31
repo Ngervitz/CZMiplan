@@ -418,6 +418,18 @@ function prev() {
   }
 }
 
+// Sprint 12.5 — editar gastos desde dashboard sin perder estado
+function goToEditGastosFromDashboard() {
+  var st = window.CZState;
+  if (!st || st.step !== 3) return;
+  st.step = 2;
+  st._showGastosWarning = false;
+  window.guardarLocal();
+  if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
+    window.CredizonaUI.renderAll();
+  }
+}
+
 function resetear() {
   try {
     localStorage.removeItem(STORAGE_KEY);
@@ -1262,6 +1274,12 @@ document.addEventListener("DOMContentLoaded", function() {
           _btnC.disabled       = !_both;
           _btnC.style.opacity  = _both ? "1" : ".45";
         }
+        return;
+      }
+
+      // Sprint 12.5 — editar gastos desde dashboard
+      if (e.target.id === "btn-editar-gastos-dashboard") {
+        goToEditGastosFromDashboard();
         return;
       }
 

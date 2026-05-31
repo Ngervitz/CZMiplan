@@ -894,20 +894,108 @@ function actualizarMetrics() {
 }
 
 // =============================================================================
-// DASHBOARD — Sprint 12.4a (iconografía + jerarquía visual; solo presentación)
+// DASHBOARD — Sprint 12.4a/12.4b (iconografía, jerarquía, acentos; solo presentación)
 // =============================================================================
-function _dashCardTitle(icon, label) {
-  return '<div style="font-size:14px;font-weight:900;color:rgba(255,255,255,.92);'
+var CZ_DASH_ACCENTS = {
+  confianza:   { border: "rgba(91,124,255,.52)",  title: "#aec8ff", iconBg: "rgba(91,124,255,.14)" },
+  dti:         { border: "rgba(167,139,250,.52)", title: "#c9baff", iconBg: "rgba(167,139,250,.14)" },
+  accion:      { border: "rgba(210,180,110,.5)",  title: "#e8d8b0", iconBg: "rgba(210,180,110,.12)" },
+  miplan:      { border: "rgba(100,190,150,.48)", title: "#aee8cc", iconBg: "rgba(100,190,150,.12)" },
+  sugerencias: { border: "rgba(131,144,181,.42)", title: "#b4bfd4", iconBg: "rgba(131,144,181,.1)" },
+  radiografia: { border: "rgba(64,215,255,.48)",  title: "#9ee4f4", iconBg: "rgba(64,215,255,.12)" },
+  deudas:      { border: "rgba(108,138,168,.52)", title: "#a8c0d8", iconBg: "rgba(108,138,168,.14)" },
+};
+
+function _dashAccent(key) {
+  return CZ_DASH_ACCENTS[key] || CZ_DASH_ACCENTS.sugerencias;
+}
+
+function _dashSectionAccentCss(key) {
+  var a = _dashAccent(key);
+  return "border-left:3px solid " + a.border + ";padding-left:14px;max-width:100%;box-sizing:border-box;";
+}
+
+function _dashCardTitle(icon, label, accentKey) {
+  var a = _dashAccent(accentKey);
+  return '<div style="font-size:14px;font-weight:900;color:' + a.title + ";"
     + 'letter-spacing:.03em;margin-bottom:12px;line-height:1.35;max-width:100%;">'
     + '<span style="display:inline-flex;align-items:flex-start;gap:0.4em;flex-wrap:wrap;max-width:100%;">'
-    + '<span style="flex-shrink:0;line-height:1.25;" aria-hidden="true">' + icon + '</span>'
-    + '<span style="min-width:0;word-break:break-word;">' + label + '</span>'
-    + '</span></div>';
+    + '<span style="flex-shrink:0;line-height:1.2;display:inline-flex;align-items:center;'
+    + "background:" + a.iconBg + ';border-radius:8px;padding:2px 6px;" aria-hidden="true">' + icon + "</span>"
+    + '<span style="min-width:0;word-break:break-word;">' + label + "</span>"
+    + "</span></div>";
 }
 
 function _dashTechIndicator(text) {
   return '<div style="font-size:11px;font-weight:500;color:rgba(131,144,181,.75);line-height:1.5;">'
     + text + "</div>";
+}
+
+// Sprint 12.4b — arquitectura de información; 12.4c — iconos de identidad por bloque
+var CZ_DASH_IA_SECTION_GAP =
+  "margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);";
+
+var CZ_DASH_IA_ICONS = {
+  situacion: "🎯",
+  frenando:  "⚠️",
+  accion:    "📍",
+  numeros:   "📊",
+  deudas:    "💳",
+};
+
+var CZ_DASH_IA_LABEL_STYLE =
+  "font-size:11px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.35);"
+  + "text-transform:uppercase;margin-bottom:12px;max-width:100%;line-height:1.4;";
+
+function _dashIaIcon(key) {
+  return CZ_DASH_IA_ICONS[key] || "";
+}
+
+function _dashIaLabel(text, sectionKey) {
+  return '<span style="font-size:24px;line-height:1;display:block;margin-bottom:8px;opacity:.95;max-width:100%;" aria-hidden="true">'
+    + _dashIaIcon(sectionKey) + "</span>"
+    + '<div style="' + CZ_DASH_IA_LABEL_STYLE + '">' + text + "</div>";
+}
+
+function _dashIaSectionOpen(isFirst, sectionKey) {
+  return '<div style="max-width:100%;box-sizing:border-box;' + (isFirst ? "" : CZ_DASH_IA_SECTION_GAP) + '">';
+}
+
+function _dashIaSectionClose() {
+  return "</div>";
+}
+
+// Sprint 12.5 — volver a gastos desde dashboard (solo UX; recálculo vía next() existente)
+function renderDashboardEditGastosCta() {
+  return '<div style="margin-bottom:20px;max-width:100%;">'
+    + '<p style="font-size:13px;color:#8390b5;line-height:1.55;margin-bottom:12px;">'
+    + "Podés actualizar tus gastos y recalcular el diagnóstico cuando quieras."
+    + "</p>"
+    + '<button type="button" class="btn btn-secondary" id="btn-editar-gastos-dashboard" '
+    + 'style="width:100%;max-width:100%;height:52px;font-size:16px;box-sizing:border-box;">'
+    + "✏️ Editar gastos</button>"
+    + "</div>";
+}
+
+function renderDeudasResumen(deudas) {
+  deudas = deudas || [];
+  var count = deudas.length;
+  var total = deudas.reduce(function(s, d) { return s + (parseFloat(d.monto) || 0); }, 0);
+  var pagos = deudas.reduce(function(s, d) { return s + (parseFloat(d.pago) || 0); }, 0);
+  var countTxt = count === 1 ? "1 deuda registrada" : count + " deudas registradas";
+  var a      = _dashAccent("deudas");
+
+  return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);'
+    + _dashSectionAccentCss("deudas") + 'margin-bottom:20px;">'
+    + '<div style="font-size:14px;color:#8390b5;margin-bottom:16px;line-height:1.5;">' + countTxt + "</div>"
+    + '<div style="display:flex;flex-direction:column;gap:14px;max-width:100%;">'
+    + '<div><div style="font-size:13px;color:#8390b5;margin-bottom:6px;">Total deuda</div>'
+    + '<div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.92);line-height:1;letter-spacing:-.5px;word-break:break-word;">'
+    + fmt(Math.round(total)) + "</div></div>"
+    + '<div><div style="font-size:13px;color:#8390b5;margin-bottom:6px;">Pagos mensuales</div>'
+    + '<div style="font-size:22px;font-weight:800;color:' + a.title + ';line-height:1.3;word-break:break-word;">'
+    + fmt(Math.round(pagos)) + " por mes</div></div>"
+    + "</div></div>";
 }
 
 function renderDashboard() {
@@ -1016,8 +1104,9 @@ function renderRelacionDeudaIngreso(diag) {
     || totalDeuda <= 0
     || (dtiRatio != null && dtiRatio <= 0);
 
-  var cardOpen = '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
-    + _dashCardTitle("⚖️", "Relación deuda / ingreso");
+  var cardOpen = '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);'
+    + _dashSectionAccentCss("dti") + '">'
+    + _dashCardTitle("⚖️", "Relación deuda / ingreso", "dti");
 
   if (isZeroDebt) {
     return cardOpen
@@ -1063,8 +1152,9 @@ function renderConfianzaDiagnostico(diag) {
     explicacion = "Faltan datos o existen señales que limitan la precisión de este diagnóstico.";
   }
 
-  return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);">'
-    + _dashCardTitle("🎯", "Confianza del diagnóstico")
+  return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);'
+    + _dashSectionAccentCss("confianza") + '">'
+    + _dashCardTitle("🎯", "Confianza del diagnóstico", "confianza")
     + '<div style="font-size:20px;font-weight:800;color:rgba(255,255,255,.92);margin-bottom:10px;">' + nivelLabel + '</div>'
     + '<div style="font-size:15px;color:#8390b5;line-height:1.65;">' + explicacion + '</div>'
     + '</div>';
@@ -1351,7 +1441,8 @@ function renderTabPlan() {
 
   return '<div class="fade">'
     + _gastosMissingCard
-    + _dashCardTitle("📋", "Mi Plan")
+    + _dashIaSectionOpen(true, "situacion")
+    + _dashIaLabel("Tu situación actual", "situacion")
     + '<div style="margin-bottom:20px;padding:14px 18px;'
     + 'background:rgba(255,255,255,.03);'
     + 'border:1px solid rgba(255,255,255,.07);'
@@ -1382,15 +1473,20 @@ function renderTabPlan() {
 
     // 2. Interpretacion v2 — narrative blocks (Sprint 7B)
     + renderNarrativaInterpretacion(diag)
+    + _dashIaSectionClose()
 
-    // Sprint 12.1 — confianza del diagnóstico (DTI / stock de deuda)
-    + renderConfianzaDiagnostico(diag)
-
-    // Sprint 12.1.b — relación deuda / ingreso (educational)
-    + renderRelacionDeudaIngreso(diag)
+    + _dashIaSectionOpen(false, "frenando")
+    + _dashIaLabel("Qué está frenando tu perfil", "frenando")
 
     // 3. Bloqueadores activos
     + renderBloqueadores(diag)
+
+    // Sprint 12.1.b — relación deuda / ingreso (educational)
+    + renderRelacionDeudaIngreso(diag)
+    + _dashIaSectionClose()
+
+    + _dashIaSectionOpen(false, "accion")
+    + _dashIaLabel("Qué hacer ahora", "accion")
 
     // 4. Horizonte estimado para recalificar
     + renderHorizonteRecalificacion(diag)
@@ -1431,8 +1527,9 @@ function renderTabPlan() {
           ? CZ_DTI_ACCION_PRIORITARIA
           : (nPaso && nPaso.texto ? nPaso.texto : null);
         if (!textoAccion) return "";
-        return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);">'
-          + _dashCardTitle("📍", "Acción prioritaria")
+        return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);'
+          + _dashSectionAccentCss("accion") + '">'
+          + _dashCardTitle("📍", "Acción prioritaria", "accion")
           + '<div style="padding:14px 16px;background:rgba(255,255,255,.04);'
           + 'border:1px solid rgba(255,255,255,.09);border-radius:12px;">'
           + '<div style="font-size:15px;color:rgba(255,255,255,.9);line-height:1.65;">'
@@ -1514,6 +1611,17 @@ function renderTabPlan() {
             })()
           + '</div>'
         : "")
+    + _dashIaSectionClose()
+
+    + _dashIaSectionOpen(false, "numeros")
+    + _dashIaLabel("Tus números", "numeros")
+    + renderDashboardEditGastosCta()
+
+    // Sprint 12.1 — confianza del diagnóstico (DTI / stock de deuda)
+    + renderConfianzaDiagnostico(diag)
+
+    // 10. Analisis financiero detallado (radiografia — bloques 1 a 4)
+    + renderRadiografia()
 
     // 8. Herramientas del plan
     + renderHerramientas()
@@ -1559,9 +1667,6 @@ function renderTabPlan() {
           + '</div>';
       })()
 
-    // 10. Analisis financiero detallado (radiografia — bloques 1 a 4)
-    + renderRadiografia()
-
     // 11. Composicion del perfil + progreso (contexto analitico)
     + '<div class="plan-card">'
     + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;">Composicion de tu perfil</div>'
@@ -1593,6 +1698,7 @@ function renderTabPlan() {
           + (prog > 0 ? '<div style="margin-top:12px;font-size:12px;color:#8390b5;line-height:1.6;">ℹ️ Esta mejora muestra el impacto de los cambios que hiciste sobre tus deudas. El diagnóstico de base no cambia hasta que se actualice tu evaluación.</div>' : '')
           + '</div>'
         : "")
+    + _dashIaSectionClose()
 
     // 12. Premium
     + '<div class="premium-card">'
@@ -1630,8 +1736,9 @@ function renderMiPlanSuggestionBox() {
       + '</label>';
   }).join("");
 
-  return '<div class="plan-card" id="cz-feedback-box" style="margin-top:28px;border-color:rgba(255,255,255,.1);">'
-    + _dashCardTitle("💬", "Sugerencias")
+  return '<div class="plan-card" id="cz-feedback-box" style="margin-top:28px;border-color:rgba(255,255,255,.1);'
+    + _dashSectionAccentCss("sugerencias") + '">'
+    + _dashCardTitle("💬", "Sugerencias", "sugerencias")
     + '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:20px;">'
     + 'Contanos qué información te faltó o qué te gustaría que Mi Plan pueda ayudarte a entender.'
     + '</div>'
@@ -1748,8 +1855,8 @@ function renderRadiografia() {
   // Sprint 8.3 — guard aggregate interest display
   var interesUnrealistic = PRE.ingreso > 0 && r.interesMensualTotal / PRE.ingreso > 1.5;
 
-  return '<div style="margin-bottom:20px;max-width:100%;">'
-    + _dashCardTitle("📊", "Radiografía financiera")
+  return '<div style="margin-bottom:20px;max-width:100%;' + _dashSectionAccentCss("radiografia") + '">'
+    + _dashCardTitle("📊", "Radiografía financiera", "radiografia")
 
     // 1. Interes puro / costo latente
     + '<div style="background:rgba(255,78,114,.07);border:1px solid rgba(255,78,114,.2);border-radius:18px;padding:20px;margin-bottom:12px;">'
@@ -1813,25 +1920,15 @@ function renderRadiografia() {
 // =============================================================================
 function renderTabDeudas() {
   var st     = _st();
-  var diag   = _diag();
   var deudas = st.deudas || [];
-  var total  = deudas.reduce(function(s, d) { return s + (parseFloat(d.monto) || 0); }, 0);
-  var canc   = deudas.filter(function(d) { return _isDeudaPagadaUI(d); }).length;
 
   return '<div class="fade">'
-    + _dashCardTitle("💳", "Tus deudas")
+    + _dashIaSectionOpen(true, "deudas")
+    + _dashIaLabel("Tus deudas", "deudas")
     + '<div class="section-text">Actualiza tus saldos a medida que vas pagando. El plan y el puntaje se recalculan solos.</div>'
-    + '<div class="metrics" style="margin-bottom:22px;">'
-    + '<div class="metric"><small>Deuda total</small><strong style="color:#ff4e72;">' + fmt(total) + '</strong></div>'
-    + '<div class="metric"><small>Pagadas</small><strong style="color:#34ffaf;">' + canc + '/' + deudas.length + '</strong></div>'
-    + '<div class="metric"><small>Puntaje actual</small><strong style="color:' + colorScore(diag.scoreReset) + ';">' + diag.scoreReset + '</strong></div>'
-    // SPRINT 7B.2 — V1 RISK BADGE HIDDEN (not deleted)
-    // Reason: color-coded risk damages premium tone
-    // v2 recuperabilidad badge (Sprint 7B) is the correct surface for this information
-    // Scheduled removal: Sprint 1 of Backend Phase
-    + '<div style="display:none;height:0;overflow:hidden;"><div class="metric"><small>Nivel</small><strong style="color:' + colorNivel(diag.nivelR) + ';font-size:24px;">' + nivelTexto(diag.nivelR) + '</strong></div></div>'
-    + '</div>'
+    + renderDeudasResumen(deudas)
     + deudas.map(renderDeudaLive).join("")
+    + _dashIaSectionClose()
     + '<div style="text-align:center;margin-top:14px;font-size:16px;color:#8390b5;">Los cambios se guardan automaticamente.</div>'
     + '</div>';
 }
