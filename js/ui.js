@@ -2151,6 +2151,75 @@ function renderCompItem(id, label) {
     + '<div class="compromiso-text">' + label + '</div></div>';
 }
 
+// Sprint 13 — acciones recomendadas personalizadas por plan
+function _iconoAccionRecomendada(tipo) {
+  if (tipo === "accion") return "&#128203;";
+  if (tipo === "habito") return "&#128260;";
+  if (tipo === "contacto") return "&#128222;";
+  return "&#128221;";
+}
+
+function _trackAccionesMostradasOnce(diag, acciones) {
+  try {
+    if (sessionStorage.getItem("cz_acciones_mostradas_fired")) return;
+    sessionStorage.setItem("cz_acciones_mostradas_fired", "1");
+    if (typeof trackCRMEvent !== "function") return;
+    var iv2 = (diag && diag.interpretacion_v2) || {};
+    trackCRMEvent(
+      typeof CZ_EVENT_NAMES !== "undefined" ? CZ_EVENT_NAMES.ACCIONES_MOSTRADAS : "acciones_mostradas",
+      {
+        czuid: (window.CZIdentity && (window.CZIdentity.crm_contact_id || window.CZIdentity.anonymous_id)) || null,
+        planId: diag ? diag.planId : null,
+        causa_principal: iv2.causa_principal || null,
+        action_ids: (acciones || []).map(function(a) { return a.id; }),
+      }
+    );
+  } catch (e) { /* never throw */ }
+}
+
+function renderAccionRecomendadaItem(accion) {
+  var done = !!((_herr().compromisos || {})[accion.id]);
+  var urgColor = accion.urgencia === "alta" ? "#ff4e72"
+    : accion.urgencia === "media" ? "#ffd36f" : "#8390b5";
+  return '<div class="compromiso-item accion-recomendada-item" data-toggle-compromiso="' + accion.id + '"'
+    + ' data-accion-tipo="' + (accion.tipo || "") + '" data-accion-urgencia="' + (accion.urgencia || "") + '">'
+    + '<div class="compromiso-check' + (done ? " checked" : "") + '">' + (done ? "&#10003;" : "") + '</div>'
+    + '<div style="flex:1;min-width:0;">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+    + '<span style="font-size:18px;line-height:1;" aria-hidden="true">' + _iconoAccionRecomendada(accion.tipo) + '</span>'
+    + '<span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:' + urgColor + ';">'
+    + (accion.urgencia || "media") + '</span></div>'
+    + '<div class="compromiso-text">' + accion.texto + '</div></div></div>';
+}
+
+function renderAccionesRecomendadasHtml(diag) {
+  var acciones = typeof seleccionarAccionesRecomendadas === "function"
+    ? seleccionarAccionesRecomendadas(diag)
+    : [];
+  _trackAccionesMostradasOnce(diag, acciones);
+
+  var comp_ = _herr().compromisos || {};
+  var allDone = acciones.length > 0;
+  for (var ai = 0; ai < acciones.length; ai++) {
+    if (!comp_[acciones[ai].id]) { allDone = false; break; }
+  }
+
+  return '<div style="margin-top:8px;">'
+    + acciones.map(renderAccionRecomendadaItem).join("")
+    + (allDone
+        ? '<div style="margin-top:14px;padding:14px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);border-radius:14px;text-align:center;font-size:18px;font-weight:800;color:#34ffaf;">Comprometiste las acciones recomendadas. Eso marca la diferencia.</div>'
+        : "")
+    + '</div>';
+}
+
+function accionesRecomendadasCompletadas(diag) {
+  var acciones = typeof seleccionarAccionesRecomendadas === "function"
+    ? seleccionarAccionesRecomendadas(diag)
+    : [];
+  var comp_ = _herr().compromisos || {};
+  return acciones.length > 0 && acciones.some(function(a) { return comp_[a.id]; });
+}
+
 // ---- Plan 1 ----
 function renderHerramientasPlan1() {
   var herr = _herr();
@@ -2217,17 +2286,22 @@ function renderHerramientasPlan1() {
       : '<div style="font-size:17px;color:#8390b5;margin-top:8px;">Completa las herramientas 1 y 2 primero para ver este resultado.</div>',
     c1 && c2);
 
-  return h1 + h2 + h3;
+  var diag = _diag();
+  var h4 = renderToolCard(4, "Acciones recomendadas para vos",
+    "Pasos personalizados segun tu diagnostico actual.",
+    renderAccionesRecomendadasHtml(diag),
+    accionesRecomendadasCompletadas(diag));
+
+  return h1 + h2 + h3 + h4;
 }
 
 // ---- Plan 2 ----
 function renderHerramientasPlan2() {
   var herr  = _herr();
   var gest  = herr.gestiones || {};
-  var comp_ = herr.compromisos || {};
   var diag  = _diag();
   var c1 = Object.keys(gest).length > 0;
-  var c2 = Object.values(comp_).some(Boolean);
+  var c2 = accionesRecomendadasCompletadas(diag);
   var intMes = diag.fin.totalDeuda * (diag.fin.interesProm / 100 / 12);
   var RESS = [
     { v: "no_intentado",    l: "Todavia no lo intente" },
@@ -2252,13 +2326,8 @@ function renderHerramientasPlan2() {
       }).join("")
     + '</div>', c1);
 
-  var h2 = renderToolCard(2, "Las acciones prioritarias de recuperacion", "Tres acciones que hoy impactan directamente tu margen y tu perfil.",
-    '<div style="margin-top:8px;">'
-    + renderCompItem("no_deuda_nueva", "No voy a sacar ninguna deuda nueva este mes")
-    + renderCompItem("pagar_minimos",  "Voy a pagar los minimos en fecha")
-    + renderCompItem("contactar",      "Voy a intentar contactar a mi acreedor principal esta semana")
-    + (Object.values(comp_).filter(Boolean).length === 3 ? '<div style="margin-top:14px;padding:14px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);border-radius:14px;text-align:center;font-size:18px;font-weight:800;color:#34ffaf;">Comprometiste los 3 puntos. Eso marca la diferencia.</div>' : "")
-    + '</div>', c2);
+  var h2 = renderToolCard(2, "Acciones recomendadas para vos", "Tres pasos personalizados segun tu diagnostico y tus deudas.",
+    renderAccionesRecomendadasHtml(diag), c2);
 
   var h3 = renderToolCard(3, "Cuanto te cuesta no hacer nada", "Cada mes que pasa sin atacar la deuda, los intereses siguen corriendo.",
     '<div style="margin-top:8px;"><div class="grid">'
@@ -2271,12 +2340,10 @@ function renderHerramientasPlan2() {
 
 // ---- Plan 3 ----
 function renderHerramientasPlan3() {
-  var herr  = _herr();
-  var comp_ = herr.compromisos  || {};
   var diag  = _diag();
   // c1 is always true: pressure diagnostic is derived from debt data, no user action required
   var c1 = true;
-  var c2 = Object.values(comp_).some(Boolean);
+  var c2 = accionesRecomendadasCompletadas(diag);
   var rA = diag.fin.ratio;
   var dif = Math.max(0, (rA - 0.30) * PRE.ingreso);
 
@@ -2313,12 +2380,8 @@ function renderHerramientasPlan3() {
       })()
     + '</div>', c1);
 
-  var h2 = renderToolCard(2, "Las obligaciones que hoy mas afectan tu margen", "Estos tres habitos marcan la diferencia en el proceso de recuperacion.",
-    '<div style="margin-top:8px;">'
-    + renderCompItem("pagar_fecha",    "Voy a pagar todo en fecha este mes")
-    + renderCompItem("no_gasto_extra", "No voy a hacer gastos que no tenia planeados")
-    + renderCompItem("revisar_ratio",  "En 30 dias voy a revisar mi ratio de deuda")
-    + '</div>', c2);
+  var h2 = renderToolCard(2, "Acciones recomendadas para vos", "Pasos concretos segun tu presion financiera y tu plan de recuperacion.",
+    renderAccionesRecomendadasHtml(diag), c2);
 
   var h3 = renderToolCard(3, "Tu progreso hacia el objetivo", "Tu meta es bajar el ratio de deuda por debajo del 30% de tu ingreso.",
     '<div style="margin-top:8px;">'
@@ -2334,9 +2397,9 @@ function renderHerramientasPlan3() {
 function renderHerramientasPlan4() {
   var herr  = _herr();
   var sem   = herr.semaforo   || {};
-  var comp_ = herr.compromisos || {};
+  var diag  = _diag();
   var c1 = Object.keys(sem).length === 3;
-  var c2 = Object.values(comp_).some(Boolean);
+  var c2 = accionesRecomendadasCompletadas(diag);
   var semOk = sem.nueva_deuda === false && sem.pago_minimos === true && sem.flujo_positivo === true;
   var PREGS = [
     { id: "nueva_deuda",    l: "Tomaste alguna deuda nueva este mes?" },
@@ -2344,7 +2407,6 @@ function renderHerramientasPlan4() {
     { id: "flujo_positivo", l: "Tu flujo este mes fue positivo?" },
   ];
   var gastos     = _st().gastos || {};
-  var diag       = _diag();
   var flujoBase  = diag ? diag.fin.flujoLibre : 0;
   var maxSlider  = Math.max(2000, typeof getTotalMonthlyExpenses === "function"
     ? getTotalMonthlyExpenses()
@@ -2364,12 +2426,8 @@ function renderHerramientasPlan4() {
     + (c1 ? '<div style="margin-top:14px;padding:16px;border-radius:14px;background:' + (semOk ? "rgba(52,255,175,.1)" : "rgba(255,78,114,.1)") + ';border:1px solid ' + (semOk ? "rgba(52,255,175,.25)" : "rgba(255,78,114,.25)") + ';text-align:center;font-size:18px;font-weight:800;color:' + (semOk ? "#34ffaf" : "#ff4e72") + ';"><span style="font-size:28px;">' + (semOk ? "✅" : "⚠️") + '</span><br>' + (semOk ? "Bien encaminado — seguila" : "Hay senales de alerta") + '</div>' : "")
     + '</div>', c1);
 
-  var h2 = renderToolCard(2, "Compromisos de emergencia", "Estos tres son innegociables en tu situacion actual.",
-    '<div style="margin-top:8px;">'
-    + renderCompItem("no_deuda",    "No voy a tomar ninguna deuda nueva")
-    + renderCompItem("ord_informal","Voy a ordenar mis deudas informales primero")
-    + renderCompItem("ingreso_extra","Voy a buscar aunque sea una fuente de ingreso extra")
-    + '</div>', c2);
+  var h2 = renderToolCard(2, "Acciones recomendadas para vos", "Prioridades para estabilizar tu situacion esta semana.",
+    renderAccionesRecomendadasHtml(diag), c2);
 
   var h3 = renderToolCard(3, "Cuanto podrias liberar por mes",
     "Indica un monto mensual posible. No importa de que gasto venga.",

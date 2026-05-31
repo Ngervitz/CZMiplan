@@ -62,6 +62,8 @@ var CZ_CRM_ONLY_EVENTS = [
   "compromisos_actualizados",
   "semaforo_actualizado",
   "habito_marcado",
+  "acciones_mostradas",
+  "accion_comprometida",
 ];
 
 // =============================================================================
@@ -155,6 +157,8 @@ var CZ_EVENT_NAMES = Object.freeze({
   COMPROMISOS_ACTUALIZADOS:        "compromisos_actualizados",
   SEMAFORO_ACTUALIZADO:            "semaforo_actualizado",
   HABITO_MARCADO:                  "habito_marcado",
+  ACCIONES_MOSTRADAS:              "acciones_mostradas",
+  ACCION_COMPROMETIDA:             "accion_comprometida",
 });
 
 // =============================================================================

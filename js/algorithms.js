@@ -525,8 +525,8 @@ function calcularRadiografia() {
   const deudas = _deudas();
   const ing  = PRE.ingreso;
 
-  // 1. Interes puro mensual
-  const interesMensualTotal = deudas.reduce((s, d) => {
+  // 1. Interes puro mensual — active debts only (excludes cancelada / pagada)
+  const interesMensualTotal = deudasActivasParaCalculo(deudas).reduce((s, d) => {
     const monto = parseFloat(d.monto) || 0;
     const tasa  = TASAS[d.tipo] || 62;
     return s + monto * (tasa / 100 / 12);
@@ -721,7 +721,7 @@ function calcularDebtDataQuality(deudas) {
 // =============================================================================
 function calcularSeveridadFinanciera(fin, deudas, ingreso) {
   fin    = fin    || {};
-  deudas = deudas || [];
+  deudas = deudasActivasParaCalculo(deudas || []);
   ingreso = ingreso || PRE.ingreso || 1;
 
   var deudaTotal = fin.totalDeuda || deudas.reduce(function(s, d) {
@@ -1250,6 +1250,238 @@ function interpretarDiagnostico(diag) {
     dti_level:                fin.dti_level             || null,
     confianza_diagnostico:    fin.confianza_diagnostico != null ? fin.confianza_diagnostico : null,
   };
+}
+
+// =============================================================================
+// SPRINT 13 — ACCIONES RECOMENDADAS POR PLAN (presentation only)
+// =============================================================================
+
+function tieneBloqueo(tipo, bloqueadores) {
+  if (!tipo || !bloqueadores || !bloqueadores.length) return false;
+  for (var i = 0; i < bloqueadores.length; i++) {
+    if (bloqueadores[i] && bloqueadores[i].tipo === tipo) return true;
+  }
+  return false;
+}
+
+function _personalizarAccionRecomendada(template, prio) {
+  var accion = Object.assign({}, template);
+  var acreedor = (prio && prio.acreedor_display && String(prio.acreedor_display).trim())
+    ? String(prio.acreedor_display).trim()
+    : "tu acreedor principal";
+  accion.texto = String(accion.texto || "").replace(/\[acreedor_display\]/g, acreedor);
+
+  var montoNum = prio ? parseFloat(prio.monto) : NaN;
+  if (prio && !isNaN(montoNum) && montoNum > 0) {
+    var montoFmt = typeof fmt === "function" ? fmt(Math.round(montoNum)) : String(montoNum);
+    accion.texto = accion.texto.replace(/\$\[monto\]/g, montoFmt).replace(/\[monto\]/g, montoFmt);
+  } else {
+    accion.texto = accion.texto
+      .replace(/\s*\(\$\[monto\]\)/g, "")
+      .replace(/\s*\(\[monto\]\)/g, "")
+      .replace(/\$\[monto\]/g, "")
+      .replace(/\[monto\]/g, "");
+  }
+
+  accion.texto = accion.texto.replace(/\s+/g, " ").trim();
+  return accion;
+}
+
+function _ordenarAccionesRecomendadas(candidatos) {
+  var orden = { alta: 0, media: 1, baja: 2 };
+  var conIdx = candidatos.map(function(a, idx) {
+    var copy = Object.assign({}, a);
+    copy._idx = idx;
+    return copy;
+  });
+  conIdx.sort(function(a, b) {
+    var da = orden[a.urgencia] != null ? orden[a.urgencia] : 99;
+    var db = orden[b.urgencia] != null ? orden[b.urgencia] : 99;
+    if (da !== db) return da - db;
+    return a._idx - b._idx;
+  });
+  return conIdx.slice(0, 3).map(function(a) {
+    delete a._idx;
+    return a;
+  });
+}
+
+function _fallbackAccionesRecomendadas() {
+  return [{
+    id:       "fallback_revision",
+    texto:    "Revisá tu situación financiera en los próximos 30 días.",
+    tipo:     "habito",
+    urgencia: "baja",
+  }];
+}
+
+function seleccionarAccionesRecomendadas(diag) {
+  try {
+    if (!diag) return _fallbackAccionesRecomendadas();
+
+    var planId = diag.planId;
+    var iv2    = diag.interpretacion_v2 || {};
+    var causa  = iv2.causa_principal || "falta_organizacion";
+    var bl     = diag.bloqueadores || [];
+    var prio   = diag.prio || null;
+    var fin    = diag.fin || {};
+    var flujo  = fin.flujoLibre != null ? fin.flujoLibre : 0;
+
+    var candidatos = [];
+    var push = function(tpl) {
+      candidatos.push(_personalizarAccionRecomendada(tpl, prio));
+    };
+
+    if (planId === 1) {
+      push({
+        id: "mantener_pagos",
+        texto: "Mantené tus pagos al día los próximos 2 ciclos de facturación para consolidar tu historial.",
+        tipo: "habito",
+        urgencia: "media",
+      });
+      if (causa === "deuda_cara") {
+        push({
+          id: "refinanciar",
+          texto: "Consultá si podés refinanciar tu deuda a una tasa menor.",
+          tipo: "accion",
+          urgencia: "media",
+        });
+      }
+      if (flujo > 0 && prio) {
+        push({
+          id: "atacar_capital",
+          texto: "Destiná parte de tu flujo libre a reducir el capital de [acreedor_display].",
+          tipo: "accion",
+          urgencia: "media",
+        });
+      }
+      if (!tieneBloqueo("mora", bl) && !tieneBloqueo("mora_multiple", bl)) {
+        push({
+          id: "verificar_clearing",
+          texto: "Revisá tu historial en Clearing para confirmar que no hay errores registrados.",
+          tipo: "accion",
+          urgencia: "baja",
+        });
+      }
+    } else if (planId === 2) {
+      push({
+        id: "no_nuevas_deudas",
+        texto: "Evitá asumir nuevas deudas los próximos 90 días.",
+        tipo: "habito",
+        urgencia: "alta",
+      });
+      if (tieneBloqueo("mora", bl) || tieneBloqueo("mora_multiple", bl)) {
+        push({
+          id: "regularizar_mora",
+          texto: "Regularizá el atraso en [acreedor_display] antes de que escale a reclamo.",
+          tipo: "contacto",
+          urgencia: "alta",
+        });
+      }
+      if (flujo > 0 && prio) {
+        push({
+          id: "priorizar_pago",
+          texto: "Priorizá el pago de [acreedor_display] ($[monto]) este mes.",
+          tipo: "accion",
+          urgencia: "media",
+        });
+      }
+      if (causa === "flujo_negativo") {
+        push({
+          id: "reducir_gasto",
+          texto: "Identificá qué gasto podés reducir este mes para liberar flujo mensual.",
+          tipo: "habito",
+          urgencia: "alta",
+        });
+      }
+    } else if (planId === 3) {
+      if (prio) {
+        push({
+          id: "confirmar_saldo",
+          texto: "Confirmá el saldo actualizado de [acreedor_display].",
+          tipo: "accion",
+          urgencia: "media",
+        });
+      } else {
+        push({
+          id: "confirmar_saldo_fallback",
+          texto: "Confirmá el saldo actualizado de tus deudas.",
+          tipo: "accion",
+          urgencia: "media",
+        });
+      }
+      if (tieneBloqueo("mora", bl) || tieneBloqueo("mora_multiple", bl)) {
+        push({
+          id: "contactar_acreedor",
+          texto: "Contactá a [acreedor_display] para regularizar el atraso.",
+          tipo: "contacto",
+          urgencia: "alta",
+        });
+      }
+      if (causa === "stock_deuda_alto") {
+        push({
+          id: "reducir_stock",
+          texto: "Enfocate en reducir el saldo de [acreedor_display] antes de solicitar nuevo crédito.",
+          tipo: "habito",
+          urgencia: "alta",
+        });
+      }
+      if (flujo > 0
+          && !tieneBloqueo("mora", bl)
+          && !tieneBloqueo("mora_multiple", bl)) {
+        push({
+          id: "atacar_capital_plan3",
+          texto: "Con tu flujo actual podés atacar capital de [acreedor_display] este mes.",
+          tipo: "accion",
+          urgencia: "media",
+        });
+      }
+    } else if (planId === 4) {
+      push({
+        id: "no_compromisos",
+        texto: "No asumas ningún compromiso financiero nuevo hasta estabilizar tu situación.",
+        tipo: "habito",
+        urgencia: "alta",
+      });
+      push({
+        id: "congelar_gastos",
+        texto: "Congelá gastos no esenciales para acumular liquidez.",
+        tipo: "habito",
+        urgencia: "alta",
+      });
+      if (prio) {
+        var pagoPrio = parseFloat(prio.pago) || 0;
+        if (pagoPrio === 0 || prio.pago === 0 || prio.pago === "0" || !prio.pago) {
+          push({
+            id: "negociar_quita",
+            texto: "Contactá a [acreedor_display] para explorar opciones de negociación o quita del total.",
+            tipo: "contacto",
+            urgencia: "alta",
+          });
+        } else if (pagoPrio > 0) {
+          push({
+            id: "mantener_minimo",
+            texto: "Mantené el pago mínimo de [acreedor_display] para evitar que escale a reclamo.",
+            tipo: "accion",
+            urgencia: "alta",
+          });
+        }
+      }
+      if (flujo < 0) {
+        push({
+          id: "identificar_gasto",
+          texto: "Tu flujo actual es negativo. El primer paso es identificar qué gasto podés eliminar hoy.",
+          tipo: "accion",
+          urgencia: "alta",
+        });
+      }
+    }
+
+    var result = _ordenarAccionesRecomendadas(candidatos);
+    return result.length ? result : _fallbackAccionesRecomendadas();
+  } catch (e) {
+    return _fallbackAccionesRecomendadas();
+  }
 }
 
 // =============================================================================

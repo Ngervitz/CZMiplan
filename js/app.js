@@ -1757,16 +1757,25 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Toggle compromiso
+      // Toggle compromiso / acción recomendada (Sprint 13)
       var compId = e.target.closest("[data-toggle-compromiso]");
       if (compId) {
         var idComp = compId.getAttribute("data-toggle-compromiso");
 
         if (!st.herr.compromisos) st.herr.compromisos = {};
-        st.herr.compromisos[idComp] = !st.herr.compromisos[idComp];
+        var wasChecked = !!st.herr.compromisos[idComp];
+        st.herr.compromisos[idComp] = !wasChecked;
 
-        // CRM_ONLY — backend handles this
-        trackCRMEvent(CZ_EVENT_NAMES.COMPROMISOS_ACTUALIZADOS, { id: idComp, valor: st.herr.compromisos[idComp] });
+        if (st.herr.compromisos[idComp] && typeof trackCRMEvent === "function") {
+          trackCRMEvent(CZ_EVENT_NAMES.ACCION_COMPROMETIDA, {
+            czuid: (window.CZIdentity && (window.CZIdentity.crm_contact_id || window.CZIdentity.anonymous_id)) || null,
+            planId: st.diag ? st.diag.planId : null,
+            action_id: idComp,
+            action_tipo: compId.getAttribute("data-accion-tipo") || null,
+            action_urgencia: compId.getAttribute("data-accion-urgencia") || null,
+          });
+        }
+
         window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
