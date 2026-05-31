@@ -13,6 +13,8 @@ window.CZState = {
   deudas:          [],
   editing_debt_index:       null,
   _deuda_delete_confirm_index: null,
+  _deuda_quick_edit_index:      null,
+  _deuda_quick_edit_prev_monto: null,
   diag:          null,
   snap:          null,
   saldoIni:      0,
@@ -95,6 +97,49 @@ function scrollDeudaCardIntoView(idx) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, 80);
+}
+
+// Sprint 12.4d — quick edit monto: commit on blur/Enter (presentación; misma ruta de cálculo)
+function commitDeudaQuickMontoFromInput(inputEl) {
+  var st = window.CZState;
+  if (!inputEl || st._deuda_quick_edit_committing) return;
+
+  var idx = parseInt(inputEl.getAttribute("data-editar-deuda"), 10);
+  if (isNaN(idx) || st._deuda_quick_edit_index !== idx) return;
+
+  st._deuda_quick_edit_committing = true;
+
+  var d = st.deudas[idx];
+  var prev = st._deuda_quick_edit_prev_monto;
+  var rawStr = String(inputEl.value).trim();
+  var num = parseFloat(rawStr);
+  var valid = rawStr !== "" && !isNaN(num) && num >= 0;
+
+  st._deuda_quick_edit_index = null;
+  st._deuda_quick_edit_prev_monto = null;
+
+  if (d) {
+    if (valid) {
+      d.monto = inputEl.value;
+      d.cancelada = false;
+      if (typeof enriquecerDeuda === "function") enriquecerDeuda(d);
+      if (typeof calcularMotor === "function") {
+        st.diag = calcularMotor();
+      }
+      st.temporal.last_debt_update_at = new Date().toISOString();
+      window.guardarLocal();
+    } else if (prev !== undefined && prev !== null) {
+      d.monto = prev;
+    }
+  }
+
+  st._deuda_quick_edit_committing = false;
+
+  if (st.step === 3 && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+    window.CredizonaUI.renderTab();
+  } else if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
+    window.CredizonaUI.renderAll();
+  }
 }
 
 // Sprint 12.2 Fix — refresh debt cards on step 2 (deudas-container) or step 3 (tab)
@@ -983,28 +1028,6 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Editar deuda viva en dashboard
-      var editarIdx = e.target.getAttribute("data-editar-deuda");
-      if (editarIdx !== null) {
-        editarIdx = parseInt(editarIdx, 10);
-
-        if (st.deudas[editarIdx]) {
-          var dQuick = st.deudas[editarIdx];
-          dQuick.monto = e.target.value;
-          dQuick.cancelada = false;
-
-          if (typeof enriquecerDeuda === "function") enriquecerDeuda(dQuick);
-
-          if (typeof calcularMotor === "function") {
-            st.diag = calcularMotor();
-          }
-
-          window.guardarLocal();
-        }
-
-        return;
-      }
-
       // Ingreso formal
       if (e.target.id === "ing-formal") {
         st.herr.ingresos.formal = parseFloat(e.target.value) || 0;
@@ -1034,6 +1057,19 @@ document.addEventListener("DOMContentLoaded", function() {
         actualizarSimuladorFlujo();
         return;
       }
+    });
+
+    // Sprint 12.4d — quick edit monto: commit al salir del campo o Enter
+    main.addEventListener("focusout", function(e) {
+      if (e.target.getAttribute("data-editar-deuda") !== null) {
+        commitDeudaQuickMontoFromInput(e.target);
+      }
+    });
+
+    main.addEventListener("keydown", function(e) {
+      if (e.key !== "Enter" || e.target.getAttribute("data-editar-deuda") === null) return;
+      e.preventDefault();
+      commitDeudaQuickMontoFromInput(e.target);
     });
 
     // Changes generados dinámicamente
@@ -1596,11 +1632,31 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
+      // Sprint 12.4d — abrir quick edit de monto en tarjeta viva
+      var quickTrigEl = e.target.closest
+        ? e.target.closest("[data-deuda-quick-edit-trigger]")
+        : null;
+      if (quickTrigEl) {
+        var quickIdx = parseInt(quickTrigEl.getAttribute("data-deuda-quick-edit-trigger"), 10);
+        if (!isNaN(quickIdx) && st.deudas[quickIdx]) {
+          st._deuda_quick_edit_index = quickIdx;
+          st._deuda_quick_edit_prev_monto = st.deudas[quickIdx].monto;
+          if (st.step === 3) {
+            window.CredizonaUI.renderTab();
+          } else {
+            window.CredizonaUI.renderAll();
+          }
+        }
+        return;
+      }
+
       // Sprint 12.2 — editar deuda (modo edición por índice)
       var editarDeudaIdx = e.target.getAttribute("data-deuda-editar");
       if (editarDeudaIdx !== null) {
         editarDeudaIdx = parseInt(editarDeudaIdx, 10);
         if (st.deudas[editarDeudaIdx]) {
+          st._deuda_quick_edit_index = null;
+          st._deuda_quick_edit_prev_monto = null;
           st._deuda_edit_snapshot = JSON.parse(JSON.stringify(st.deudas[editarDeudaIdx]));
           st.editing_debt_index = editarDeudaIdx;
           st._deuda_delete_confirm_index = null;
@@ -1647,6 +1703,8 @@ document.addEventListener("DOMContentLoaded", function() {
           st.editing_debt_index = null;
           st._deuda_edit_snapshot = null;
           st._deuda_delete_confirm_index = null;
+          st._deuda_quick_edit_index = null;
+          st._deuda_quick_edit_prev_monto = null;
           st.temporal.last_debt_update_at = new Date().toISOString();
           trackCRMDebtEvent("debt_marked_paid", { debt_index: pagadaIdx });
           recalcDiagYGuardar();

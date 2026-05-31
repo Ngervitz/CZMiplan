@@ -718,6 +718,41 @@ function _deudaDisplayName(d, i) {
   return d.acreedor_display || d.acreedor || (DEBT_TYPES.find(function(t) { return t.v === d.tipo; }) || {}).l || ("Deuda #" + (i + 1));
 }
 
+// Sprint 12.4d — título y badge en tarjetas del tab Tus deudas (solo presentación)
+function _deudaLiveTitle(d) {
+  var name = String(d.acreedor_display || "").trim();
+  return name || "Otro acreedor";
+}
+
+function _deudaStatusBadgeMeta(d) {
+  var sit = d.situacion_ui;
+  if (d.cancelada || sit === "cancelada" || sit === "pagada") {
+    return {
+      label: "Pagada",
+      bg:    "rgba(100,116,139,.15)",
+      color: "rgba(148,163,184,.9)",
+    };
+  }
+  var labels = {
+    pagando_normal:    "Al día",
+    atrasado_pagando:  "Pago atrasado",
+    mora_30_60:        "En mora",
+    mora_60_90:        "En mora",
+    mora_reclamo:      "En mora",
+    deje_pagar:        "Sin pagos",
+  };
+  var label = labels[sit] || "Sin pagos";
+  if (sit === "pagando_normal") {
+    return { label: label, bg: "rgba(96,165,250,.15)", color: "rgba(96,165,250,.9)" };
+  }
+  return { label: label, bg: "rgba(245,158,11,.15)", color: "rgba(245,158,11,.9)" };
+}
+
+function _deudaLiveCardStyle() {
+  return "padding:16px;margin-bottom:12px;border:1px solid rgba(255,255,255,.08);"
+    + "border-radius:22px;background:rgba(255,255,255,.04);max-width:100%;box-sizing:border-box;";
+}
+
 function _isDeudaPagadaUI(d) {
   return typeof isDeudaPagada === "function"
     ? isDeudaPagada(d)
@@ -740,10 +775,10 @@ function renderDeudaActionButtons(i, d) {
   }
   if (_isDeudaPagadaUI(d)) return "";
 
-  return '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;padding-bottom:4px;">'
-    + '<button type="button" class="btn btn-secondary" data-deuda-editar="' + i + '" style="flex:1;min-width:100px;height:48px;font-size:15px;">Editar</button>'
-    + '<button type="button" class="btn btn-secondary" data-deuda-eliminar="' + i + '" style="flex:1;min-width:100px;height:48px;font-size:15px;">Eliminar</button>'
-    + '<button type="button" class="btn btn-secondary" data-deuda-pagada="' + i + '" style="flex:1;min-width:100px;height:48px;font-size:15px;color:#34ffaf;border-color:rgba(52,255,175,.3);">Ya la pagué</button>'
+  return '<div class="debt-live-actions">'
+    + '<button type="button" class="btn btn-secondary" data-deuda-editar="' + i + '">Editar</button>'
+    + '<button type="button" class="btn btn-secondary" data-deuda-eliminar="' + i + '">Eliminar</button>'
+    + '<button type="button" class="btn btn-secondary btn-deuda-pagada" data-deuda-pagada="' + i + '">Ya la pagué</button>'
     + '</div>';
 }
 
@@ -1029,6 +1064,8 @@ function renderTab() {
   if (tab === "ia")     el.innerHTML = renderTabIA();
   if (tab === "plus")   el.innerHTML = renderTabPlus();
   bindTabEvents();
+  var qIdx = _st()._deuda_quick_edit_index;
+  if (qIdx != null) focusDeudaQuickEditInput(qIdx);
 }
 
 // =============================================================================
@@ -1921,22 +1958,31 @@ function renderRadiografia() {
 function renderTabDeudas() {
   var st     = _st();
   var deudas = st.deudas || [];
+  var totalDeuda = deudas.reduce(function(s, x) {
+    return s + (parseFloat(x.monto) || 0);
+  }, 0);
+  var ingreso = PRE.ingreso || 0;
 
   return '<div class="fade">'
     + _dashIaSectionOpen(true, "deudas")
     + _dashIaLabel("Tus deudas", "deudas")
     + '<div class="section-text">Actualiza tus saldos a medida que vas pagando. El plan y el puntaje se recalculan solos.</div>'
     + renderDeudasResumen(deudas)
-    + deudas.map(renderDeudaLive).join("")
+    + deudas.map(function(d, i) {
+        return renderDeudaLive(d, i, totalDeuda, ingreso);
+      }).join("")
     + _dashIaSectionClose()
     + '<div style="text-align:center;margin-top:14px;font-size:16px;color:#8390b5;">Los cambios se guardan automaticamente.</div>'
     + '</div>';
 }
 
-function renderDeudaLive(d, i) {
-  var pagada = _isDeudaPagadaUI(d);
-  var st     = _st();
-  var montoMostrar = d.monto_original != null ? d.monto_original : d.monto;
+function renderDeudaLive(d, i, totalDeuda, ingreso) {
+  var pagada     = _isDeudaPagadaUI(d);
+  var st         = _st();
+  var montoMostrar = parseFloat(pagada && d.monto_original != null ? d.monto_original : d.monto) || 0;
+  var pago       = parseFloat(d.pago) || 0;
+  var badge      = _deudaStatusBadgeMeta(d);
+  var quickOpen  = !pagada && st._deuda_quick_edit_index === i;
   var editBanner = (st.editing_debt_index === i)
     ? '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.22);border-radius:12px;font-size:15px;font-weight:700;color:#40d7ff;">Editando deuda: ' + _deudaDisplayName(d, i) + '</div>'
     : "";
@@ -1945,15 +1991,69 @@ function renderDeudaLive(d, i) {
     return '<div id="dlive-' + i + '">' + editBanner + renderDeudaCard(d, i) + '</div>';
   }
 
-  return '<div class="debt-card" id="dlive-' + i + '" style="border-color:' + (pagada ? "rgba(52,255,175,.3)" : "rgba(255,255,255,.1)") + ';opacity:' + (pagada ? 0.7 : 1) + ';">'
-    + '<div class="debt-top">'
-    + '<div class="debt-name">' + (pagada ? "✅ " : "") + _deudaDisplayName(d, i) + (pagada ? " — Pagada" : "") + '</div>'
-    + '</div>'
-    + (!pagada
-        ? '<div style="position:relative;margin-bottom:4px;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span><input type="number" style="padding-left:36px;" value="' + (d.monto || "") + '" placeholder="0" data-editar-deuda="' + i + '"/></div>'
-        : '<div style="font-size:15px;color:#8390b5;margin-bottom:4px;">Saldo histórico: ' + fmt(parseFloat(montoMostrar) || 0) + '</div>')
+  var pctDeuda = totalDeuda > 0
+    ? ((montoMostrar / totalDeuda) * 100).toFixed(1)
+    : null;
+  var pctIngreso = pago > 0 && ingreso > 0
+    ? ((pago / ingreso) * 100).toFixed(1)
+    : null;
+
+  var amountBlock = "";
+  if (pagada) {
+    amountBlock = '<div style="font-size:24px;font-weight:900;color:rgba(255,255,255,.92);margin:4px 0 8px;line-height:1.2;word-break:break-word;">'
+      + fmt(Math.round(montoMostrar)) + "</div>";
+  } else if (quickOpen) {
+    amountBlock = '<div style="margin:4px 0 8px;max-width:100%;">'
+      + '<div style="position:relative;max-width:100%;">'
+      + '<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:16px;pointer-events:none;">$</span>'
+      + '<input type="number" data-editar-deuda="' + i + '" value="' + (d.monto != null ? d.monto : "") + '" placeholder="0" '
+      + 'style="padding-left:34px;width:100%;max-width:100%;box-sizing:border-box;"/>'
+      + "</div></div>";
+  } else {
+    amountBlock = '<div style="font-size:24px;font-weight:900;color:rgba(255,255,255,.92);margin:4px 0 6px;line-height:1.2;word-break:break-word;">'
+      + fmt(Math.round(montoMostrar)) + "</div>"
+      + '<span role="button" tabindex="0" data-deuda-quick-edit-trigger="' + i + '" '
+      + 'style="font-size:12px;color:rgba(255,255,255,.4);cursor:pointer;display:inline-block;margin-bottom:8px;">'
+      + "✏️ Editar monto</span>";
+  }
+
+  var contextLines = "";
+  if (pctDeuda != null) {
+    contextLines += '<div style="font-size:12px;color:rgba(255,255,255,.4);line-height:1.5;margin-bottom:6px;">'
+      + "Representa " + pctDeuda + "% de tu deuda total</div>";
+  }
+  if (pago > 0) {
+    contextLines += '<div style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.5;margin-bottom:6px;">'
+      + fmt(Math.round(pago)) + " por mes</div>";
+  }
+  if (pctIngreso != null) {
+    contextLines += '<div style="font-size:12px;color:rgba(255,255,255,.4);line-height:1.5;">'
+      + "Representa " + pctIngreso + "% de tus ingresos</div>";
+  }
+
+  return '<div class="debt-card" id="dlive-' + i + '" style="' + _deudaLiveCardStyle()
+    + "opacity:" + (pagada ? "0.75" : "1") + ';">'
+    + editBanner
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px;max-width:100%;">'
+    + '<div style="font-size:16px;font-weight:700;color:rgba(255,255,255,.92);flex:1;min-width:0;word-break:break-word;line-height:1.35;">'
+    + _deudaLiveTitle(d) + "</div>"
+    + '<span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:12px;white-space:nowrap;'
+    + "background:" + badge.bg + ";color:" + badge.color + ';">' + badge.label + "</span>"
+    + "</div>"
+    + amountBlock
+    + (contextLines ? '<div style="margin-bottom:12px;">' + contextLines + "</div>" : "")
     + renderDeudaActionButtons(i, d)
-    + '</div>';
+    + "</div>";
+}
+
+function focusDeudaQuickEditInput(idx) {
+  setTimeout(function() {
+    var inp = document.querySelector('[data-editar-deuda="' + idx + '"]');
+    if (inp) {
+      inp.focus();
+      if (typeof inp.select === "function") inp.select();
+    }
+  }, 0);
 }
 
 // =============================================================================
@@ -2756,6 +2856,7 @@ function renderAll() {
 window.CredizonaUI = {
   renderAll: renderAll,
   renderTab: renderTab,
+  focusDeudaQuickEditInput: focusDeudaQuickEditInput,
   renderDeudaCard: renderDeudaCard,
   actualizarMetrics: actualizarMetrics,
   bindTabEvents: bindTabEvents,

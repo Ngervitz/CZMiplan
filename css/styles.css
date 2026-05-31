@@ -162,6 +162,15 @@ select option{background:#0a1026;}
 .micro-warn{background:rgba(255,197,61,.1);border:1px solid rgba(255,197,61,.25);color:#ffd36f;}
 .micro-danger{background:rgba(255,78,114,.1);border:1px solid rgba(255,78,114,.25);color:#ff8fa3;}
 
+/* Sprint 12.4d — acciones en tarjetas vivas del tab Tus deudas */
+.debt-live-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;max-width:100%;}
+.debt-live-actions .btn{flex:1;min-width:calc(50% - 4px);height:36px;font-size:13px;padding:0 12px;}
+.debt-live-actions .btn-deuda-pagada{width:100%;}
+@media (min-width:480px){
+  .debt-live-actions .btn{min-width:0;}
+  .debt-live-actions .btn-deuda-pagada{width:auto;flex:1;}
+}
+
 /* METRICS */
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px;}
 .metric{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:22px;padding:22px;}
