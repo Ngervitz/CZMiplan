@@ -1166,6 +1166,30 @@ function renderRelacionDeudaIngreso(diag) {
     + '</div>';
 }
 
+function renderPlan4SinDeudaActivaExplicacion(diag) {
+  if (!diag || diag.planId !== 4) return "";
+
+  var deudas = _st().deudas || [];
+  var activeDebtCount = typeof deudasActivasParaCalculo === "function"
+    ? deudasActivasParaCalculo(deudas).length
+    : 0;
+
+  if (activeDebtCount > 0) return "";
+
+  var fin = _finFromDiag(diag);
+  var flujoLibreActual = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  if (flujoLibreActual >= 0) return "";
+
+  return '<div style="margin-bottom:16px;padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;">'
+    + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.88);line-height:1.45;margin-bottom:10px;">'
+    + "&#9888;&#65039; El problema ya no es la deuda</div>"
+    + '<div style="font-size:14px;color:#8390b5;line-height:1.65;">'
+    + "No registramos deuda activa en la información actual.<br><br>"
+    + "Sin embargo, tus gastos mensuales siguen superando tus ingresos, lo que mantiene tu situación en una zona de inestabilidad financiera.<br><br>"
+    + "Por eso el diagnóstico continúa priorizando la estabilización."
+    + "</div></div>";
+}
+
 function renderDtiStockBlockerCard() {
   return '<div style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:rgba(255,211,111,.07);border:1px solid rgba(255,211,111,.2);border-radius:12px;">'
     + '<div style="width:8px;height:8px;border-radius:50%;background:#ffd36f;flex-shrink:0;margin-top:6px;"></div>'
@@ -1521,6 +1545,7 @@ function renderTabPlan() {
 
     // 3. Bloqueadores activos
     + renderBloqueadores(diag)
+    + renderPlan4SinDeudaActivaExplicacion(diag)
 
     // Sprint 12.1.b — relación deuda / ingreso (educational)
     + renderRelacionDeudaIngreso(diag)
