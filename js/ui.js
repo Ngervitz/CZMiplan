@@ -2310,10 +2310,159 @@ function renderPlusPresentation() {
       + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-obtener-informe">'
       + "Ver mi situación real</button>"
       + '<p id="plus-cta-inline-msg" class="plus-cta-inline-msg" style="display:none;"></p>'
+      + _renderPlusDevButton()
       + '<p class="plus-disclaimer">El informe se genera en base a los datos disponibles en BCU '
       + "y Clearing al momento de la consulta.</p>"
     )
   );
+}
+
+function _renderPlusDevButton() {
+  var st = _st();
+  var showDev = (typeof CZ_PLUS_PAYMENT_LIVE === "undefined" || !CZ_PLUS_PAYMENT_LIVE)
+    && (typeof CZ_PLUS_USE_MOCK !== "undefined" && CZ_PLUS_USE_MOCK)
+    && st._plusDevCtaClicked;
+  if (!showDev) return "";
+  return '<button type="button" class="btn btn-secondary plus-dev-btn" id="btn-plus-dev-generar">'
+    + "[DEV] Generar informe mock</button>";
+}
+
+function _plusEsc(s) {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function _plusUrgenciaStyle(urgencia) {
+  var u = String(urgencia || "baja").toLowerCase();
+  if (u === "alta") {
+    return "background:rgba(255,197,61,.15);color:#ffd36f;";
+  }
+  if (u === "media") {
+    return "background:rgba(148,163,184,.15);color:rgba(148,163,184,.9);";
+  }
+  return "background:rgba(100,116,139,.15);color:rgba(148,163,184,.75);";
+}
+
+function _plusListHtml(items, itemRenderer) {
+  var arr = items || [];
+  if (!arr.length) return "";
+  return '<ul class="plus-report-list">'
+    + arr.map(itemRenderer).join("")
+    + "</ul>";
+}
+
+function _plusSectionTitle(text) {
+  return '<h3 class="plus-report-section-title">' + _plusEsc(text) + "</h3>";
+}
+
+function _plusRenderAccion(act, highlight) {
+  if (!act) return "";
+  var tipo = act.tipo ? String(act.tipo).toUpperCase() : "";
+  var urgStyle = _plusUrgenciaStyle(act.urgencia);
+  var wrapCls = highlight ? " plus-report-action-highlight" : "";
+  return '<div class="plus-report-action' + wrapCls + '">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;flex-wrap:wrap;max-width:100%;">'
+    + "<strong>" + _plusEsc(act.titulo) + "</strong>"
+    + '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap;'
+    + urgStyle + '">' + _plusEsc(tipo) + "</span>"
+    + "</div>"
+    + '<p class="plus-report-p">' + _plusEsc(act.descripcion) + "</p>"
+    + "</div>";
+}
+
+function renderPlusInforme(informe) {
+  informe = informe || {};
+  var sec1 = informe.seccion_1_resumen_ejecutivo || {};
+  var sec4 = informe.seccion_4_hallazgos || {};
+  var sec5 = informe.seccion_5_acciones || {};
+  var sec6 = informe.seccion_6_horizonte || {};
+  var escProb = sec6.escenario_probable || {};
+
+  var html = '<div class="plus-report">'
+    + '<div class="plus-report-header">'
+    + '<div class="plus-header-icon" aria-hidden="true">★</div>'
+    + '<h2 class="plus-header-title">Tu informe Mi Plan Plus</h2>'
+    + "</div>";
+
+  html += '<div class="plan-card plus-report-section">'
+    + _plusSectionTitle("Tu situación financiera hoy")
+    + '<p class="plus-report-p">' + _plusEsc(sec1.situacion_general) + "</p>"
+    + '<div class="plus-report-sub">Fortalezas</div>'
+    + _plusListHtml(sec1.fortalezas || [], function(item) {
+        return "<li>" + _plusEsc(item) + "</li>";
+      })
+    + '<div class="plus-report-sub">Riesgos</div>'
+    + _plusListHtml(sec1.riesgos || [], function(item) {
+        return "<li>" + _plusEsc(item) + "</li>";
+      })
+    + '<div class="plus-report-sub">Bloqueador principal</div>'
+    + '<p class="plus-report-p">' + _plusEsc(sec1.bloqueador_principal) + "</p>"
+    + '<div class="plus-report-sub">Horizonte</div>'
+    + '<p class="plus-report-p">' + _plusEsc(sec1.horizonte_resumen) + "</p>"
+    + '<p class="plus-report-disclaimer">' + _plusEsc(sec1.nota_disclaimer) + "</p>"
+    + "</div>";
+
+  if (informe.seccion_3_nota_diferencias) {
+    html += '<div class="plan-card plus-report-section">'
+      + _plusSectionTitle("Diferencias detectadas")
+      + '<p class="plus-report-p">' + _plusEsc(informe.seccion_3_nota_diferencias) + "</p>"
+      + "</div>";
+  }
+
+  html += '<div class="plan-card plus-report-section">'
+    + _plusSectionTitle("Qué significa esto")
+    + '<p class="plus-report-p">' + _plusEsc(sec4.interpretacion_general) + "</p>"
+    + _plusListHtml(sec4.hallazgos || [], function(h) {
+        return "<li><strong>" + _plusEsc(h.titulo) + "</strong> — " + _plusEsc(h.descripcion) + "</li>";
+      })
+    + '<div class="plus-report-sub">Patrón detectado</div>'
+    + '<p class="plus-report-p">' + _plusEsc(sec4.patron_detectado) + "</p>"
+    + '<div class="plus-report-sub">Perfil de riesgo real</div>'
+    + '<p class="plus-report-p">' + _plusEsc(sec4.perfil_riesgo_real) + "</p>"
+    + "</div>";
+
+  html += '<div class="plan-card plus-report-section">'
+    + _plusSectionTitle("Qué hacer ahora")
+    + _plusRenderAccion(sec5.accion_inmediata, true)
+    + (sec5.acciones || []).map(function(act) {
+        return _plusRenderAccion(act, false);
+      }).join("")
+    + "</div>";
+
+  html += '<div class="plan-card plus-report-section">'
+    + _plusSectionTitle("Tu horizonte")
+    + '<p class="plus-report-p">' + _plusEsc(sec6.situacion_actual) + "</p>"
+    + '<div class="plus-report-sub">Escenario probable</div>'
+    + '<p class="plus-report-p">' + _plusEsc(escProb.descripcion) + "</p>"
+    + '<div class="plus-report-sub">Tiempo estimado</div>'
+    + '<p class="plus-report-p plus-report-emphasis">' + _plusEsc(sec6.tiempo_estimado) + "</p>"
+    + '<div class="plus-report-sub">Qué debe cambiar</div>'
+    + _plusListHtml(sec6.que_debe_cambiar || [], function(item) {
+        return "<li>" + _plusEsc(item) + "</li>";
+      })
+    + '<div class="plus-report-sub">Estimación</div>'
+    + '<p class="plus-report-p">' + _plusEsc(sec6.estimacion) + "</p>"
+    + '<div class="plus-report-sub">Factores bloqueantes</div>'
+    + _plusListHtml(sec6.factores_bloqueantes || [], function(item) {
+        return "<li>" + _plusEsc(item) + "</li>";
+      })
+    + '<div class="plus-report-sub">Factores favorables</div>'
+    + _plusListHtml(sec6.factores_favorables || [], function(item) {
+        return "<li>" + _plusEsc(item) + "</li>";
+      })
+    + '<p class="plus-report-disclaimer">Este informe es orientativo y se basa en los registros '
+    + "disponibles al momento de la consulta. No constituye asesoramiento legal ni garantía de aprobación.</p>"
+    + "</div>";
+
+  html += '<button type="button" class="btn btn-secondary plus-cta-btn plus-cta-secondary" id="btn-plus-descargar-pdf">'
+    + "Descargar PDF</button>"
+    + "</div>";
+
+  return _plusScreenWrap(_plusCard(html));
 }
 
 function renderPlusProcessing() {
@@ -2329,6 +2478,11 @@ function renderPlusProcessing() {
 }
 
 function renderPlusReady() {
+  var st = _st();
+  if (st.plus_status === "PLUS_READY" && st.plus_informe) {
+    return renderPlusInforme(st.plus_informe);
+  }
+
   return _plusScreenWrap(
     _plusCard(
       '<div class="plus-status-icon" aria-hidden="true">✅</div>'
@@ -2362,6 +2516,7 @@ function renderTabPlus() {
   var status = st.plus_status;
 
   if (status === "PLUS_PROCESSING") return renderPlusProcessing();
+  if (status === "PLUS_READY" && st.plus_informe) return renderPlusInforme(st.plus_informe);
   if (status === "PLUS_READY") return renderPlusReady();
   if (status === "PLUS_ERROR") return renderPlusError();
 

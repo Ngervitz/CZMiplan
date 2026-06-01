@@ -450,6 +450,45 @@ select option{background:#0a1026;}
   margin:8px 0 0;text-align:center;word-break:break-word;
 }
 .plus-support-link{color:rgba(96,210,255,.85);text-decoration:underline;}
+.plus-dev-btn{
+  width:100%;max-width:100%;height:48px;font-size:14px;font-weight:700;
+  margin-bottom:12px;box-sizing:border-box;
+}
+.plus-report{max-width:100%;box-sizing:border-box;}
+.plus-report-header{margin-bottom:18px;}
+.plus-report-section{
+  margin-bottom:14px;padding:18px 16px;max-width:100%;box-sizing:border-box;
+}
+.plus-report-section-title{
+  font-size:14px;font-weight:800;color:rgba(255,255,255,.75);
+  margin:0 0 14px;line-height:1.35;text-transform:uppercase;letter-spacing:.05em;
+}
+.plus-report-p{
+  font-size:14px;color:rgba(255,255,255,.72);line-height:1.6;
+  margin:0 0 12px;word-break:break-word;
+}
+.plus-report-sub{
+  font-size:12px;font-weight:700;color:rgba(255,255,255,.4);
+  margin:14px 0 8px;text-transform:uppercase;letter-spacing:.04em;
+}
+.plus-report-list{
+  margin:0 0 12px;padding-left:18px;font-size:14px;
+  color:rgba(255,255,255,.72);line-height:1.55;max-width:100%;
+}
+.plus-report-list li{margin-bottom:6px;word-break:break-word;}
+.plus-report-disclaimer{
+  font-size:12px;color:rgba(255,255,255,.38);line-height:1.55;
+  margin:14px 0 0;word-break:break-word;
+}
+.plus-report-emphasis{font-weight:800;color:rgba(255,255,255,.9);}
+.plus-report-action{
+  margin-bottom:12px;padding:12px 14px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);
+  max-width:100%;box-sizing:border-box;
+}
+.plus-report-action-highlight{
+  border-color:rgba(255,197,61,.25);background:rgba(255,197,61,.06);
+}
 
 /* LOCKED */
 .locked-overlay{position:relative;}

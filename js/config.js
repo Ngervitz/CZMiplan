@@ -116,6 +116,13 @@ var CZ_PLUS_PAYMENT_LIVE = false;
 var CZ_PLUS_BCU_CLEARING_LIVE = false;
 var CZ_HANDY_ENDPOINT = "";
 
+// Sprint 14.2 — Claude LLM prototype (key stays here only; move to backend before production)
+var CZ_CLAUDE_API_KEY = "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";
+var CZ_CLAUDE_MODEL = "claude-sonnet-4-5";
+var CZ_PLUS_USE_MOCK = true;
+// Enable only if Anthropic browser restrictions block localhost testing.
+var CZ_CLAUDE_ALLOW_BROWSER_KEY = true;
+
 // Consent event names
 const CZ_CONSENT_EVENTS = Object.freeze({
   LEGAL_ACCEPTED:    "legal_accepted",

@@ -24,6 +24,8 @@ window.CZState = {
   plus_status:        null,
   plus_report_id:     null,
   plus_purchased_at:  null,
+  plus_informe:       null,
+  _plusDevCtaClicked: false,
   iaRes:         null,
   miplan_started: false,
 
@@ -412,6 +414,7 @@ function resetPlusPurchaseError() {
   st.plus_purchased = false;
   st.plus_purchased_at = null;
   st.plus_report_id = null;
+  st.plus_informe = null;
   window.guardarLocal();
   if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
     window.CredizonaUI.renderTab();
@@ -431,6 +434,7 @@ function handlePlusPaymentReturn() {
 }
 
 function onPlusCtaClick() {
+  var st = window.CZState;
   var ids = _plusTrackingIds();
   var paymentLive = typeof CZ_PLUS_PAYMENT_LIVE !== "undefined" && CZ_PLUS_PAYMENT_LIVE;
 
@@ -447,6 +451,10 @@ function onPlusCtaClick() {
     if (msg) {
       msg.textContent = "Estamos activando este servicio. Te avisamos cuando esté disponible.";
       msg.style.display = "block";
+    }
+    st._plusDevCtaClicked = true;
+    if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+      window.CredizonaUI.renderTab();
     }
     return;
   }
@@ -478,6 +486,7 @@ window.guardarLocal = function(extra) {
       plus_status:             st.plus_status != null ? st.plus_status : null,
       plus_report_id:          st.plus_report_id || null,
       plus_purchased_at:       st.plus_purchased_at || null,
+      plus_informe:            st.plus_informe || null,
       iaRes:                   st.iaRes,
       miplan_started:          st.miplan_started          || false,
       user_recovery_state:     st.user_recovery_state     || null,
@@ -628,6 +637,7 @@ function resetear() {
     plus_status:         null,
     plus_report_id:      null,
     plus_purchased_at:   null,
+    plus_informe:        null,
     iaRes:               null,
     miplan_started:      false,
     user_recovery_state: null,
@@ -792,6 +802,7 @@ async function init() {
     st.plus_status        = dataToUse.plus_status != null ? dataToUse.plus_status : null;
     st.plus_report_id     = dataToUse.plus_report_id || null;
     st.plus_purchased_at  = dataToUse.plus_purchased_at || null;
+    st.plus_informe       = dataToUse.plus_informe || null;
     st.iaRes              = dataToUse.iaRes               || null;
     st.miplan_started     = dataToUse.miplan_started      || false;
     st.user_recovery_state = dataToUse.user_recovery_state || null;
@@ -1815,6 +1826,20 @@ document.addEventListener("DOMContentLoaded", function() {
       // Sprint 14.0 — Mi Plan Plus tab CTA
       if (e.target.id === "btn-plus-obtener-informe") {
         onPlusCtaClick();
+        return;
+      }
+
+      // Sprint 14.2 — DEV mock report generation
+      if (e.target.id === "btn-plus-dev-generar") {
+        if (typeof setPlusStatus === "function") {
+          setPlusStatus("PLUS_PROCESSING");
+        }
+        if (window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+          window.CredizonaUI.renderTab();
+        }
+        if (typeof generarInformePlus === "function") {
+          generarInformePlus();
+        }
         return;
       }
       if (e.target.id === "btn-plus-reintentar") {
