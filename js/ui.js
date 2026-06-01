@@ -2205,6 +2205,7 @@ function renderAccionesRecomendadasHtml(diag) {
   var acciones = typeof seleccionarAccionesRecomendadas === "function"
     ? seleccionarAccionesRecomendadas(diag)
     : [];
+  if (acciones.length > 5) acciones = acciones.slice(0, 5);
   _trackAccionesMostradasOnce(diag, acciones);
 
   var comp_ = _herr().compromisos || {};

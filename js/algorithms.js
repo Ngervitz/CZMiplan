@@ -1263,6 +1263,46 @@ var _CAT2_ACCION_PRIORITY = [
   "bcu_post_regularizacion",
 ];
 
+function _esAccionCat2Id(id) {
+  return _CAT2_ACCION_PRIORITY.indexOf(id) !== -1;
+}
+
+function _dedupCat2Acciones(lista) {
+  if (!lista || !lista.length) return lista || [];
+
+  var cat2Kept = [];
+  var used = {};
+  var pi;
+  for (pi = 0; pi < _CAT2_ACCION_PRIORITY.length && cat2Kept.length < 2; pi++) {
+    var wantId = _CAT2_ACCION_PRIORITY[pi];
+    var li;
+    for (li = 0; li < lista.length; li++) {
+      if (lista[li].id === wantId && !used[wantId]) {
+        used[wantId] = true;
+        cat2Kept.push(lista[li]);
+        break;
+      }
+    }
+  }
+
+  var out = [];
+  var cat2Inserted = false;
+  for (var i = 0; i < lista.length; i++) {
+    if (_esAccionCat2Id(lista[i].id)) {
+      if (!cat2Inserted) {
+        for (var k = 0; k < cat2Kept.length; k++) out.push(cat2Kept[k]);
+        cat2Inserted = true;
+      }
+    } else {
+      out.push(lista[i]);
+    }
+  }
+  if (!cat2Inserted && cat2Kept.length) {
+    for (k = 0; k < cat2Kept.length; k++) out.push(cat2Kept[k]);
+  }
+  return out;
+}
+
 function _pesoIdAccion(id, planId) {
   if (planId >= 2) {
     if (id === "flujo_libre_positivo" || id === "flujo_negativo_accion") return 0;
@@ -1579,6 +1619,7 @@ function _fallbackAccionesRecomendadas() {
       break;
     }
   }
+  out = _dedupCat2Acciones(out);
   return out.length ? out : [{
     id: "bcu_clearing_distintos",
     texto: "El BCU y el Clearing son dos registros distintos. Podés estar limpio en uno y con problemas en el otro.",
@@ -1601,10 +1642,7 @@ function seleccionarAccionesRecomendadas(diag) {
       qualified[tpl.categoria].push(item);
     }
 
-    qualified[2].sort(function(a, b) {
-      return _CAT2_ACCION_PRIORITY.indexOf(a.id) - _CAT2_ACCION_PRIORITY.indexOf(b.id);
-    });
-    if (qualified[2].length > 2) qualified[2] = qualified[2].slice(0, 2);
+    qualified[2] = _dedupCat2Acciones(qualified[2]);
 
     qualified[1] = _ordenarPorUrgenciaEnCategoria(qualified[1]);
     qualified[2] = _ordenarPorUrgenciaEnCategoria(qualified[2]);
@@ -1628,7 +1666,7 @@ function seleccionarAccionesRecomendadas(diag) {
 
     var cat34 = qualified[3].concat(qualified[4]);
     cat34 = _ordenarPorUrgenciaEnCategoria(cat34);
-    for (ci = 0; ci < cat34.length && selected.length < 7; ci++) {
+    for (ci = 0; ci < cat34.length && selected.length < 5; ci++) {
       if (!_accionYaSeleccionada(selected, cat34[ci].id)) {
         selected.push(cat34[ci]);
       }
@@ -1648,14 +1686,21 @@ function seleccionarAccionesRecomendadas(diag) {
       selected.push(allRemain.shift());
     }
 
+    // STEP 3 — BCU Cat 2 dedup (max 2, priority order) before final sort/slice
+    selected = _dedupCat2Acciones(selected);
+    // STEP 4
     selected = _ordenarAccionesRecomendadasFinal(selected, ctx.planId);
-    if (selected.length > 7) selected = selected.slice(0, 7);
+    // STEP 5
+    if (selected.length > 5) selected = selected.slice(0, 5);
 
-    if (selected.length < 5) return _fallbackAccionesRecomendadas();
+    if (selected.length < 3) {
+      return _fallbackAccionesRecomendadas();
+    }
 
-    return selected.map(function(tpl) {
+    var acciones = selected.map(function(tpl) {
       return _personalizarAccionRecomendada(tpl, ctx);
     });
+    return _dedupCat2Acciones(acciones);
   } catch (e) {
     return _fallbackAccionesRecomendadas();
   }

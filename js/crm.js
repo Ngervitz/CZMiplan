@@ -4,6 +4,9 @@
 // =============================================================================
 
 function buildCRMData(motor) {
+  var fin = (motor && motor.fin) || {};
+  var iv2 = (motor && motor.interpretacion_v2) || null;
+  var enc = (motor && motor.enc) || null;
   const st = window.CZState || {};
   return {
     crm_contact_id: (window.CZIdentity && window.CZIdentity.crm_contact_id) || null,
@@ -19,10 +22,10 @@ function buildCRMData(motor) {
     },
     survey: {
       completada:        TIENE_ENCUESTA,
-      score:             motor && motor.enc ? motor.enc.score : null,
-      nivel:             motor && motor.enc ? motor.enc.nivel : null,
-      b_plus:            motor && motor.enc ? motor.enc.bPlus : null,
-      flags:             motor && motor.enc ? motor.enc.flagsRiesgo : [],
+      score:             enc ? enc.score : null,
+      nivel:             enc ? enc.nivel : null,
+      b_plus:            enc ? enc.bPlus : null,
+      flags:             enc ? enc.flagsRiesgo : [],
       version_algoritmo: "reset_v2_simple",
     },
     expenses: st.gastos || {},
@@ -62,10 +65,10 @@ function buildCRMData(motor) {
       });
     }),
     diagnosis: motor ? {
-      deuda_total:          motor.fin.totalDeuda,
-      pago_mensual:         motor.fin.totalPago,
-      interes_prom:         motor.fin.interesProm,
-      nivel_riesgo:         motor.fin.nivelRiesgo,
+      deuda_total:          fin.totalDeuda || 0,
+      pago_mensual:         fin.totalPago || 0,
+      interes_prom:         fin.interesProm != null ? fin.interesProm : null,
+      nivel_riesgo:         fin.nivelRiesgo || null,
       score_reset:          motor.scoreReset,
       score_reset_raw:      motor.scoreResetRaw      != null ? motor.scoreResetRaw      : motor.scoreReset,
       score_financiero_raw: motor.scoreFinancieroRaw != null ? motor.scoreFinancieroRaw : null,
@@ -78,16 +81,16 @@ function buildCRMData(motor) {
         ? calcularDebtDataQuality(st.deudas || [])
         : null,
       // Sprint 7B.3 — severity + recovery signals
-      severity_stock:            motor.interpretacion_v2 ? motor.interpretacion_v2.severity_stock            : null,
-      severity_behavioral:       motor.interpretacion_v2 ? motor.interpretacion_v2.severity_behavioral       : null,
-      severity_level:            motor.interpretacion_v2 ? motor.interpretacion_v2.severity_level            : null,
-      has_unpaid_debt:           motor.interpretacion_v2 ? motor.interpretacion_v2.has_unpaid_debt           : null,
-      severe_latent_pressure:    motor.interpretacion_v2 ? motor.interpretacion_v2.severe_latent_pressure    : null,
-      deuda_total_ingreso_ratio: motor.interpretacion_v2 ? motor.interpretacion_v2.deuda_total_ingreso_ratio : null,
-      recuperabilidad_class:     motor.interpretacion_v2 ? motor.interpretacion_v2.recuperabilidad_class     : null,
-      dti_ratio:                 motor.fin ? motor.fin.dti_ratio             : null,
-      dti_level:                 motor.fin ? motor.fin.dti_level             : null,
-      confianza_diagnostico:     motor.fin ? motor.fin.confianza_diagnostico : null,
+      severity_stock:            iv2 ? iv2.severity_stock            : null,
+      severity_behavioral:       iv2 ? iv2.severity_behavioral       : null,
+      severity_level:            iv2 ? iv2.severity_level            : null,
+      has_unpaid_debt:           iv2 ? iv2.has_unpaid_debt           : null,
+      severe_latent_pressure:    iv2 ? iv2.severe_latent_pressure    : null,
+      deuda_total_ingreso_ratio: iv2 ? iv2.deuda_total_ingreso_ratio : null,
+      recuperabilidad_class:     iv2 ? iv2.recuperabilidad_class     : null,
+      dti_ratio:                 fin.dti_ratio != null ? fin.dti_ratio : null,
+      dti_level:                 fin.dti_level || null,
+      confianza_diagnostico:     fin.confianza_diagnostico != null ? fin.confianza_diagnostico : null,
     } : {},
     reset_plus: {
       estado: st.plusEstado || "sin_pago",
