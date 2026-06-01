@@ -1757,7 +1757,22 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Toggle compromiso / acción recomendada (Sprint 13)
+      // Sprint 13.1 — expandir acciones recomendadas sin re-render completo
+      var verMasAcc = e.target.closest("[data-acciones-ver-mas]");
+      if (verMasAcc) {
+        if (window.CredizonaUI && typeof window.CredizonaUI.expandAccionesRecomendadas === "function") {
+          window.CredizonaUI.expandAccionesRecomendadas();
+        }
+        var extrasAcc = document.querySelectorAll(".accion-recom-extra");
+        for (var ex = 0; ex < extrasAcc.length; ex++) {
+          extrasAcc[ex].classList.remove("accion-recom-extra");
+        }
+        var btnMas = document.getElementById("btn-ver-mas-acciones");
+        if (btnMas) btnMas.remove();
+        return;
+      }
+
+      // Toggle compromiso / acción recomendada (Sprint 13 / 13.1)
       var compId = e.target.closest("[data-toggle-compromiso]");
       if (compId) {
         var idComp = compId.getAttribute("data-toggle-compromiso");
@@ -1776,8 +1791,18 @@ document.addEventListener("DOMContentLoaded", function() {
           });
         }
 
+        var checkEl = compId.querySelector(".compromiso-check");
+        if (checkEl) {
+          if (st.herr.compromisos[idComp]) {
+            checkEl.classList.add("checked");
+            checkEl.innerHTML = "&#10003;";
+          } else {
+            checkEl.classList.remove("checked");
+            checkEl.innerHTML = "";
+          }
+        }
+
         window.guardarLocal();
-        window.CredizonaUI.renderTab();
         return;
       }
 

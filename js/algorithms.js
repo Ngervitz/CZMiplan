@@ -1253,8 +1253,95 @@ function interpretarDiagnostico(diag) {
 }
 
 // =============================================================================
-// SPRINT 13 — ACCIONES RECOMENDADAS POR PLAN (presentation only)
+// SPRINT 13 / 13.1 — BANCO DE ACCIONES RECOMENDADAS (presentation only)
 // =============================================================================
+
+var _CAT2_ACCION_PRIORITY = [
+  "bcu_clearing_distintos",
+  "bcu_categoria_real",
+  "bcu_actualizacion_mensual",
+  "bcu_post_regularizacion",
+];
+
+function _pesoIdAccion(id, planId) {
+  if (planId >= 2) {
+    if (id === "flujo_libre_positivo" || id === "flujo_negativo_accion") return 0;
+    if (id === "gasto_mayor_categoria") return 1;
+  } else {
+    if (id === "gasto_mayor_categoria") return 0;
+    if (id === "flujo_libre_positivo") return 1;
+  }
+  if (id === "ingresos_extra_consistencia") return 2;
+  return 5;
+}
+
+function _pesoCategoriaAccion(categoria, planId) {
+  if (categoria === 1) return 0;
+  if (planId >= 2) {
+    if (categoria === 3) return 1;
+    if (categoria === 2) return 2;
+    if (categoria === 4) return 3;
+  } else {
+    if (categoria === 2) return 1;
+    if (categoria === 3) return 2;
+    if (categoria === 4) return 3;
+  }
+  return 9;
+}
+
+var _BANCO_ACCIONES_MAESTRO = [
+  { id: "verificar_aplicacion_pagos", categoria: 1, situacion: "pagando_normal",
+    texto: "Preguntale a [acreedor] cómo se están aplicando tus pagos — si van a intereses primero y no a capital, la deuda no baja aunque pagues.",
+    tipo: "accion", urgencia: "media" },
+  { id: "refinanciacion_temprana", categoria: 1, situacion: "atrasado_pagando",
+    texto: "Contactá a [acreedor] y consultá opciones de refinanciación temprana — los intereses corren igual, pero restructurar antes suele evitar que la situación escale.",
+    tipo: "contacto", urgencia: "alta" },
+  { id: "convenio_mora_temprana", categoria: 1, situacion: "mora_30_60",
+    texto: "Con 30 a 60 días de mora [acreedor] suele tener más flexibilidad para ofrecer un convenio de pago. Llamá y pedí hablar con el área de refinanciaciones.",
+    tipo: "contacto", urgencia: "alta" },
+  { id: "negociar_mora_60", categoria: 1, situacion: "mora_60_90",
+    texto: "En muchos casos negociar antes de los 90 días suele dar mejores condiciones que hacerlo después, cuando el proceso puede haber escalado internamente en [acreedor].",
+    tipo: "contacto", urgencia: "alta" },
+  { id: "verificar_intimacion", categoria: 1, situacion: "mora_reclamo",
+    texto: "Tu deuda con [acreedor] puede estar en etapa de reclamo jurídico. Verificá si recibiste alguna intimación judicial — si no recibiste ninguna, todavía podés intentar negociar directamente.",
+    tipo: "accion", urgencia: "alta" },
+  { id: "contactar_antes_intimacion", categoria: 1, situacion: "deje_pagar",
+    texto: "Contactá a [acreedor] antes de recibir una intimación judicial — en general es el momento donde todavía podés intentar negociar condiciones.",
+    tipo: "contacto", urgencia: "alta" },
+  { id: "bcu_clearing_distintos", categoria: 2, siempre: true,
+    texto: "El BCU y el Clearing son dos registros distintos. Podés estar limpio en uno y con problemas en el otro. Con Mi Plan Plus podés verlos directamente desde acá.",
+    tipo: "accion", urgencia: "media" },
+  { id: "bcu_categoria_real", categoria: 2,
+    texto: "Tu calificación en el BCU influye en si los bancos te aprueban o rechazan. Con Mi Plan Plus podés verla directamente desde acá.",
+    tipo: "accion", urgencia: "media" },
+  { id: "bcu_actualizacion_mensual", categoria: 2, requiereMora: true,
+    texto: "El BCU recibe actualizaciones mensuales de los acreedores, pero los cambios pueden demorar hasta 60 días en reflejarse completamente en tu historial.",
+    tipo: "habito", urgencia: "media" },
+  { id: "bcu_post_regularizacion", categoria: 2, requiereMoraSolo: true,
+    texto: "Si ya regularizaste una deuda que estaba en mora, verificá que el acreedor haya actualizado su reporte en el BCU — a veces el acreedor no actualiza el reporte de inmediato.",
+    tipo: "accion", urgencia: "media" },
+  { id: "flujo_libre_positivo", categoria: 3, requiereFlujoPositivo: true, requierePrio: true,
+    texto: "Tenés $[flujo_libre] de flujo libre estimado este mes. Destinarlo consistentemente a [acreedor] suele acelerar la salida de la deuda.",
+    tipo: "habito", urgencia: "media" },
+  { id: "flujo_negativo_accion", categoria: 3, requiereFlujoNegativo: true,
+    texto: "Tu flujo actual es negativo. El primer paso es identificar qué gasto podés eliminar antes de pensar en pagar más deuda.",
+    tipo: "accion", urgencia: "alta" },
+  { id: "gasto_mayor_categoria", categoria: 3, requiereGastos: true,
+    texto: "Tu gasto más alto es [categoria_mayor] y representa [porcentaje]% de tu ingreso. Es el área donde suele haber más margen para actuar si necesitás liberar flujo.",
+    tipo: "habito", urgencia: "media" },
+  { id: "ingresos_extra_consistencia", categoria: 3, requiereIngresosExtra: true,
+    texto: "Registraste aproximadamente $[ingresos_extra] en ingresos adicionales este mes. Mantenerlos de forma consistente suele mejorar tu margen financiero más que hacer pagos extra esporádicos.",
+    tipo: "habito", urgencia: "media" },
+  { id: "historial_6_meses", categoria: 4, planMin: 2,
+    texto: "Para volver a calificar para crédito el sistema financiero suele mirar los últimos 6 meses de comportamiento. Cada pago en fecha desde hoy cuenta.",
+    tipo: "habito", urgencia: "media" },
+  { id: "verificar_antes_solicitar", categoria: 4, planMax: 3,
+    texto: "Antes de volver a solicitar crédito verificá tu situación en BCU y Clearing. Saber exactamente dónde estás te ahorra rechazos innecesarios que también pueden afectar tu historial.",
+    tipo: "accion", urgencia: "media" },
+  { id: "bcu_post_regularizacion_recal", categoria: 4, planMin: 2, sinMora: true,
+    texto: "Si regularizaste alguna deuda recientemente, verificá que el acreedor haya actualizado el reporte en el BCU. Ese paso es necesario para que el cambio se refleje en tu historial.",
+    tipo: "accion", urgencia: "media" },
+];
 
 function tieneBloqueo(tipo, bloqueadores) {
   if (!tipo || !bloqueadores || !bloqueadores.length) return false;
@@ -1264,12 +1351,166 @@ function tieneBloqueo(tipo, bloqueadores) {
   return false;
 }
 
-function _personalizarAccionRecomendada(template, prio) {
+function _evalCtxAcciones(diag) {
+  var st = typeof window !== "undefined" ? (window.CZState || {}) : {};
+  var herr = st.herr || {};
+  var ingHerr = herr.ingresos || {};
+  var fin = (diag && diag.fin) || {};
+  var bl = (diag && diag.bloqueadores) || [];
+  var prio = (diag && diag.prio) || null;
+  var planId = (diag && diag.planId) || 1;
+  var flujo = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  var ingreso = (typeof PRE !== "undefined" && PRE.ingreso) ? PRE.ingreso : 0;
+
+  var totalGastos = typeof getTotalMonthlyExpenses === "function"
+    ? getTotalMonthlyExpenses() : 0;
+  if (isNaN(totalGastos)) totalGastos = 0;
+
+  var items = typeof collectPresentableExpenseItems === "function"
+    ? collectPresentableExpenseItems() : [];
+  var top = typeof getTopExpenses === "function" ? getTopExpenses(items, 1)[0] : null;
+  var pctTop = 0;
+  if (top && ingreso > 0 && typeof getExpensePercent === "function") {
+    pctTop = getExpensePercent(top.amount, ingreso);
+  }
+
+  var extras = ingHerr.extras || [];
+  var totalIngresosExtra = 0;
+  for (var ei = 0; ei < extras.length; ei++) {
+    totalIngresosExtra += parseFloat(extras[ei].monto) || 0;
+  }
+  var ingresosTotal = ingHerr.total != null ? ingHerr.total : 0;
+
+  return {
+    prio: prio,
+    planId: planId,
+    bl: bl,
+    flujo: flujo,
+    ingreso: ingreso,
+    totalGastos: totalGastos,
+    situacion: prio ? (prio.situacion_ui || null) : null,
+    topExpense: top,
+    pctTop: pctTop,
+    totalIngresosExtra: totalIngresosExtra,
+    ingresosTotal: ingresosTotal,
+    extrasLen: extras.length,
+    tieneMora: tieneBloqueo("mora", bl) || tieneBloqueo("mora_multiple", bl),
+  };
+}
+
+function _cumpleCondicionAccionMaestro(tpl, ctx) {
+  if (tpl.siempre) return true;
+  if (tpl.situacion) return !!ctx.prio && ctx.situacion === tpl.situacion;
+  if (tpl.id === "bcu_categoria_real") {
+    return ctx.planId >= 2 || ctx.tieneMora;
+  }
+  if (tpl.requiereMora) return ctx.tieneMora;
+  if (tpl.requiereMoraSolo) return tieneBloqueo("mora", ctx.bl);
+  if (tpl.requiereFlujoPositivo) return ctx.flujo > 0;
+  if (tpl.requiereFlujoNegativo) return ctx.flujo < 0;
+  if (tpl.requierePrio) return ctx.prio !== null;
+  if (tpl.requiereGastos) {
+    return ctx.totalGastos > 0 && ctx.ingreso > 0 && !!ctx.topExpense;
+  }
+  if (tpl.requiereIngresosExtra) {
+    if (ctx.totalIngresosExtra <= 0) return false;
+    return ctx.extrasLen > 0 || ctx.ingresosTotal > ctx.ingreso;
+  }
+  if (tpl.sinMora) {
+    return ctx.planId >= (tpl.planMin || 2) && !tieneBloqueo("mora", ctx.bl);
+  }
+  if (tpl.planMin != null) return ctx.planId >= tpl.planMin;
+  if (tpl.planMax != null) return ctx.planId <= tpl.planMax;
+  return false;
+}
+
+function _urgenciaAccionMaestro(tpl, ctx) {
+  if (tpl.id === "gasto_mayor_categoria" && ctx.pctTop > 30) return "alta";
+  return tpl.urgencia || "media";
+}
+
+function _ordenarPorUrgenciaEnCategoria(lista) {
+  var orden = { alta: 0, media: 1, baja: 2 };
+  var conIdx = lista.map(function(a, idx) {
+    var copy = Object.assign({}, a);
+    copy._idx = idx;
+    return copy;
+  });
+  conIdx.sort(function(a, b) {
+    var da = orden[a.urgencia] != null ? orden[a.urgencia] : 99;
+    var db = orden[b.urgencia] != null ? orden[b.urgencia] : 99;
+    if (da !== db) return da - db;
+    return a._idx - b._idx;
+  });
+  return conIdx.map(function(a) {
+    delete a._idx;
+    return a;
+  });
+}
+
+function _ordenarAccionesRecomendadasFinal(candidatos, planId) {
+  var orden = { alta: 0, media: 1, baja: 2 };
+  var pid = planId || 1;
+  var conIdx = candidatos.map(function(a, idx) {
+    var copy = Object.assign({}, a);
+    copy._idx = idx;
+    return copy;
+  });
+  conIdx.sort(function(a, b) {
+    var da = orden[a.urgencia] != null ? orden[a.urgencia] : 99;
+    var db = orden[b.urgencia] != null ? orden[b.urgencia] : 99;
+    if (da !== db) return da - db;
+    var ca = _pesoCategoriaAccion(a.categoria, pid);
+    var cb = _pesoCategoriaAccion(b.categoria, pid);
+    if (ca !== cb) return ca - cb;
+    var ia = _pesoIdAccion(a.id, pid);
+    var ib = _pesoIdAccion(b.id, pid);
+    if (ia !== ib) return ia - ib;
+    return a._idx - b._idx;
+  });
+  return conIdx.map(function(a) {
+    delete a._idx;
+    delete a.categoria;
+    delete a.situacion;
+    delete a.siempre;
+    delete a.requiereMora;
+    delete a.requiereMoraSolo;
+    delete a.requiereFlujoPositivo;
+    delete a.requiereFlujoNegativo;
+    delete a.requierePrio;
+    delete a.requiereGastos;
+    delete a.requiereIngresosExtra;
+    delete a.planMin;
+    delete a.planMax;
+    delete a.sinMora;
+    return a;
+  });
+}
+
+function _accionYaSeleccionada(selected, id) {
+  for (var i = 0; i < selected.length; i++) {
+    if (selected[i].id === id) return true;
+  }
+  return false;
+}
+
+function _stripPlusCtaInactivo(texto) {
+  var live = typeof CZ_PLUS_BCU_CLEARING_LIVE !== "undefined" && CZ_PLUS_BCU_CLEARING_LIVE;
+  if (live) return texto;
+  return String(texto || "")
+    .replace(/\s*Con Mi Plan Plus podés verlo directamente desde acá\.?/gi, "")
+    .replace(/\s*Con Mi Plan Plus podés verla directamente desde acá\.?/gi, "");
+}
+
+function _personalizarAccionRecomendada(template, ctx) {
   var accion = Object.assign({}, template);
+  var prio = ctx.prio || null;
   var acreedor = (prio && prio.acreedor_display && String(prio.acreedor_display).trim())
     ? String(prio.acreedor_display).trim()
     : "tu acreedor principal";
-  accion.texto = String(accion.texto || "").replace(/\[acreedor_display\]/g, acreedor);
+  accion.texto = String(accion.texto || "")
+    .replace(/\[acreedor\]/g, acreedor)
+    .replace(/\[acreedor_display\]/g, acreedor);
 
   var montoNum = prio ? parseFloat(prio.monto) : NaN;
   if (prio && !isNaN(montoNum) && montoNum > 0) {
@@ -1283,35 +1524,66 @@ function _personalizarAccionRecomendada(template, prio) {
       .replace(/\[monto\]/g, "");
   }
 
+  var flujoFmt = typeof fmt === "function"
+    ? fmt(Math.round(Math.abs(ctx.flujo || 0)))
+    : String(Math.abs(ctx.flujo || 0));
+  accion.texto = accion.texto.replace(/\[flujo_libre\]/g, flujoFmt);
+
+  if (ctx.topExpense) {
+    accion.texto = accion.texto
+      .replace(/\[categoria_mayor\]/g, ctx.topExpense.label || "tu mayor gasto")
+      .replace(/\[porcentaje\]/g, String(ctx.pctTop || 0));
+  } else {
+    accion.texto = accion.texto
+      .replace(/\[categoria_mayor\]/g, "tu mayor gasto")
+      .replace(/\[porcentaje\]/g, "0");
+  }
+
+  if (ctx.totalIngresosExtra > 0) {
+    var extraFmt = typeof fmt === "function"
+      ? fmt(Math.round(ctx.totalIngresosExtra))
+      : String(ctx.totalIngresosExtra);
+    accion.texto = accion.texto.replace(/\[ingresos_extra\]/g, extraFmt);
+  } else {
+    accion.texto = accion.texto.replace(/\[ingresos_extra\]/g, "");
+  }
+
+  accion.texto = _stripPlusCtaInactivo(accion.texto);
   accion.texto = accion.texto.replace(/\s+/g, " ").trim();
   return accion;
 }
 
-function _ordenarAccionesRecomendadas(candidatos) {
-  var orden = { alta: 0, media: 1, baja: 2 };
-  var conIdx = candidatos.map(function(a, idx) {
-    var copy = Object.assign({}, a);
-    copy._idx = idx;
-    return copy;
-  });
-  conIdx.sort(function(a, b) {
-    var da = orden[a.urgencia] != null ? orden[a.urgencia] : 99;
-    var db = orden[b.urgencia] != null ? orden[b.urgencia] : 99;
-    if (da !== db) return da - db;
-    return a._idx - b._idx;
-  });
-  return conIdx.slice(0, 3).map(function(a) {
-    delete a._idx;
-    return a;
-  });
-}
-
 function _fallbackAccionesRecomendadas() {
-  return [{
-    id:       "fallback_revision",
-    texto:    "Revisá tu situación financiera en los próximos 30 días.",
-    tipo:     "habito",
-    urgencia: "baja",
+  var diag = typeof calcularMotor === "function" ? calcularMotor() : null;
+  var ctx = _evalCtxAcciones(diag || { planId: 1, bloqueadores: [], fin: {}, prio: null });
+  var ids = [
+    "bcu_clearing_distintos",
+    "verificar_antes_solicitar",
+    "historial_6_meses",
+    "gasto_mayor_categoria",
+    "flujo_negativo_accion",
+  ];
+  var out = [];
+  for (var i = 0; i < _BANCO_ACCIONES_MAESTRO.length && out.length < 5; i++) {
+    var tpl = _BANCO_ACCIONES_MAESTRO[i];
+    if (ids.indexOf(tpl.id) === -1) continue;
+    if (!_cumpleCondicionAccionMaestro(tpl, ctx) && tpl.id !== "bcu_clearing_distintos") continue;
+    var item = Object.assign({}, tpl, { urgencia: _urgenciaAccionMaestro(tpl, ctx) });
+    out.push(_personalizarAccionRecomendada(item, ctx));
+  }
+  while (out.length < 5) {
+    var fb = _BANCO_ACCIONES_MAESTRO[6];
+    if (!_accionYaSeleccionada(out, fb.id)) {
+      out.push(_personalizarAccionRecomendada(Object.assign({}, fb), ctx));
+    } else {
+      break;
+    }
+  }
+  return out.length ? out : [{
+    id: "bcu_clearing_distintos",
+    texto: "El BCU y el Clearing son dos registros distintos. Podés estar limpio en uno y con problemas en el otro.",
+    tipo: "accion",
+    urgencia: "media",
   }];
 }
 
@@ -1319,166 +1591,71 @@ function seleccionarAccionesRecomendadas(diag) {
   try {
     if (!diag) return _fallbackAccionesRecomendadas();
 
-    var planId = diag.planId;
-    var iv2    = diag.interpretacion_v2 || {};
-    var causa  = iv2.causa_principal || "falta_organizacion";
-    var bl     = diag.bloqueadores || [];
-    var prio   = diag.prio || null;
-    var fin    = diag.fin || {};
-    var flujo  = fin.flujoLibre != null ? fin.flujoLibre : 0;
+    var ctx = _evalCtxAcciones(diag);
+    var qualified = { 1: [], 2: [], 3: [], 4: [] };
 
-    var candidatos = [];
-    var push = function(tpl) {
-      candidatos.push(_personalizarAccionRecomendada(tpl, prio));
-    };
+    for (var bi = 0; bi < _BANCO_ACCIONES_MAESTRO.length; bi++) {
+      var tpl = _BANCO_ACCIONES_MAESTRO[bi];
+      if (!_cumpleCondicionAccionMaestro(tpl, ctx)) continue;
+      var item = Object.assign({}, tpl, { urgencia: _urgenciaAccionMaestro(tpl, ctx) });
+      qualified[tpl.categoria].push(item);
+    }
 
-    if (planId === 1) {
-      push({
-        id: "mantener_pagos",
-        texto: "Mantené tus pagos al día los próximos 2 ciclos de facturación para consolidar tu historial.",
-        tipo: "habito",
-        urgencia: "media",
-      });
-      if (causa === "deuda_cara") {
-        push({
-          id: "refinanciar",
-          texto: "Consultá si podés refinanciar tu deuda a una tasa menor.",
-          tipo: "accion",
-          urgencia: "media",
-        });
-      }
-      if (flujo > 0 && prio) {
-        push({
-          id: "atacar_capital",
-          texto: "Destiná parte de tu flujo libre a reducir el capital de [acreedor_display].",
-          tipo: "accion",
-          urgencia: "media",
-        });
-      }
-      if (!tieneBloqueo("mora", bl) && !tieneBloqueo("mora_multiple", bl)) {
-        push({
-          id: "verificar_clearing",
-          texto: "Revisá tu historial en Clearing para confirmar que no hay errores registrados.",
-          tipo: "accion",
-          urgencia: "baja",
-        });
-      }
-    } else if (planId === 2) {
-      push({
-        id: "no_nuevas_deudas",
-        texto: "Evitá asumir nuevas deudas los próximos 90 días.",
-        tipo: "habito",
-        urgencia: "alta",
-      });
-      if (tieneBloqueo("mora", bl) || tieneBloqueo("mora_multiple", bl)) {
-        push({
-          id: "regularizar_mora",
-          texto: "Regularizá el atraso en [acreedor_display] antes de que escale a reclamo.",
-          tipo: "contacto",
-          urgencia: "alta",
-        });
-      }
-      if (flujo > 0 && prio) {
-        push({
-          id: "priorizar_pago",
-          texto: "Priorizá el pago de [acreedor_display] ($[monto]) este mes.",
-          tipo: "accion",
-          urgencia: "media",
-        });
-      }
-      if (causa === "flujo_negativo") {
-        push({
-          id: "reducir_gasto",
-          texto: "Identificá qué gasto podés reducir este mes para liberar flujo mensual.",
-          tipo: "habito",
-          urgencia: "alta",
-        });
-      }
-    } else if (planId === 3) {
-      if (prio) {
-        push({
-          id: "confirmar_saldo",
-          texto: "Confirmá el saldo actualizado de [acreedor_display].",
-          tipo: "accion",
-          urgencia: "media",
-        });
-      } else {
-        push({
-          id: "confirmar_saldo_fallback",
-          texto: "Confirmá el saldo actualizado de tus deudas.",
-          tipo: "accion",
-          urgencia: "media",
-        });
-      }
-      if (tieneBloqueo("mora", bl) || tieneBloqueo("mora_multiple", bl)) {
-        push({
-          id: "contactar_acreedor",
-          texto: "Contactá a [acreedor_display] para regularizar el atraso.",
-          tipo: "contacto",
-          urgencia: "alta",
-        });
-      }
-      if (causa === "stock_deuda_alto") {
-        push({
-          id: "reducir_stock",
-          texto: "Enfocate en reducir el saldo de [acreedor_display] antes de solicitar nuevo crédito.",
-          tipo: "habito",
-          urgencia: "alta",
-        });
-      }
-      if (flujo > 0
-          && !tieneBloqueo("mora", bl)
-          && !tieneBloqueo("mora_multiple", bl)) {
-        push({
-          id: "atacar_capital_plan3",
-          texto: "Con tu flujo actual podés atacar capital de [acreedor_display] este mes.",
-          tipo: "accion",
-          urgencia: "media",
-        });
-      }
-    } else if (planId === 4) {
-      push({
-        id: "no_compromisos",
-        texto: "No asumas ningún compromiso financiero nuevo hasta estabilizar tu situación.",
-        tipo: "habito",
-        urgencia: "alta",
-      });
-      push({
-        id: "congelar_gastos",
-        texto: "Congelá gastos no esenciales para acumular liquidez.",
-        tipo: "habito",
-        urgencia: "alta",
-      });
-      if (prio) {
-        var pagoPrio = parseFloat(prio.pago) || 0;
-        if (pagoPrio === 0 || prio.pago === 0 || prio.pago === "0" || !prio.pago) {
-          push({
-            id: "negociar_quita",
-            texto: "Contactá a [acreedor_display] para explorar opciones de negociación o quita del total.",
-            tipo: "contacto",
-            urgencia: "alta",
-          });
-        } else if (pagoPrio > 0) {
-          push({
-            id: "mantener_minimo",
-            texto: "Mantené el pago mínimo de [acreedor_display] para evitar que escale a reclamo.",
-            tipo: "accion",
-            urgencia: "alta",
-          });
-        }
-      }
-      if (flujo < 0) {
-        push({
-          id: "identificar_gasto",
-          texto: "Tu flujo actual es negativo. El primer paso es identificar qué gasto podés eliminar hoy.",
-          tipo: "accion",
-          urgencia: "alta",
-        });
+    qualified[2].sort(function(a, b) {
+      return _CAT2_ACCION_PRIORITY.indexOf(a.id) - _CAT2_ACCION_PRIORITY.indexOf(b.id);
+    });
+    if (qualified[2].length > 2) qualified[2] = qualified[2].slice(0, 2);
+
+    qualified[1] = _ordenarPorUrgenciaEnCategoria(qualified[1]);
+    qualified[2] = _ordenarPorUrgenciaEnCategoria(qualified[2]);
+    qualified[3] = _ordenarPorUrgenciaEnCategoria(qualified[3]);
+    qualified[4] = _ordenarPorUrgenciaEnCategoria(qualified[4]);
+
+    var selected = [];
+    var ci;
+    var cat1added = 0;
+    for (ci = 0; ci < qualified[1].length && cat1added < 3; ci++) {
+      selected.push(qualified[1][ci]);
+      cat1added++;
+    }
+    var cat2added = 0;
+    for (ci = 0; ci < qualified[2].length && cat2added < 2; ci++) {
+      if (!_accionYaSeleccionada(selected, qualified[2][ci].id)) {
+        selected.push(qualified[2][ci]);
+        cat2added++;
       }
     }
 
-    var result = _ordenarAccionesRecomendadas(candidatos);
-    return result.length ? result : _fallbackAccionesRecomendadas();
+    var cat34 = qualified[3].concat(qualified[4]);
+    cat34 = _ordenarPorUrgenciaEnCategoria(cat34);
+    for (ci = 0; ci < cat34.length && selected.length < 7; ci++) {
+      if (!_accionYaSeleccionada(selected, cat34[ci].id)) {
+        selected.push(cat34[ci]);
+      }
+    }
+
+    var allRemain = [];
+    var cat;
+    for (cat = 1; cat <= 4; cat++) {
+      for (ci = 0; ci < qualified[cat].length; ci++) {
+        if (!_accionYaSeleccionada(selected, qualified[cat][ci].id)) {
+          allRemain.push(qualified[cat][ci]);
+        }
+      }
+    }
+    allRemain = _ordenarAccionesRecomendadasFinal(allRemain, ctx.planId);
+    while (selected.length < 5 && allRemain.length) {
+      selected.push(allRemain.shift());
+    }
+
+    selected = _ordenarAccionesRecomendadasFinal(selected, ctx.planId);
+    if (selected.length > 7) selected = selected.slice(0, 7);
+
+    if (selected.length < 5) return _fallbackAccionesRecomendadas();
+
+    return selected.map(function(tpl) {
+      return _personalizarAccionRecomendada(tpl, ctx);
+    });
   } catch (e) {
     return _fallbackAccionesRecomendadas();
   }

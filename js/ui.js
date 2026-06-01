@@ -1058,6 +1058,10 @@ function renderDashboard() {
 function renderTab() {
   var el  = document.getElementById("tab-content");
   var tab = (_st().tab || "plan");
+  if (_accionesRecomTab !== tab) {
+    _accionesRecomExpand = false;
+    _accionesRecomTab = tab;
+  }
   if (!el) return;
   if (tab === "plan")   el.innerHTML = renderTabPlan();
   if (tab === "deudas") el.innerHTML = renderTabDeudas();
@@ -2151,7 +2155,10 @@ function renderCompItem(id, label) {
     + '<div class="compromiso-text">' + label + '</div></div>';
 }
 
-// Sprint 13 — acciones recomendadas personalizadas por plan
+// Sprint 13.1 — expansión de acciones recomendadas (persiste hasta cambio de tab)
+var _accionesRecomExpand = false;
+var _accionesRecomTab = null;
+
 function _iconoAccionRecomendada(tipo) {
   if (tipo === "accion") return "&#128203;";
   if (tipo === "habito") return "&#128260;";
@@ -2177,11 +2184,13 @@ function _trackAccionesMostradasOnce(diag, acciones) {
   } catch (e) { /* never throw */ }
 }
 
-function renderAccionRecomendadaItem(accion) {
+function renderAccionRecomendadaItem(accion, index) {
   var done = !!((_herr().compromisos || {})[accion.id]);
   var urgColor = accion.urgencia === "alta" ? "#ff4e72"
     : accion.urgencia === "media" ? "#ffd36f" : "#8390b5";
-  return '<div class="compromiso-item accion-recomendada-item" data-toggle-compromiso="' + accion.id + '"'
+  var hiddenCls = (index >= 3 && !_accionesRecomExpand) ? " accion-recom-extra" : "";
+  return '<div class="compromiso-item accion-recomendada-item' + hiddenCls + '" data-toggle-compromiso="' + accion.id + '"'
+    + ' data-accion-index="' + index + '"'
     + ' data-accion-tipo="' + (accion.tipo || "") + '" data-accion-urgencia="' + (accion.urgencia || "") + '">'
     + '<div class="compromiso-check' + (done ? " checked" : "") + '">' + (done ? "&#10003;" : "") + '</div>'
     + '<div style="flex:1;min-width:0;">'
@@ -2204,8 +2213,17 @@ function renderAccionesRecomendadasHtml(diag) {
     if (!comp_[acciones[ai].id]) { allDone = false; break; }
   }
 
-  return '<div style="margin-top:8px;">'
-    + acciones.map(renderAccionRecomendadaItem).join("")
+  var verMasBtn = (acciones.length > 3 && !_accionesRecomExpand)
+    ? '<button type="button" id="btn-ver-mas-acciones" class="acciones-recom-ver-mas-btn" data-acciones-ver-mas="1">Ver más recomendaciones</button>'
+    : "";
+
+  return '<div class="acciones-recomendadas-wrap" style="margin-top:8px;">'
+    + '<div style="margin-bottom:12px;">'
+    + '<div style="font-size:17px;font-weight:800;color:rgba(255,255,255,.9);">Acciones recomendadas para tu situación</div>'
+    + '<div style="font-size:15px;color:#8390b5;margin-top:4px;line-height:1.4;">Basadas en tu diagnóstico actual.</div>'
+    + '</div>'
+    + acciones.map(function(a, idx) { return renderAccionRecomendadaItem(a, idx); }).join("")
+    + verMasBtn
     + (allDone
         ? '<div style="margin-top:14px;padding:14px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);border-radius:14px;text-align:center;font-size:18px;font-weight:800;color:#34ffaf;">Comprometiste las acciones recomendadas. Eso marca la diferencia.</div>'
         : "")
@@ -2287,8 +2305,8 @@ function renderHerramientasPlan1() {
     c1 && c2);
 
   var diag = _diag();
-  var h4 = renderToolCard(4, "Acciones recomendadas para vos",
-    "Pasos personalizados segun tu diagnostico actual.",
+  var h4 = renderToolCard(4, "Acciones recomendadas para tu situación",
+    "Basadas en tu diagnóstico actual.",
     renderAccionesRecomendadasHtml(diag),
     accionesRecomendadasCompletadas(diag));
 
@@ -2326,7 +2344,7 @@ function renderHerramientasPlan2() {
       }).join("")
     + '</div>', c1);
 
-  var h2 = renderToolCard(2, "Acciones recomendadas para vos", "Tres pasos personalizados segun tu diagnostico y tus deudas.",
+  var h2 = renderToolCard(2, "Acciones recomendadas para tu situación", "Basadas en tu diagnóstico actual.",
     renderAccionesRecomendadasHtml(diag), c2);
 
   var h3 = renderToolCard(3, "Cuanto te cuesta no hacer nada", "Cada mes que pasa sin atacar la deuda, los intereses siguen corriendo.",
@@ -2380,7 +2398,7 @@ function renderHerramientasPlan3() {
       })()
     + '</div>', c1);
 
-  var h2 = renderToolCard(2, "Acciones recomendadas para vos", "Pasos concretos segun tu presion financiera y tu plan de recuperacion.",
+  var h2 = renderToolCard(2, "Acciones recomendadas para tu situación", "Basadas en tu diagnóstico actual.",
     renderAccionesRecomendadasHtml(diag), c2);
 
   var h3 = renderToolCard(3, "Tu progreso hacia el objetivo", "Tu meta es bajar el ratio de deuda por debajo del 30% de tu ingreso.",
@@ -2426,7 +2444,7 @@ function renderHerramientasPlan4() {
     + (c1 ? '<div style="margin-top:14px;padding:16px;border-radius:14px;background:' + (semOk ? "rgba(52,255,175,.1)" : "rgba(255,78,114,.1)") + ';border:1px solid ' + (semOk ? "rgba(52,255,175,.25)" : "rgba(255,78,114,.25)") + ';text-align:center;font-size:18px;font-weight:800;color:' + (semOk ? "#34ffaf" : "#ff4e72") + ';"><span style="font-size:28px;">' + (semOk ? "✅" : "⚠️") + '</span><br>' + (semOk ? "Bien encaminado — seguila" : "Hay senales de alerta") + '</div>' : "")
     + '</div>', c1);
 
-  var h2 = renderToolCard(2, "Acciones recomendadas para vos", "Prioridades para estabilizar tu situacion esta semana.",
+  var h2 = renderToolCard(2, "Acciones recomendadas para tu situación", "Basadas en tu diagnóstico actual.",
     renderAccionesRecomendadasHtml(diag), c2);
 
   var h3 = renderToolCard(3, "Cuanto podrias liberar por mes",
@@ -2914,6 +2932,7 @@ function renderAll() {
 window.CredizonaUI = {
   renderAll: renderAll,
   renderTab: renderTab,
+  expandAccionesRecomendadas: function() { _accionesRecomExpand = true; },
   focusDeudaQuickEditInput: focusDeudaQuickEditInput,
   renderDeudaCard: renderDeudaCard,
   actualizarMetrics: actualizarMetrics,

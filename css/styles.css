@@ -273,6 +273,17 @@ select option{background:#0a1026;}
 .compromiso-check.checked{background:#34ffaf;border-color:#34ffaf;color:#050816;}
 .compromiso-text{font-size:18px;color:rgba(255,255,255,.8);line-height:1.5;}
 
+/* Sprint 13.1 — acciones recomendadas expandibles */
+.accion-recom-extra{display:none;}
+.acciones-recom-ver-mas-btn{
+  display:block;width:100%;margin-top:12px;padding:14px 18px;
+  border-radius:14px;border:1.5px solid rgba(64,215,255,.35);
+  background:rgba(64,215,255,.08);color:#40d7ff;
+  font-size:17px;font-weight:800;cursor:pointer;text-align:center;
+}
+.acciones-recom-ver-mas-btn:active{opacity:.85;}
+.acciones-recomendadas-wrap .accion-recomendada-item{min-width:0;}
+
 /* LOCKED */
 .locked-overlay{position:relative;}
 .locked-blur{filter:blur(4px);pointer-events:none;user-select:none;}
