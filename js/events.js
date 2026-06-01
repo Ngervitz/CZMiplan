@@ -31,6 +31,8 @@ var CZ_GTM_EVENTS = [
   "gastos_missing_confirmed",
   "miplan_suggestion_submitted",
   "dashboard_toast_shown",
+  "plus_cta_viewed",
+  "plus_cta_clicked",
 ];
 
 var CZ_INTERNAL_EVENTS = [
@@ -64,6 +66,8 @@ var CZ_CRM_ONLY_EVENTS = [
   "habito_marcado",
   "acciones_mostradas",
   "accion_comprometida",
+  "plus_purchased",
+  "plus_report_ready",
 ];
 
 // =============================================================================
@@ -78,6 +82,8 @@ var CZ_GTM_SAFE_FIELDS = [
   "step",
   "funnel_stage",
   "plan_id",
+  "czuid",
+  "payment_live",
   "has_gastos",
   "entry_channel",
   "consent_source",
@@ -147,6 +153,10 @@ var CZ_EVENT_NAMES = Object.freeze({
   VIEW_INITIAL_DIAGNOSIS:          "view_initial_diagnosis",
   CLICK_RESET_PLUS:                  "click_reset_plus",
 
+  // Sprint 14.0 — Mi Plan Plus (GTM)
+  PLUS_CTA_VIEWED:                   "plus_cta_viewed",
+  PLUS_CTA_CLICKED:                  "plus_cta_clicked",
+
   // CRM_ONLY — backend handles this; never route to GTM/dataLayer
   RESET_PLAN_GENERATED:              "reset_plan_generated",
   PAYMENT_BEHAVIOR_CLASSIFIED:     "cz_mp_payment_behavior_classified",
@@ -159,6 +169,8 @@ var CZ_EVENT_NAMES = Object.freeze({
   HABITO_MARCADO:                  "habito_marcado",
   ACCIONES_MOSTRADAS:              "acciones_mostradas",
   ACCION_COMPROMETIDA:             "accion_comprometida",
+  PLUS_PURCHASED:                  "plus_purchased",
+  PLUS_REPORT_READY:               "plus_report_ready",
 });
 
 // =============================================================================

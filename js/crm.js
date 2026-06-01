@@ -95,6 +95,12 @@ function buildCRMData(motor) {
     reset_plus: {
       estado: st.plusEstado || "sin_pago",
     },
+    plus: {
+      purchased:    !!st.plus_purchased,
+      status:       st.plus_status != null ? st.plus_status : null,
+      purchased_at: st.plus_purchased_at || null,
+      report_id:    st.plus_report_id || null,
+    },
     metadata: {
       algorithm_version: ALGORITHM_VERSION,
       timestamp:         new Date().toISOString(),

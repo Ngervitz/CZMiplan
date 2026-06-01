@@ -1092,13 +1092,13 @@ function renderDashboard() {
   var st     = _st();
   var tab    = st.tab || "plan";
   var plus   = st.plusEstado || "sin_pago";
-  var locked = function(id) { return (id === "ia" || id === "plus") && plus === "sin_pago"; };
+  var locked = function(id) { return id === "ia" && plus === "sin_pago"; };
 
   var TABS = [
     { id: "plan",   l: "Mi Plan",     icon: "📋" },
     { id: "deudas", l: "Tus deudas",  icon: "💳" },
     { id: "ia",     l: "Asistente IA", icon: "🤖", lock: true },
-    { id: "plus",   l: "Mi Plan Plus",  icon: "⭐", lock: true },
+    { id: "plus",   l: "Mi Plan Plus",  icon: "★", lock: false },
   ];
 
   return '<div class="tabs">'
@@ -2078,7 +2078,7 @@ function renderDeudaHistorica(d, i) {
     + "</div>"
     + '<div style="font-size:22px;font-weight:800;color:rgba(255,255,255,.78);margin:2px 0 8px;line-height:1.2;word-break:break-word;">'
     + fmt(Math.round(monto)) + "</div>"
-    + '<div style="font-size:12px;color:rgba(255,255,255,.35);line-height:1.45;">Deuda histórica</div>"
+    + '<div style="font-size:12px;color:rgba(255,255,255,.35);line-height:1.45;">Deuda histórica</div>'
     + "</div>";
 }
 
@@ -2226,20 +2226,134 @@ function renderTabIA() {
 }
 
 // =============================================================================
-// TAB: Mi Plan PLUS
+// TAB: Mi Plan PLUS — Sprint 14.0
 // =============================================================================
+function _plusTrackingPayload() {
+  var id = window.CZIdentity || {};
+  return {
+    czuid:   id.crm_contact_id || id.anonymous_id || null,
+    plan_id: (_st().diag ? _st().diag.planId : null),
+  };
+}
+
+function _trackPlusCtaViewed() {
+  if (typeof trackEvent !== "function") return;
+  var p = _plusTrackingPayload();
+  trackEvent(CZ_EVENT_NAMES.PLUS_CTA_VIEWED, {
+    czuid:   p.czuid,
+    plan_id: p.plan_id,
+  });
+}
+
+function _plusCheckItem(text) {
+  return '<li class="plus-check-item"><span class="plus-check-mark" aria-hidden="true">✓</span>'
+    + '<span>' + text + "</span></li>";
+}
+
+function _plusScreenWrap(inner) {
+  return '<div class="fade plus-tab-wrap">' + inner + "</div>";
+}
+
+function _plusCard(inner) {
+  return '<div class="plan-card plus-screen-card">' + inner + "</div>";
+}
+
+function renderPlusPresentation() {
+  _trackPlusCtaViewed();
+
+  var incluye = [
+    "Situación real en BCU y Clearing",
+    "Diferencias entre lo declarado y lo registrado",
+    "Acreedores y deudas detectadas",
+    "Principales bloqueadores de tu perfil",
+    "Análisis personalizado con IA",
+    "Plan de acción priorizado",
+    "Horizonte estimado de recuperación",
+    "PDF descargable",
+  ];
+
+  return _plusScreenWrap(
+    _plusCard(
+      '<div class="plus-header-icon" aria-hidden="true">★</div>'
+      + '<h2 class="plus-header-title">Mi Plan Plus</h2>'
+      + '<p class="plus-header-subtitle">Tu situación financiera real,<br/>no solo la que declaraste.</p>'
+      + '<div class="plus-block">'
+      + '<h3 class="plus-block-title">¿Qué incluye tu informe?</h3>'
+      + '<ul class="plus-check-list">' + incluye.map(_plusCheckItem).join("") + "</ul>"
+      + "</div>"
+      + '<div class="plus-block plus-block-muted">'
+      + '<h3 class="plus-block-title">¿Por qué es diferente?</h3>'
+      + '<p class="plus-diff-text">Mi Plan analiza la información que ingresaste. '
+      + "Mi Plan Plus incorpora información registrada en BCU y Clearing para construir "
+      + "un diagnóstico más completo de tu situación financiera real.</p>"
+      + "</div>"
+      + '<div class="plus-price-block">'
+      + '<div class="plus-price-amount">$1.290</div>'
+      + '<div class="plus-price-note">IVA incluido · Pago único</div>'
+      + "</div>"
+      + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-obtener-informe">'
+      + "Obtener mi informe</button>"
+      + '<p id="plus-cta-inline-msg" class="plus-cta-inline-msg" style="display:none;"></p>'
+      + '<p class="plus-disclaimer">El informe se genera en base a los datos disponibles en BCU '
+      + "y Clearing al momento de la consulta.</p>"
+    )
+  );
+}
+
+function renderPlusProcessing() {
+  return _plusScreenWrap(
+    _plusCard(
+      '<div class="plus-status-icon" aria-hidden="true">⏳</div>'
+      + '<h2 class="plus-status-title">Estamos generando tu informe</h2>'
+      + '<p class="plus-status-body">Estamos consultando BCU y Clearing y preparando tu análisis personalizado. '
+      + "Esto puede tomar unos minutos.</p>"
+      + '<p class="plus-status-body">Te enviaremos un email cuando tu informe esté listo.</p>'
+    )
+  );
+}
+
+function renderPlusReady() {
+  return _plusScreenWrap(
+    _plusCard(
+      '<div class="plus-status-icon" aria-hidden="true">✅</div>'
+      + '<h2 class="plus-status-title">Tu informe está listo</h2>'
+      + '<p class="plus-status-body">Tu análisis financiero personalizado está disponible.</p>'
+      + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-ver-informe">'
+      + "Ver mi informe</button>"
+      + '<button type="button" class="btn btn-secondary plus-cta-btn plus-cta-secondary" id="btn-plus-descargar-pdf">'
+      + "Descargar PDF</button>"
+    )
+  );
+}
+
+function renderPlusError() {
+  return _plusScreenWrap(
+    _plusCard(
+      '<div class="plus-status-icon" aria-hidden="true">⚠️</div>'
+      + '<h2 class="plus-status-title">No pudimos generar tu informe</h2>'
+      + '<p class="plus-status-body">Hubo un problema al consultar los registros financieros. '
+      + "No se realizó ningún cobro.</p>"
+      + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-reintentar">'
+      + "Intentar nuevamente</button>"
+      + '<p class="plus-support-line">Si el problema persiste contactá a soporte en '
+      + '<a href="mailto:credizonauy@gmail.com" class="plus-support-link">credizonauy@gmail.com</a></p>'
+    )
+  );
+}
+
 function renderTabPlus() {
-  var plus = (_st().plusEstado || "sin_pago");
-  if (plus === "sin_pago") {
-    return '<div class="fade"><div class="locked-overlay">'
-      + '<div class="locked-blur" style="height:260px;background:rgba(255,255,255,.03);border-radius:22px;"></div>'
-      + '<div class="locked-gate"><div class="locked-icon">📊</div><div class="locked-title">Tu historial en el sistema</div>'
-      + '<div class="locked-text">Hasta ahora solo el banco lo veia. Aca te lo mostramos a vos — y te decimos exactamente que significa para tu caso.</div>'
-      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-tab">Ver que incluye para mi caso</button>'
-      + '<div style="margin-top:12px;font-size:16px;color:#8390b5;">Desde UYU 990 · Devolucion garantizada 7 dias</div>'
-      + '</div></div></div>';
+  var st = _st();
+  var status = st.plus_status;
+
+  if (status === "PLUS_PROCESSING") return renderPlusProcessing();
+  if (status === "PLUS_READY") return renderPlusReady();
+  if (status === "PLUS_ERROR") return renderPlusError();
+
+  if (!st.plus_purchased || status == null) {
+    return renderPlusPresentation();
   }
-  return '<div class="fade"><div class="result"><h3>Informe disponible</h3><p>Tu informe Clearing esta listo.</p></div></div>';
+
+  return renderPlusPresentation();
 }
 
 // =============================================================================

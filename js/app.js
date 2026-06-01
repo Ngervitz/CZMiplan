@@ -20,6 +20,10 @@ window.CZState = {
   saldoIni:      0,
   tab:           "plan",
   plusEstado:    "sin_pago",
+  plus_purchased:     false,
+  plus_status:        null,
+  plus_report_id:     null,
+  plus_purchased_at:  null,
   iaRes:         null,
   miplan_started: false,
 
@@ -330,6 +334,129 @@ function finalizeDebtEdit(saveIdx) {
 }
 
 // =============================================================================
+// Sprint 14.0 — Mi Plan Plus state & payment helpers
+// =============================================================================
+function _plusTrackingIds() {
+  var id = window.CZIdentity || {};
+  return {
+    czuid:   id.crm_contact_id || id.anonymous_id || null,
+    plan_id: (window.CZState && window.CZState.diag)
+      ? window.CZState.diag.planId
+      : null,
+  };
+}
+
+function setPlusStatus(status, opts) {
+  opts = opts || {};
+  var st = window.CZState;
+  var prev = st.plus_status;
+  st.plus_status = status;
+
+  if (status === "PLUS_READY" && prev !== "PLUS_READY") {
+    if (opts.report_id) st.plus_report_id = opts.report_id;
+    if (typeof trackCRMEvent === "function") {
+      var ids = _plusTrackingIds();
+      trackCRMEvent(CZ_EVENT_NAMES.PLUS_REPORT_READY, {
+        czuid:          ids.czuid,
+        plus_report_id: st.plus_report_id || null,
+      });
+    }
+  }
+
+  window.guardarLocal();
+}
+
+function completarCompraPlus() {
+  var st = window.CZState;
+  var now = new Date().toISOString();
+  st.plus_purchased = true;
+  st.plus_purchased_at = now;
+  setPlusStatus("PLUS_PROCESSING");
+  if (st.temporal) st.temporal.payment_completed_at = now;
+
+  if (typeof trackCRMEvent === "function") {
+    var ids = _plusTrackingIds();
+    trackCRMEvent(CZ_EVENT_NAMES.PLUS_PURCHASED, {
+      czuid:            ids.czuid,
+      plus_purchased_at: now,
+      plan_id:          ids.plan_id,
+      score_reset:      st.diag ? st.diag.scoreReset : null,
+    });
+  }
+
+  if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+    window.CredizonaUI.renderTab();
+  }
+}
+
+function iniciarPagoHandy() {
+  var endpoint = (typeof CZ_HANDY_ENDPOINT !== "undefined" && CZ_HANDY_ENDPOINT)
+    ? String(CZ_HANDY_ENDPOINT).trim()
+    : "";
+  if (!endpoint) return false;
+
+  try {
+    var base = window.location.href.split("#")[0].split("?")[0];
+    var sep = endpoint.indexOf("?") >= 0 ? "&" : "?";
+    var returnUrl = encodeURIComponent(base + "?plus_payment=success");
+    window.location.href = endpoint + sep + "return_url=" + returnUrl;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function resetPlusPurchaseError() {
+  var st = window.CZState;
+  st.plus_status = null;
+  st.plus_purchased = false;
+  st.plus_purchased_at = null;
+  st.plus_report_id = null;
+  window.guardarLocal();
+  if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+    window.CredizonaUI.renderTab();
+  }
+}
+
+function handlePlusPaymentReturn() {
+  try {
+    var p = new URLSearchParams(window.location.search);
+    if (p.get("plus_payment") !== "success") return;
+    completarCompraPlus();
+    p.delete("plus_payment");
+    var qs = p.toString();
+    var clean = window.location.pathname + (qs ? "?" + qs : "") + window.location.hash;
+    window.history.replaceState({}, "", clean);
+  } catch (e) {}
+}
+
+function onPlusCtaClick() {
+  var ids = _plusTrackingIds();
+  var paymentLive = typeof CZ_PLUS_PAYMENT_LIVE !== "undefined" && CZ_PLUS_PAYMENT_LIVE;
+
+  if (typeof trackEvent === "function") {
+    trackEvent(CZ_EVENT_NAMES.PLUS_CTA_CLICKED, {
+      czuid:        ids.czuid,
+      plan_id:      ids.plan_id,
+      payment_live: paymentLive,
+    });
+  }
+
+  if (!paymentLive) {
+    var msg = document.getElementById("plus-cta-inline-msg");
+    if (msg) {
+      msg.textContent = "Estamos activando este servicio. Te avisamos cuando esté disponible.";
+      msg.style.display = "block";
+    }
+    return;
+  }
+
+  if (!iniciarPagoHandy()) {
+    completarCompraPlus();
+  }
+}
+
+// =============================================================================
 // STORAGE
 // =============================================================================
 window.guardarLocal = function(extra) {
@@ -347,6 +474,10 @@ window.guardarLocal = function(extra) {
       saldoIni:                st.saldoIni,
       tab:                     st.tab,
       plusEstado:              st.plusEstado,
+      plus_purchased:          !!st.plus_purchased,
+      plus_status:             st.plus_status != null ? st.plus_status : null,
+      plus_report_id:          st.plus_report_id || null,
+      plus_purchased_at:       st.plus_purchased_at || null,
       iaRes:                   st.iaRes,
       miplan_started:          st.miplan_started          || false,
       user_recovery_state:     st.user_recovery_state     || null,
@@ -493,6 +624,10 @@ function resetear() {
     saldoIni:            0,
     tab:                 "plan",
     plusEstado:          "sin_pago",
+    plus_purchased:      false,
+    plus_status:         null,
+    plus_report_id:      null,
+    plus_purchased_at:   null,
     iaRes:               null,
     miplan_started:      false,
     user_recovery_state: null,
@@ -653,6 +788,10 @@ async function init() {
     st.saldoIni           = dataToUse.saldoIni            || 0;
     st.tab                = dataToUse.tab                 || "plan";
     st.plusEstado         = dataToUse.plusEstado          || "sin_pago";
+    st.plus_purchased     = !!dataToUse.plus_purchased;
+    st.plus_status        = dataToUse.plus_status != null ? dataToUse.plus_status : null;
+    st.plus_report_id     = dataToUse.plus_report_id || null;
+    st.plus_purchased_at  = dataToUse.plus_purchased_at || null;
     st.iaRes              = dataToUse.iaRes               || null;
     st.miplan_started     = dataToUse.miplan_started      || false;
     st.user_recovery_state = dataToUse.user_recovery_state || null;
@@ -690,6 +829,8 @@ async function init() {
       setRecoveryState("survey_offered");
     }
   }
+
+  handlePlusPaymentReturn();
 
   if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
     window.CredizonaUI.renderAll();
@@ -1671,13 +1812,26 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Botones Reset Plus
+      // Sprint 14.0 — Mi Plan Plus tab CTA
+      if (e.target.id === "btn-plus-obtener-informe") {
+        onPlusCtaClick();
+        return;
+      }
+      if (e.target.id === "btn-plus-reintentar") {
+        resetPlusPurchaseError();
+        return;
+      }
+
+      // Botones Reset Plus (modal legacy — plan / IA)
       if (
         e.target.id === "btn-conocer-plus" ||
-        e.target.id === "btn-conocer-plus-ia" ||
-        e.target.id === "btn-conocer-plus-tab"
+        e.target.id === "btn-conocer-plus-ia"
       ) {
         _abrirPremium();
+        return;
+      }
+      if (e.target.id === "btn-conocer-plus-tab") {
+        switchTab("plus");
         return;
       }
 

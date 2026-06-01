@@ -111,8 +111,10 @@ const LEGAL_VERSION_PRIVACY        = "PP_v2.0_202605";
 const CONSENT_STORAGE_KEY          = "cz_consent_v1";
 const MIPLAN_UNAUTHORIZED_REDIRECT = "https://credizona.com.uy";
 
-// Sprint 13.1 — BCU/Clearing in-app view via Mi Plan Plus (set true when integration ships)
+// Sprint 14.0 — Mi Plan Plus feature flags (IT flips when Handy / Equifax ready)
+var CZ_PLUS_PAYMENT_LIVE = false;
 var CZ_PLUS_BCU_CLEARING_LIVE = false;
+var CZ_HANDY_ENDPOINT = "";
 
 // Consent event names
 const CZ_CONSENT_EVENTS = Object.freeze({
