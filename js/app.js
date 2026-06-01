@@ -1757,6 +1757,15 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
+      // Sprint 13.2 — expandir/colapsar historial de deudas pagadas
+      var histToggle = e.target.closest("[data-deudas-historial-toggle]");
+      if (histToggle) {
+        if (window.CredizonaUI && typeof window.CredizonaUI.toggleDeudasHistorial === "function") {
+          window.CredizonaUI.toggleDeudasHistorial();
+        }
+        return;
+      }
+
       // Sprint 13.1 — expandir acciones recomendadas sin re-render completo
       var verMasAcc = e.target.closest("[data-acciones-ver-mas]");
       if (verMasAcc) {

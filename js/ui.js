@@ -1012,24 +1012,79 @@ function renderDashboardEditGastosCta() {
     + "</div>";
 }
 
-function renderDeudasResumen(deudas) {
+// Sprint 13.2 — resumen alineado con motor (deudasActivasParaCalculo)
+function _isDeudaPagadaParaConteo(d) {
+  return typeof isDeudaPagada === "function"
+    ? isDeudaPagada(d)
+    : _isDeudaPagadaUI(d);
+}
+
+function _deudasResumenStats(deudas) {
   deudas = deudas || [];
-  var count = deudas.length;
-  var total = deudas.reduce(function(s, d) { return s + (parseFloat(d.monto) || 0); }, 0);
-  var pagos = deudas.reduce(function(s, d) { return s + (parseFloat(d.pago) || 0); }, 0);
-  var countTxt = count === 1 ? "1 deuda registrada" : count + " deudas registradas";
-  var a      = _dashAccent("deudas");
+  var activas = typeof deudasActivasParaCalculo === "function"
+    ? deudasActivasParaCalculo(deudas)
+    : deudas.filter(function(d) { return !_isDeudaPagadaParaConteo(d); });
+  var activaCount = activas.length;
+  var pagadaCount = 0;
+  for (var i = 0; i < deudas.length; i++) {
+    if (_isDeudaPagadaParaConteo(deudas[i])) pagadaCount++;
+  }
+  var totalActiva = activas.reduce(function(s, d) {
+    return s + (parseFloat(d.monto) || 0);
+  }, 0);
+  var pagosMensuales = activas.reduce(function(s, d) {
+    return s + (parseFloat(d.pago) || 0);
+  }, 0);
+  return {
+    activaCount:    activaCount,
+    pagadaCount:    pagadaCount,
+    totalActiva:    totalActiva,
+    pagosMensuales: pagosMensuales,
+  };
+}
+
+function _deudasSubtitleCounter(activaCount, pagadaCount) {
+  var actTxt = activaCount === 1 ? "1 activa" : activaCount + " activas";
+  var pagTxt = pagadaCount === 1 ? "1 pagada" : pagadaCount + " pagadas";
+  return '<div class="deudas-resumen-counter">' + actTxt + " · " + pagTxt + "</div>";
+}
+
+function _deudasActivasConIndice(deudas) {
+  deudas = deudas || [];
+  var activas = typeof deudasActivasParaCalculo === "function"
+    ? deudasActivasParaCalculo(deudas)
+    : [];
+  var activasSet = {};
+  for (var a = 0; a < activas.length; a++) activasSet[activas[a]] = true;
+  var out = [];
+  for (var i = 0; i < deudas.length; i++) {
+    if (activasSet[deudas[i]]) out.push({ d: deudas[i], i: i });
+  }
+  return out;
+}
+
+function _deudasPagadasConIndice(deudas) {
+  deudas = deudas || [];
+  var out = [];
+  for (var i = 0; i < deudas.length; i++) {
+    if (_isDeudaPagadaParaConteo(deudas[i])) out.push({ d: deudas[i], i: i });
+  }
+  return out;
+}
+
+function renderDeudasResumen(deudas) {
+  var stats = _deudasResumenStats(deudas);
+  var a     = _dashAccent("deudas");
 
   return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);'
     + _dashSectionAccentCss("deudas") + 'margin-bottom:20px;">'
-    + '<div style="font-size:14px;color:#8390b5;margin-bottom:16px;line-height:1.5;">' + countTxt + "</div>"
     + '<div style="display:flex;flex-direction:column;gap:14px;max-width:100%;">'
-    + '<div><div style="font-size:13px;color:#8390b5;margin-bottom:6px;">Total deuda</div>'
+    + '<div><div style="font-size:13px;color:#8390b5;margin-bottom:6px;">Total deuda activa</div>'
     + '<div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.92);line-height:1;letter-spacing:-.5px;word-break:break-word;">'
-    + fmt(Math.round(total)) + "</div></div>"
+    + fmt(Math.round(stats.totalActiva)) + "</div></div>"
     + '<div><div style="font-size:13px;color:#8390b5;margin-bottom:6px;">Pagos mensuales</div>'
     + '<div style="font-size:22px;font-weight:800;color:' + a.title + ';line-height:1.3;word-break:break-word;">'
-    + fmt(Math.round(pagos)) + " por mes</div></div>"
+    + fmt(Math.round(stats.pagosMensuales)) + "</div></div>"
     + "</div></div>";
 }
 
@@ -1061,6 +1116,10 @@ function renderTab() {
   if (_accionesRecomTab !== tab) {
     _accionesRecomExpand = false;
     _accionesRecomTab = tab;
+  }
+  if (_deudasHistorialTab !== tab) {
+    _deudasHistorialExpand = false;
+    _deudasHistorialTab = tab;
   }
   if (!el) return;
   if (tab === "plan")   el.innerHTML = renderTabPlan();
@@ -1984,22 +2043,81 @@ function renderRadiografia() {
 // =============================================================================
 // TAB: MIS DEUDAS
 // =============================================================================
+function renderDeudasEmptyActivas() {
+  return '<div class="deudas-empty-activas">'
+    + '<div class="deudas-empty-activas-title">✅ No registrás deudas activas</div>'
+    + '<div class="deudas-empty-activas-text">Las deudas que marcaste como pagadas '
+    + "siguen disponibles en tu historial.</div>"
+    + "</div>";
+}
+
+function renderDeudasHistorialToggle(pagadaCount) {
+  if (pagadaCount <= 0) return "";
+  var expanded = _deudasHistorialExpand;
+  var label = expanded
+    ? "▲ Ocultar historial"
+    : "▼ Ver historial (" + pagadaCount + ")";
+  return '<button type="button" class="deudas-historial-toggle" data-deudas-historial-toggle="1">'
+    + label + "</button>";
+}
+
+function renderDeudaHistorica(d, i) {
+  var monto = parseFloat(d.monto_original != null ? d.monto_original : d.monto) || 0;
+  var badge = _deudaStatusBadgeMeta(d);
+  var title = String(d.acreedor_display || d.acreedor || "").trim() || "Deuda histórica";
+
+  return '<div class="debt-card debt-card-historica" id="dhist-' + i + '" style="'
+    + _deudaLiveCardStyle()
+    + "opacity:0.62;border-color:rgba(255,255,255,.05);background:rgba(255,255,255,.02);"
+    + '">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;max-width:100%;">'
+    + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.72);flex:1;min-width:0;word-break:break-word;line-height:1.35;">'
+    + title + "</div>"
+    + '<span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:12px;white-space:nowrap;'
+    + "background:" + badge.bg + ";color:" + badge.color + ';">' + badge.label + "</span>"
+    + "</div>"
+    + '<div style="font-size:22px;font-weight:800;color:rgba(255,255,255,.78);margin:2px 0 8px;line-height:1.2;word-break:break-word;">'
+    + fmt(Math.round(monto)) + "</div>"
+    + '<div style="font-size:12px;color:rgba(255,255,255,.35);line-height:1.45;">Deuda histórica</div>"
+    + "</div>";
+}
+
 function renderTabDeudas() {
   var st     = _st();
   var deudas = st.deudas || [];
-  var totalDeuda = deudas.reduce(function(s, x) {
-    return s + (parseFloat(x.monto) || 0);
-  }, 0);
+  var stats  = _deudasResumenStats(deudas);
   var ingreso = PRE.ingreso || 0;
+  var activasList = _deudasActivasConIndice(deudas);
+  var pagadasList = _deudasPagadasConIndice(deudas);
+  var totalDeudaActiva = stats.totalActiva;
+
+  var activasHtml = "";
+  if (stats.activaCount === 0) {
+    activasHtml = renderDeudasEmptyActivas();
+  } else {
+    activasHtml = activasList.map(function(item) {
+      return renderDeudaLive(item.d, item.i, totalDeudaActiva, ingreso);
+    }).join("");
+  }
+
+  var historialHtml = "";
+  if (stats.pagadaCount > 0 && _deudasHistorialExpand) {
+    historialHtml = '<div id="deudas-historial-panel" class="deudas-historial-panel">'
+      + pagadasList.map(function(item) {
+          return renderDeudaHistorica(item.d, item.i);
+        }).join("")
+      + "</div>";
+  }
 
   return '<div class="fade">'
     + _dashIaSectionOpen(true, "deudas")
     + _dashIaLabel("Tus deudas", "deudas")
+    + _deudasSubtitleCounter(stats.activaCount, stats.pagadaCount)
     + '<div class="section-text">Actualiza tus saldos a medida que vas pagando. El plan y el puntaje se recalculan solos.</div>'
     + renderDeudasResumen(deudas)
-    + deudas.map(function(d, i) {
-        return renderDeudaLive(d, i, totalDeuda, ingreso);
-      }).join("")
+    + activasHtml
+    + renderDeudasHistorialToggle(stats.pagadaCount)
+    + historialHtml
     + _dashIaSectionClose()
     + '<div style="text-align:center;margin-top:14px;font-size:16px;color:#8390b5;">Los cambios se guardan automaticamente.</div>'
     + '</div>';
@@ -2049,7 +2167,7 @@ function renderDeudaLive(d, i, totalDeuda, ingreso) {
   var contextLines = "";
   if (pctDeuda != null) {
     contextLines += '<div style="font-size:12px;color:rgba(255,255,255,.4);line-height:1.5;margin-bottom:6px;">'
-      + "Representa " + pctDeuda + "% de tu deuda total</div>";
+      + "Representa " + pctDeuda + "% de tu deuda activa</div>";
   }
   if (pago > 0) {
     contextLines += '<div style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.5;margin-bottom:6px;">'
@@ -2183,6 +2301,10 @@ function renderCompItem(id, label) {
 // Sprint 13.1 — expansión de acciones recomendadas (persiste hasta cambio de tab)
 var _accionesRecomExpand = false;
 var _accionesRecomTab = null;
+
+// Sprint 13.2 — historial de deudas pagadas (colapsado al cambiar de tab)
+var _deudasHistorialExpand = false;
+var _deudasHistorialTab = null;
 
 function _iconoAccionRecomendada(tipo) {
   if (tipo === "accion") return "&#128203;";
@@ -2959,6 +3081,10 @@ window.CredizonaUI = {
   renderAll: renderAll,
   renderTab: renderTab,
   expandAccionesRecomendadas: function() { _accionesRecomExpand = true; },
+  toggleDeudasHistorial: function() {
+    _deudasHistorialExpand = !_deudasHistorialExpand;
+    renderTab();
+  },
   focusDeudaQuickEditInput: focusDeudaQuickEditInput,
   renderDeudaCard: renderDeudaCard,
   actualizarMetrics: actualizarMetrics,

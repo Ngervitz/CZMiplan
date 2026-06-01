@@ -171,6 +171,34 @@ select option{background:#0a1026;}
   .debt-live-actions .btn-deuda-pagada{width:auto;flex:1;}
 }
 
+/* Sprint 13.2 — resumen y historial de deudas (tab Tus deudas) */
+.deudas-resumen-counter{
+  font-size:13px;color:rgba(255,255,255,.4);line-height:1.45;
+  margin:-4px 0 16px;max-width:100%;word-break:break-word;
+}
+.deudas-empty-activas{
+  margin-bottom:16px;padding:18px 16px;border-radius:18px;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);
+  max-width:100%;box-sizing:border-box;
+}
+.deudas-empty-activas-title{
+  font-size:16px;font-weight:700;color:rgba(255,255,255,.88);
+  line-height:1.4;margin-bottom:8px;word-break:break-word;
+}
+.deudas-empty-activas-text{
+  font-size:14px;color:rgba(255,255,255,.45);line-height:1.55;word-break:break-word;
+}
+.deudas-historial-toggle{
+  display:block;width:100%;margin:8px 0 4px;padding:14px 18px;
+  border-radius:14px;border:1.5px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);color:rgba(255,255,255,.55);
+  font-size:15px;font-weight:700;cursor:pointer;text-align:center;
+  max-width:100%;box-sizing:border-box;
+}
+.deudas-historial-toggle:active{opacity:.85;}
+.deudas-historial-panel{margin-top:8px;max-width:100%;}
+.debt-card-historica{margin-bottom:10px;}
+
 /* METRICS */
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px;}
 .metric{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:22px;padding:22px;}
