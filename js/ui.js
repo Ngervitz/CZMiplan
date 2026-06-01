@@ -2283,16 +2283,32 @@ function renderPlusPresentation() {
       + "</div>"
       + '<div class="plus-block plus-block-muted">'
       + '<h3 class="plus-block-title">¿Por qué es diferente?</h3>'
-      + '<p class="plus-diff-text">Mi Plan analiza la información que ingresaste. '
-      + "Mi Plan Plus incorpora información registrada en BCU y Clearing para construir "
-      + "un diagnóstico más completo de tu situación financiera real.</p>"
+      + '<p class="plus-diff-text">Mi Plan utiliza la información que declaraste.</p>'
+      + '<p class="plus-diff-text">Mi Plan Plus incorpora información registrada en BCU y Clearing '
+      + "para construir un diagnóstico más completo y preciso de tu situación financiera.</p>"
       + "</div>"
+      + '<div class="plus-example-card">'
+      + '<h4 class="plus-example-title">Ejemplo</h4>'
+      + '<div class="plus-example-stack">'
+      + '<div class="plus-example-row">'
+      + '<div class="plus-example-label">Declarado por vos</div>'
+      + '<div class="plus-example-value">OCA — $45.000</div>'
+      + "</div>"
+      + '<div class="plus-example-row">'
+      + '<div class="plus-example-label">Registrado en el sistema financiero</div>'
+      + '<div class="plus-example-value">OCA — $45.000</div>'
+      + '<div class="plus-example-value">Préstamo personal — $33.000</div>'
+      + "</div>"
+      + "</div>"
+      + '<p class="plus-example-note">⚠ Existe una diferencia entre la información declarada y la registrada.</p>'
+      + "</div>"
+      + '<div class="plus-price-context">Informe financiero completo</div>'
       + '<div class="plus-price-block">'
       + '<div class="plus-price-amount">$1.290</div>'
       + '<div class="plus-price-note">IVA incluido · Pago único</div>'
       + "</div>"
       + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-obtener-informe">'
-      + "Obtener mi informe</button>"
+      + "Ver mi situación real</button>"
       + '<p id="plus-cta-inline-msg" class="plus-cta-inline-msg" style="display:none;"></p>'
       + '<p class="plus-disclaimer">El informe se genera en base a los datos disponibles en BCU '
       + "y Clearing al momento de la consulta.</p>"
