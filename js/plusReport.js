@@ -265,6 +265,25 @@ var CZ_PLUS_SYSTEM_PROMPT = [
   "",
   "Andá directo al punto.",
   "",
+  "REGLA 11 — ACCIÓN INMEDIATA NO DUPLICA ACCIONES:",
+  "La accion_inmediata y la primera acción",
+  "del array acciones no pueden ser la misma.",
+  "La accion_inmediata es el paso más urgente",
+  "expresado de forma destacada.",
+  "Las acciones son pasos complementarios.",
+  "Si la acción más urgente ya está en",
+  "accion_inmediata, la primera acción del",
+  "array debe ser la siguiente en prioridad,",
+  "no la misma reformulada.",
+  "",
+  "REGLA 12 — LÍMITE DE MENCIONES POR CONCEPTO:",
+  "Flujo negativo: máximo 2 menciones en todo",
+  "el informe. Elegí las secciones donde",
+  "tiene más impacto explicativo.",
+  "Categoría BCU: máximo 2 menciones en todo",
+  "el informe. Centralizá en seccion_4_hallazgos",
+  "y seccion_6_horizonte.",
+  "",
   "==================================================",
   "REGLAS DE URGENCIA",
   "==================================================",
@@ -879,6 +898,270 @@ async function generarInformePlus() {
   }
 }
 
+// =============================================================================
+// Sprint 14.4 — Plus PDF export (html2pdf > jsPDF > print fallback)
+// =============================================================================
+function _plusPdfEsc(s) {
+  if (s == null || s === undefined) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function _plusPdfDateFormatted() {
+  var d = new Date();
+  var dd = String(d.getDate()).padStart(2, "0");
+  var mm = String(d.getMonth() + 1).padStart(2, "0");
+  return dd + "/" + mm + "/" + d.getFullYear();
+}
+
+function _plusPdfFilename() {
+  return "credizona-mi-plan-plus-" + new Date().toISOString().slice(0, 10) + ".pdf";
+}
+
+function _plusPdfLogoSrc() {
+  var b64 = typeof CZ_CREDIZONA_LOGO_BASE64 !== "undefined" ? CZ_CREDIZONA_LOGO_BASE64 : "";
+  if (!b64) return "";
+  return "data:image/svg+xml;base64," + b64;
+}
+
+function _plusPdfBloqueadorTexto(b) {
+  if (!b) return "";
+  if (typeof b === "string") return b;
+  return b.descripcion || b.tipo || "";
+}
+
+function _plusPdfList(items, mapper) {
+  if (!items || !items.length) return "<p>—</p>";
+  return "<ul>" + items.map(mapper).join("") + "</ul>";
+}
+
+function buildPlusPdfHtml(informe) {
+  informe = informe || {};
+  var sec1 = informe.seccion_1_resumen_ejecutivo || {};
+  var sec4 = informe.seccion_4_hallazgos || {};
+  var sec5 = informe.seccion_5_acciones || {};
+  var sec6 = informe.seccion_6_horizonte || {};
+  var escProb = sec6.escenario_probable || {};
+  var horizRec = sec6.horizonte_recalificacion || {};
+  var accionInmediata = sec5.accion_inmediata || {};
+  var logoSrc = _plusPdfLogoSrc();
+  var footerText = "Generado por Credizona Mi Plan Plus. Este informe se basa en la información "
+    + "disponible al momento de la consulta y no constituye asesoramiento financiero ni legal.";
+
+  var body = "";
+
+  body += '<div class="cover">'
+    + (logoSrc
+      ? '<img src="' + logoSrc + '" alt="Credizona" class="cover-logo"/>'
+      : '<div class="cover-logo-fallback">Credizona</div>')
+    + "<h1>Credizona Mi Plan Plus</h1>"
+    + "<p class=\"cover-sub\">Informe Financiero Personalizado</p>"
+    + "<p class=\"cover-date\">Fecha: " + _plusPdfEsc(_plusPdfDateFormatted()) + "</p>"
+    + "</div>";
+
+  body += '<div class="section"><h2>Tu situación financiera hoy</h2>'
+    + "<p>" + _plusPdfEsc(sec1.situacion_general) + "</p>"
+    + "<h3>Fortalezas</h3>"
+    + _plusPdfList(sec1.fortalezas || [], function(item) {
+        return "<li><strong>" + _plusPdfEsc(item.titulo) + "</strong> — "
+          + _plusPdfEsc(item.descripcion) + "</li>";
+      })
+    + "<h3>Riesgos</h3>"
+    + _plusPdfList(sec1.riesgos || [], function(item) {
+        return "<li><strong>" + _plusPdfEsc(item.titulo) + "</strong> — "
+          + _plusPdfEsc(item.descripcion) + "</li>";
+      })
+    + "<h3>Bloqueador principal</h3>"
+    + "<p>" + _plusPdfEsc(_plusPdfBloqueadorTexto(sec1.bloqueador_principal)) + "</p>"
+    + "<h3>Horizonte</h3>"
+    + "<p>" + _plusPdfEsc(sec1.horizonte_resumen) + "</p>"
+    + "</div>";
+
+  if (informe.seccion_3_nota_diferencias) {
+    body += '<div class="section"><h2>Diferencias detectadas</h2>'
+      + "<p>" + _plusPdfEsc(informe.seccion_3_nota_diferencias) + "</p></div>";
+  }
+
+  body += '<div class="section"><h2>Qué significa esto</h2>'
+    + "<p>" + _plusPdfEsc(sec4.interpretacion_general) + "</p>";
+
+  (sec4.hallazgos || []).forEach(function(h) {
+    body += "<h3>" + _plusPdfEsc(h.titulo) + "</h3>"
+      + "<p>" + _plusPdfEsc(h.descripcion) + "</p>";
+  });
+
+  if (sec4.patron_detectado) {
+    body += "<h3>Patrón detectado</h3><p>" + _plusPdfEsc(sec4.patron_detectado) + "</p>";
+  }
+
+  body += "<h3>Perfil de riesgo real</h3>"
+    + "<p>" + _plusPdfEsc(sec4.perfil_riesgo_real) + "</p>";
+
+  if (sec4.diferencia_perfil_declarado_vs_real) {
+    body += "<h3>Diferencia declarado vs real</h3><p>"
+      + _plusPdfEsc(sec4.diferencia_perfil_declarado_vs_real) + "</p>";
+  }
+
+  body += "</div>";
+
+  body += '<div class="section"><h2>Qué hacer ahora</h2>'
+    + "<h3>" + _plusPdfEsc(accionInmediata.titulo) + "</h3>"
+    + "<p>" + _plusPdfEsc(accionInmediata.descripcion) + "</p>";
+
+  (sec5.acciones || []).forEach(function(act, idx) {
+    body += "<h3>" + _plusPdfEsc(act.titulo || ("Acción " + (idx + 1))) + "</h3>"
+      + "<p>" + _plusPdfEsc(act.descripcion) + "</p>";
+  });
+
+  body += "</div>";
+
+  body += '<div class="section"><h2>Tu horizonte</h2>'
+    + "<p>" + _plusPdfEsc(sec6.situacion_actual) + "</p>"
+    + "<h3>Escenario probable</h3>"
+    + "<p>" + _plusPdfEsc(escProb.descripcion) + "</p>"
+    + "<h3>Tiempo estimado</h3>"
+    + "<p>" + _plusPdfEsc(escProb.tiempo_estimado || sec6.tiempo_estimado || "") + "</p>"
+    + "<h3>Condiciones</h3>"
+    + _plusPdfList(escProb.condiciones || [], function(item) {
+        return "<li>" + _plusPdfEsc(item) + "</li>";
+      })
+    + "<h3>Qué debe cambiar</h3>"
+    + _plusPdfList(sec6.que_debe_cambiar || [], function(item) {
+        return "<li>" + _plusPdfEsc(item) + "</li>";
+      })
+    + "<h3>Estimación de recalificación</h3>"
+    + "<p>" + _plusPdfEsc(horizRec.estimacion || sec6.estimacion || "") + "</p>"
+    + "<h3>Factores bloqueantes</h3>"
+    + _plusPdfList(horizRec.factores_bloqueantes || sec6.factores_bloqueantes || [], function(item) {
+        return "<li>" + _plusPdfEsc(item) + "</li>";
+      })
+    + "<h3>Factores favorables</h3>"
+    + _plusPdfList(horizRec.factores_favorables || sec6.factores_favorables || [], function(item) {
+        return "<li>" + _plusPdfEsc(item) + "</li>";
+      })
+    + "</div>";
+
+  body += '<div class="pdf-footer">' + _plusPdfEsc(footerText) + "</div>";
+
+  return "<!DOCTYPE html><html lang=\"es\"><head><meta charset=\"UTF-8\"/>"
+    + "<title>Credizona Mi Plan Plus</title>"
+    + "<style>"
+    + "body{margin:0;padding:24px;font-family:Inter,Arial,sans-serif;background:#fff;color:#1a1f36;line-height:1.5;}"
+    + ".cover{text-align:center;padding:48px 16px 56px;page-break-after:always;border-bottom:1px solid #e5e7ef;}"
+    + ".cover-logo{max-width:220px;height:auto;margin:0 auto 24px;display:block;}"
+    + ".cover-logo-fallback{font-size:28px;font-weight:800;color:#2563eb;margin-bottom:24px;}"
+    + ".cover h1{font-size:24px;margin:0 0 8px;}"
+    + ".cover-sub{font-size:16px;color:#4b5563;margin:0 0 12px;}"
+    + ".cover-date{font-size:14px;color:#6b7280;margin:0;}"
+    + ".section{margin-bottom:28px;page-break-inside:avoid;}"
+    + ".section h2{font-size:18px;border-bottom:1px solid #e5e7ef;padding-bottom:8px;margin:0 0 12px;}"
+    + ".section h3{font-size:14px;margin:16px 0 6px;color:#374151;}"
+    + ".section p,.section li{font-size:13px;}"
+    + ".section ul{margin:0;padding-left:18px;}"
+    + ".pdf-footer{margin-top:36px;padding-top:16px;border-top:1px solid #e5e7ef;font-size:11px;color:#6b7280;}"
+    + "@media print{body{padding:12mm;}}"
+    + "</style></head><body>" + body + "</body></html>";
+}
+
+function _plusPdfPrintFallback(htmlContent, filename) {
+  var win = window.open("", "_blank", "noopener,noreferrer");
+  if (!win) {
+    alert("Permití ventanas emergentes para descargar el PDF.");
+    return;
+  }
+  win.document.open();
+  win.document.write(htmlContent);
+  win.document.close();
+  win.document.title = filename.replace(/\.pdf$/i, "");
+  setTimeout(function() {
+    win.focus();
+    win.print();
+  }, 450);
+}
+
+async function sendPlusReportEmail(payload) {
+  /* MIGRATION NOTE:
+     Replace with:
+     await fetch("/api/plus/email-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+     });
+  */
+  return new Promise(function(resolve) {
+    setTimeout(function() {
+      resolve({ ok: true });
+    }, 800);
+  });
+}
+
+async function downloadPlusReportPdf() {
+  var st = window.CZState;
+  if (!st || st.plus_status !== "PLUS_READY" || !st.plus_informe) return;
+
+  var html = buildPlusPdfHtml(st.plus_informe);
+  var filename = _plusPdfFilename();
+
+  try {
+    if (typeof html2pdf !== "undefined") {
+      var container = document.createElement("div");
+      container.style.position = "fixed";
+      container.style.left = "-9999px";
+      container.style.top = "0";
+      container.style.width = "210mm";
+      container.innerHTML = html;
+      document.body.appendChild(container);
+      await html2pdf()
+        .set({
+          filename: filename,
+          margin: 12,
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(container)
+        .save();
+      document.body.removeChild(container);
+    } else if (
+      (typeof jspdf !== "undefined" || (window.jspdf && window.jspdf.jsPDF))
+      && typeof html2canvas !== "undefined"
+    ) {
+      _plusPdfPrintFallback(html, filename);
+    } else {
+      _plusPdfPrintFallback(html, filename);
+    }
+  } catch (err) {
+    console.error(err);
+    _plusPdfPrintFallback(html, filename);
+  }
+
+  var id = window.CZIdentity || {};
+  var czuid = id.crm_contact_id || id.anonymous_id || null;
+  var planId = st.diag ? st.diag.planId : null;
+
+  if (typeof trackEvent === "function") {
+    trackEvent("plus_pdf_downloaded", {
+      czuid:          czuid,
+      plan_id:        planId,
+      plus_report_id: st.plus_report_id,
+    });
+  }
+  if (typeof trackCRMEvent === "function") {
+    trackCRMEvent("plus_pdf_downloaded", {
+      czuid:          czuid,
+      plus_report_id: st.plus_report_id,
+      downloaded_at:  new Date().toISOString(),
+    });
+  }
+
+  st.plus_pdf_downloaded = true;
+  if (typeof window.guardarLocal === "function") window.guardarLocal();
+}
+
 window.generarInformePlus = generarInformePlus;
 window.getMockPlusInput = getMockPlusInput;
 window.buildPlusInput = buildPlusInput;
+window.downloadPlusReportPdf = downloadPlusReportPdf;
+window.sendPlusReportEmail = sendPlusReportEmail;

@@ -33,6 +33,9 @@ var CZ_GTM_EVENTS = [
   "dashboard_toast_shown",
   "plus_cta_viewed",
   "plus_cta_clicked",
+  "plus_pdf_downloaded",
+  "plus_report_email_requested",
+  "plus_feedback_submitted",
 ];
 
 var CZ_INTERNAL_EVENTS = [
@@ -68,6 +71,9 @@ var CZ_CRM_ONLY_EVENTS = [
   "accion_comprometida",
   "plus_purchased",
   "plus_report_ready",
+  "plus_pdf_downloaded",
+  "plus_report_email_requested",
+  "plus_feedback_submitted",
 ];
 
 // =============================================================================
@@ -90,6 +96,10 @@ var CZ_GTM_SAFE_FIELDS = [
   "source",
   "cta_source",
   "currency",
+  "plus_report_id",
+  "score",
+  "clarity",
+  "value",
 ];
 
 // =============================================================================

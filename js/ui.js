@@ -2298,6 +2298,97 @@ function _plusAiSignature() {
     + "</div>";
 }
 
+function _plusHasValidEmail(email) {
+  return typeof email === "string" && email.trim().indexOf("@") > 0;
+}
+
+function renderPlusActionsBlock(st) {
+  st = st || _st();
+  var html = '<div class="plus-section-card plus-report-actions">'
+    + '<div class="plus-report-sub">Descargá y compartí tu informe</div>'
+    + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-descargar-pdf">'
+    + "Descargar PDF</button>"
+    + '<div class="plus-email-action">';
+
+  if (st.plus_email_requested) {
+    html += '<p class="plus-inline-msg plus-email-success">Te enviamos una copia del informe. '
+      + "Solicitud registrada. El envío real se conectará cuando el backend esté disponible.</p>";
+  } else if (_plusHasValidEmail(st.user_email)) {
+    html += '<button type="button" class="btn btn-secondary plus-cta-btn plus-cta-secondary" id="btn-plus-enviar-email">'
+      + "✉️ Enviar a: " + _plusEsc(st.user_email.trim()) + "</button>";
+  } else {
+    html += '<label class="plus-email-label" for="plus-email-input">Enviarme copia por email</label>'
+      + '<input type="email" class="plus-email-input" id="plus-email-input" placeholder="Ingresá tu email" autocomplete="email"/>'
+      + '<button type="button" class="btn btn-secondary plus-cta-btn plus-cta-secondary" id="btn-plus-enviar-email">'
+      + "Enviar informe</button>";
+  }
+
+  html += "</div></div>";
+  return html;
+}
+
+function renderPlusFeedbackBlock(st) {
+  st = st || _st();
+  var html = '<div class="plus-section-card plus-feedback-block">'
+    + '<h3 class="plus-section-title">Ayudanos a mejorar este informe</h3>';
+
+  if (st.plus_feedback_submitted) {
+    html += '<p class="plus-feedback-thanks">Gracias. Tu respuesta nos ayuda a mejorar Mi Plan Plus.</p>';
+  } else {
+    html += '<div class="plus-feedback-step" id="plus-fb-step-score">'
+      + '<div class="plus-feedback-label">¿Qué tan útil te resultó este informe?</div>'
+      + '<div class="plus-feedback-score-row">';
+
+    for (var i = 1; i <= 5; i++) {
+      var scoreActive = st.plus_feedback_score === i ? " active" : "";
+      html += '<button type="button" class="plus-feedback-score-btn' + scoreActive
+        + '" data-plus-fb-score="' + i + '">' + i + "</button>";
+    }
+
+    html += "</div></div>";
+
+    var cascadeHidden = st.plus_feedback_score == null ? " hidden" : "";
+    html += '<div class="plus-feedback-cascade' + cascadeHidden + '" id="plus-fb-cascade">'
+      + '<div class="plus-feedback-label">Claridad respecto a tu situación</div>'
+      + '<div class="plus-feedback-chips">';
+
+    ["Mucho mejor", "Mejor", "Igual", "Peor"].forEach(function(opt) {
+      var clarityActive = st.plus_feedback_clarity === opt ? " active" : "";
+      html += '<button type="button" class="plus-feedback-chip' + clarityActive
+        + '" data-plus-fb-clarity="' + _plusEsc(opt) + '">' + _plusEsc(opt) + "</button>";
+    });
+
+    html += '</div><div class="plus-feedback-label">¿Qué valor te aportó más?</div>'
+      + '<div class="plus-feedback-chips plus-feedback-chips-wrap">';
+
+    [
+      "Diferencias detectadas",
+      "Información BCU",
+      "Información Clearing",
+      "Acciones recomendadas",
+      "Horizonte de recuperación",
+      "Otra cosa",
+    ].forEach(function(opt) {
+      var valueActive = st.plus_feedback_value === opt ? " active" : "";
+      html += '<button type="button" class="plus-feedback-chip' + valueActive
+        + '" data-plus-fb-value="' + _plusEsc(opt) + '">' + _plusEsc(opt) + "</button>";
+    });
+
+    html += '</div>'
+      + '<label class="plus-feedback-label" for="plus-fb-comment">Comentarios (opcional)</label>'
+      + '<textarea class="plus-feedback-textarea" id="plus-fb-comment" rows="3" maxlength="500" '
+      + 'placeholder="Contanos qué te gustaría ver distinto...">'
+      + _plusEsc(st.plus_feedback_comment || "")
+      + "</textarea>"
+      + '<button type="button" class="btn btn-secondary plus-cta-btn plus-feedback-submit" id="btn-plus-feedback-submit">'
+      + "Enviar opinión</button>"
+      + "</div>";
+  }
+
+  html += "</div>";
+  return html;
+}
+
 function renderPlusPresentation() {
   _trackPlusCtaViewed();
 
@@ -2504,7 +2595,6 @@ function renderPlusInforme(informe) {
     + '<div class="plus-report-sub">Horizonte</div>'
     + '<p class="plus-report-p">' + _plusEsc(sec1.horizonte_resumen) + "</p>"
     + '<p class="plus-report-disclaimer">' + _plusEsc(sec1.nota_disclaimer) + "</p>"
-    + _plusAiSignature()
     + "</div>";
 
   if (informe.seccion_3_nota_diferencias) {
@@ -2562,12 +2652,12 @@ function renderPlusInforme(informe) {
     + _plusListHtml(horizRec.factores_favorables || sec6.factores_favorables || [], function(item) {
         return "<li>" + _plusEsc(item) + "</li>";
       })
-    + '<p class="plus-report-disclaimer">Este informe es orientativo y se basa en los registros '
-    + "disponibles al momento de la consulta. No constituye asesoramiento legal ni garantía de aprobación.</p>"
     + "</div>";
 
-  html += '<button type="button" class="btn btn-secondary plus-cta-btn plus-cta-secondary" id="btn-plus-descargar-pdf">'
-    + "Descargar PDF</button>"
+  html += renderPlusActionsBlock(_st());
+  html += renderPlusFeedbackBlock(_st());
+  html += '<p class="plus-report-disclaimer plus-report-closure">Este informe es orientativo y se basa en los registros '
+    + "disponibles al momento de la consulta. No constituye asesoramiento legal ni garantía de aprobación.</p>"
     + "</div>";
 
   return _plusScreenWrap(_plusCard(html));

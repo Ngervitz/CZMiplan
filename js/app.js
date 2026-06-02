@@ -26,6 +26,14 @@ window.CZState = {
   plus_purchased_at:  null,
   plus_informe:       null,
   _plusDevCtaClicked: false,
+  user_email:              null,
+  plus_pdf_downloaded:     false,
+  plus_email_requested:    false,
+  plus_feedback_score:     null,
+  plus_feedback_clarity:   null,
+  plus_feedback_value:     null,
+  plus_feedback_comment:   "",
+  plus_feedback_submitted: false,
   iaRes:         null,
   miplan_started: false,
 
@@ -348,6 +356,121 @@ function _plusTrackingIds() {
   };
 }
 
+function _plusIsValidEmail(email) {
+  return typeof email === "string" && email.trim().indexOf("@") > 0;
+}
+
+function preloadUserEmailFromUrl() {
+  /* MIGRATION NOTE: Future CRM endpoint can hydrate user_email by czuid using this same field. */
+  var st = window.CZState;
+  try {
+    var p = new URLSearchParams(window.location.search);
+    var raw = p.get("email");
+    if (raw && _plusIsValidEmail(raw)) {
+      st.user_email = raw.trim();
+    }
+  } catch (e) {}
+}
+
+function onPlusPdfDownload() {
+  var st = window.CZState;
+  if (st.plus_status !== "PLUS_READY" || !st.plus_informe) return;
+  if (typeof downloadPlusReportPdf === "function") {
+    downloadPlusReportPdf();
+  }
+}
+
+async function onPlusEmailRequest() {
+  var st = window.CZState;
+  if (st.plus_status !== "PLUS_READY" || !st.plus_informe || st.plus_email_requested) return;
+
+  var email = st.user_email;
+  if (!_plusIsValidEmail(email)) {
+    var input = document.getElementById("plus-email-input");
+    email = input ? String(input.value || "").trim() : "";
+    if (!_plusIsValidEmail(email)) {
+      if (input) input.focus();
+      return;
+    }
+    st.user_email = email;
+  }
+
+  var ids = _plusTrackingIds();
+  var payload = {
+    czuid:          ids.czuid,
+    email:          email,
+    plus_report_id: st.plus_report_id,
+    sent_at:        new Date().toISOString(),
+  };
+
+  try {
+    await sendPlusReportEmail(payload);
+    st.plus_email_requested = true;
+    window.guardarLocal();
+
+    if (typeof trackEvent === "function") {
+      trackEvent("plus_report_email_requested", {
+        czuid:          ids.czuid,
+        plan_id:        ids.plan_id,
+        plus_report_id: st.plus_report_id,
+      });
+    }
+    if (typeof trackCRMEvent === "function") {
+      trackCRMEvent("plus_report_email_requested", {
+        czuid:          ids.czuid,
+        email:          email,
+        plus_report_id: st.plus_report_id,
+        requested_at:   new Date().toISOString(),
+      });
+    }
+
+    if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+      window.CredizonaUI.renderTab();
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function onPlusFeedbackSubmit() {
+  var st = window.CZState;
+  if (st.plus_feedback_submitted || st.plus_feedback_score == null) return;
+
+  var ta = document.getElementById("plus-fb-comment");
+  st.plus_feedback_comment = ta ? String(ta.value || "").trim() : (st.plus_feedback_comment || "");
+
+  st.plus_feedback_submitted = true;
+  window.guardarLocal();
+
+  var ids = _plusTrackingIds();
+  if (typeof trackEvent === "function") {
+    trackEvent("plus_feedback_submitted", {
+      czuid:          ids.czuid,
+      plan_id:        ids.plan_id,
+      plus_report_id: st.plus_report_id,
+      score:          st.plus_feedback_score,
+      clarity:        st.plus_feedback_clarity,
+      value:          st.plus_feedback_value,
+    });
+  }
+  if (typeof trackCRMEvent === "function") {
+    trackCRMEvent("plus_feedback_submitted", {
+      czuid:            ids.czuid,
+      plus_report_id:   st.plus_report_id,
+      score:            st.plus_feedback_score,
+      clarity:          st.plus_feedback_clarity,
+      value:            st.plus_feedback_value,
+      comment:          st.plus_feedback_comment,
+      feedback_version: "v1",
+      submitted_at:     new Date().toISOString(),
+    });
+  }
+
+  if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+    window.CredizonaUI.renderTab();
+  }
+}
+
 function setPlusStatus(status, opts) {
   opts = opts || {};
   var st = window.CZState;
@@ -487,6 +610,14 @@ window.guardarLocal = function(extra) {
       plus_report_id:          st.plus_report_id || null,
       plus_purchased_at:       st.plus_purchased_at || null,
       plus_informe:            st.plus_informe || null,
+      user_email:              st.user_email || null,
+      plus_pdf_downloaded:     !!st.plus_pdf_downloaded,
+      plus_email_requested:    !!st.plus_email_requested,
+      plus_feedback_score:     st.plus_feedback_score != null ? st.plus_feedback_score : null,
+      plus_feedback_clarity:   st.plus_feedback_clarity || null,
+      plus_feedback_value:     st.plus_feedback_value || null,
+      plus_feedback_comment:   st.plus_feedback_comment || "",
+      plus_feedback_submitted: !!st.plus_feedback_submitted,
       iaRes:                   st.iaRes,
       miplan_started:          st.miplan_started          || false,
       user_recovery_state:     st.user_recovery_state     || null,
@@ -638,6 +769,14 @@ function resetear() {
     plus_report_id:      null,
     plus_purchased_at:   null,
     plus_informe:        null,
+    user_email:              null,
+    plus_pdf_downloaded:     false,
+    plus_email_requested:    false,
+    plus_feedback_score:     null,
+    plus_feedback_clarity:   null,
+    plus_feedback_value:     null,
+    plus_feedback_comment:   "",
+    plus_feedback_submitted: false,
     iaRes:               null,
     miplan_started:      false,
     user_recovery_state: null,
@@ -803,6 +942,16 @@ async function init() {
     st.plus_report_id     = dataToUse.plus_report_id || null;
     st.plus_purchased_at  = dataToUse.plus_purchased_at || null;
     st.plus_informe       = dataToUse.plus_informe || null;
+    st.user_email         = dataToUse.user_email || st.user_email || null;
+    st.plus_pdf_downloaded     = !!dataToUse.plus_pdf_downloaded;
+    st.plus_email_requested    = !!dataToUse.plus_email_requested;
+    st.plus_feedback_score     = dataToUse.plus_feedback_score != null
+      ? dataToUse.plus_feedback_score
+      : null;
+    st.plus_feedback_clarity   = dataToUse.plus_feedback_clarity || null;
+    st.plus_feedback_value     = dataToUse.plus_feedback_value || null;
+    st.plus_feedback_comment   = dataToUse.plus_feedback_comment || "";
+    st.plus_feedback_submitted = !!dataToUse.plus_feedback_submitted;
     st.iaRes              = dataToUse.iaRes               || null;
     st.miplan_started     = dataToUse.miplan_started      || false;
     st.user_recovery_state = dataToUse.user_recovery_state || null;
@@ -842,6 +991,7 @@ async function init() {
   }
 
   handlePlusPaymentReturn();
+  preloadUserEmailFromUrl();
 
   if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
     window.CredizonaUI.renderAll();
@@ -1844,6 +1994,51 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       if (e.target.id === "btn-plus-reintentar") {
         resetPlusPurchaseError();
+        return;
+      }
+
+      if (e.target.id === "btn-plus-descargar-pdf") {
+        onPlusPdfDownload();
+        return;
+      }
+
+      if (e.target.id === "btn-plus-enviar-email") {
+        onPlusEmailRequest();
+        return;
+      }
+
+      var plusFbScore = e.target.getAttribute("data-plus-fb-score");
+      if (plusFbScore !== null) {
+        st.plus_feedback_score = parseInt(plusFbScore, 10);
+        window.guardarLocal();
+        if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+          window.CredizonaUI.renderTab();
+        }
+        return;
+      }
+
+      var plusFbClarity = e.target.getAttribute("data-plus-fb-clarity");
+      if (plusFbClarity !== null) {
+        st.plus_feedback_clarity = plusFbClarity;
+        window.guardarLocal();
+        if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+          window.CredizonaUI.renderTab();
+        }
+        return;
+      }
+
+      var plusFbValue = e.target.getAttribute("data-plus-fb-value");
+      if (plusFbValue !== null) {
+        st.plus_feedback_value = plusFbValue;
+        window.guardarLocal();
+        if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+          window.CredizonaUI.renderTab();
+        }
+        return;
+      }
+
+      if (e.target.id === "btn-plus-feedback-submit") {
+        onPlusFeedbackSubmit();
         return;
       }
 

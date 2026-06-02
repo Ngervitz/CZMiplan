@@ -100,6 +100,16 @@ function buildCRMData(motor) {
       status:       st.plus_status != null ? st.plus_status : null,
       purchased_at: st.plus_purchased_at || null,
       report_id:    st.plus_report_id || null,
+      pdf_downloaded:    !!st.plus_pdf_downloaded,
+      email_requested:   !!st.plus_email_requested,
+      feedback: {
+        score:            st.plus_feedback_score != null ? st.plus_feedback_score : null,
+        clarity:          st.plus_feedback_clarity || null,
+        value:            st.plus_feedback_value || null,
+        comment:          st.plus_feedback_comment || "",
+        feedback_version: "v1",
+        submitted:        !!st.plus_feedback_submitted,
+      },
     },
     metadata: {
       algorithm_version: ALGORITHM_VERSION,
