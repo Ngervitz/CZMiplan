@@ -120,6 +120,17 @@ function updateSticky() {
 // =============================================================================
 // HEADER
 // =============================================================================
+function _ensureHeaderAiBadge() {
+  if (document.getElementById("cz-ai-badge")) return;
+  var brand = document.querySelector(".header .brand");
+  if (!brand) return;
+  var badge = document.createElement("div");
+  badge.id = "cz-ai-badge";
+  badge.className = "cz-ai-badge";
+  badge.textContent = "🤖 Diagnóstico financiero con IA";
+  brand.insertAdjacentElement("afterend", badge);
+}
+
 function updateHeader() {
   var st   = _st();
   var step = st.step || 0;
@@ -129,6 +140,7 @@ function updateHeader() {
   if (!day || !btnN) return;
 
   if (step === 3) {
+    _ensureHeaderAiBadge();
     if (snap) {
       var d = Math.floor((Date.now() - new Date(snap.fecha_inicio).getTime()) / 86400000);
       if (d > 0) { day.textContent = "Dia " + d; day.classList.remove("hidden"); }
@@ -1089,23 +1101,20 @@ function renderDeudasResumen(deudas) {
 }
 
 function renderDashboard() {
-  var st     = _st();
-  var tab    = st.tab || "plan";
-  var plus   = st.plusEstado || "sin_pago";
-  var locked = function(id) { return id === "ia" && plus === "sin_pago"; };
+  var st  = _st();
+  var tab = st.tab || "plan";
+  if (tab === "ia") tab = "plan";
 
   var TABS = [
-    { id: "plan",   l: "Mi Plan",     icon: "📋" },
-    { id: "deudas", l: "Tus deudas",  icon: "💳" },
-    { id: "ia",     l: "Asistente IA", icon: "🤖", lock: true },
-    { id: "plus",   l: "Mi Plan Plus",  icon: "★", lock: false },
+    { id: "plan",   l: "Mi Plan",      icon: "📋" },
+    { id: "deudas", l: "Tus deudas",   icon: "💳" },
+    { id: "plus",   l: "Mi Plan Plus", icon: "★" },
   ];
 
   return '<div class="tabs">'
     + TABS.map(function(t) {
-        var isLocked = t.lock && locked(t.id);
-        return '<button class="tab-btn' + (tab === t.id ? " active" : "") + (isLocked ? " locked" : "") + '" data-tab="' + t.id + '">'
-          + t.icon + " " + t.l + (isLocked ? " 🔒" : "") + '</button>';
+        return '<button class="tab-btn tab-nav-item' + (tab === t.id ? " active" : "") + '" data-tab="' + t.id + '">'
+          + t.icon + " " + t.l + '</button>';
       }).join("")
     + '</div><div id="tab-content"></div>';
 }
@@ -1113,6 +1122,10 @@ function renderDashboard() {
 function renderTab() {
   var el  = document.getElementById("tab-content");
   var tab = (_st().tab || "plan");
+  if (tab === "ia") {
+    tab = "plan";
+    _st().tab = "plan";
+  }
   if (_accionesRecomTab !== tab) {
     _accionesRecomExpand = false;
     _accionesRecomTab = tab;
@@ -1124,7 +1137,6 @@ function renderTab() {
   if (!el) return;
   if (tab === "plan")   el.innerHTML = renderTabPlan();
   if (tab === "deudas") el.innerHTML = renderTabDeudas();
-  if (tab === "ia")     el.innerHTML = renderTabIA();
   if (tab === "plus")   el.innerHTML = renderTabPlus();
   bindTabEvents();
   var qIdx = _st()._deuda_quick_edit_index;
@@ -2258,17 +2270,41 @@ function _plusCard(inner) {
   return '<div class="plan-card plus-screen-card">' + inner + "</div>";
 }
 
+function _plusAiHighlightBlock() {
+  return '<div class="plus-ai-highlight">'
+    + '<div class="plus-ai-highlight-icon" aria-hidden="true">🤖</div>'
+    + '<div class="plus-ai-highlight-content">'
+    + "<strong>Análisis con Inteligencia Artificial</strong>"
+    + "<p>Tu información se cruza con datos reales de BCU y Clearing. "
+    + "La IA detecta diferencias, patrones y oportunidades de mejora específicas para tu caso.</p>"
+    + "</div></div>";
+}
+
+function _plusComingSoonBlock() {
+  return '<div class="plus-coming-soon">'
+    + '<div class="plus-coming-soon-head">'
+    + '<span class="plus-coming-soon-icon">💬</span>'
+    + '<span class="plus-coming-soon-badge">Próximamente</span>'
+    + "</div>"
+    + "<strong>Asistente financiero IA</strong>"
+    + "<p>Consultá dudas sobre deudas, Clearing, BCU y recuperación financiera "
+    + "con un asistente especializado en el mercado uruguayo.</p>"
+    + "</div>";
+}
+
+function _plusAiSignature() {
+  return '<div class="plus-ai-signature">'
+    + "🧠 Análisis automatizado por IA · Credizona Mi Plan Plus"
+    + "</div>";
+}
+
 function renderPlusPresentation() {
   _trackPlusCtaViewed();
 
   var incluye = [
-    "Situación real en BCU y Clearing",
-    "Diferencias entre lo declarado y lo registrado",
-    "Acreedores y deudas detectadas",
-    "Principales bloqueadores de tu perfil",
-    "Análisis personalizado con IA",
-    "Plan de acción priorizado",
-    "Horizonte estimado de recuperación",
+    "Verificación de datos en BCU",
+    "Verificación de registros en Clearing (Equifax)",
+    "Informe financiero personalizado",
     "PDF descargable",
   ];
 
@@ -2277,15 +2313,16 @@ function renderPlusPresentation() {
       '<div class="plus-header-icon" aria-hidden="true">★</div>'
       + '<h2 class="plus-header-title">Mi Plan Plus</h2>'
       + '<p class="plus-header-subtitle">Tu situación financiera real,<br/>no solo la que declaraste.</p>'
+      + _plusAiHighlightBlock()
       + '<div class="plus-block">'
       + '<h3 class="plus-block-title">¿Qué incluye tu informe?</h3>'
       + '<ul class="plus-check-list">' + incluye.map(_plusCheckItem).join("") + "</ul>"
       + "</div>"
       + '<div class="plus-block plus-block-muted">'
       + '<h3 class="plus-block-title">¿Por qué es diferente?</h3>'
-      + '<p class="plus-diff-text">Mi Plan utiliza la información que declaraste.</p>'
-      + '<p class="plus-diff-text">Mi Plan Plus incorpora información registrada en BCU y Clearing '
-      + "para construir un diagnóstico más completo y preciso de tu situación financiera.</p>"
+      + '<p class="plus-diff-text">Mi Plan utiliza únicamente la información que declaraste.</p>'
+      + '<p class="plus-diff-text">Mi Plan Plus combina datos reales de BCU y Clearing con Inteligencia Artificial '
+      + "para generar un diagnóstico que va más allá de lo que recordás o declaraste.</p>"
       + "</div>"
       + '<div class="plus-example-card">'
       + '<h4 class="plus-example-title">Ejemplo</h4>'
@@ -2313,6 +2350,7 @@ function renderPlusPresentation() {
       + _renderPlusDevButton()
       + '<p class="plus-disclaimer">El informe se genera en base a los datos disponibles en BCU '
       + "y Clearing al momento de la consulta.</p>"
+      + _plusComingSoonBlock()
     )
   );
 }
@@ -2336,15 +2374,23 @@ function _plusEsc(s) {
     .replace(/"/g, "&quot;");
 }
 
-function _plusUrgenciaStyle(urgencia) {
-  var u = String(urgencia || "baja").toLowerCase();
-  if (u === "alta") {
-    return "background:rgba(255,197,61,.15);color:#ffd36f;";
-  }
-  if (u === "media") {
-    return "background:rgba(148,163,184,.15);color:rgba(148,163,184,.9);";
-  }
-  return "background:rgba(100,116,139,.15);color:rgba(148,163,184,.75);";
+function _plusBadgeClass(nivel) {
+  var n = (nivel || "").toLowerCase().trim();
+  if (n === "alta") return "plus-badge plus-badge-alta";
+  if (n === "media") return "plus-badge plus-badge-media";
+  return "plus-badge plus-badge-baja";
+}
+
+function _plusBadgeLabel(nivel) {
+  var n = (nivel || "").toLowerCase().trim();
+  if (n === "alta") return "⚠️ Impacto alto";
+  if (n === "media") return "📋 Impacto medio";
+  return "💡 Para tu info";
+}
+
+function _plusBadgeHtml(nivel) {
+  var n = (nivel || "baja").toLowerCase().trim();
+  return '<span class="' + _plusBadgeClass(n) + '">' + _plusEsc(_plusBadgeLabel(n)) + "</span>";
 }
 
 function _plusListHtml(items, itemRenderer) {
@@ -2356,21 +2402,71 @@ function _plusListHtml(items, itemRenderer) {
 }
 
 function _plusSectionTitle(text) {
-  return '<h3 class="plus-report-section-title">' + _plusEsc(text) + "</h3>";
+  return '<h3 class="plus-section-title">' + _plusEsc(text) + "</h3>";
 }
 
-function _plusRenderAccion(act, highlight) {
-  if (!act) return "";
-  var tipo = act.tipo ? String(act.tipo).toUpperCase() : "";
-  var urgStyle = _plusUrgenciaStyle(act.urgencia);
-  var wrapCls = highlight ? " plus-report-action-highlight" : "";
-  return '<div class="plus-report-action' + wrapCls + '">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px;flex-wrap:wrap;max-width:100%;">'
-    + "<strong>" + _plusEsc(act.titulo) + "</strong>"
-    + '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap;'
-    + urgStyle + '">' + _plusEsc(tipo) + "</span>"
+function _plusBloqueadorTexto(bp) {
+  if (!bp) return "";
+  if (typeof bp === "string") return bp;
+  return bp.descripcion || bp.tipo || "";
+}
+
+function _plusFortalezaItem(item) {
+  if (typeof item === "string") {
+    return "<li>" + _plusEsc(item) + "</li>";
+  }
+  return "<li><strong>" + _plusEsc(item.titulo) + "</strong> — " + _plusEsc(item.descripcion) + "</li>";
+}
+
+function _plusRiesgoItem(item) {
+  if (typeof item === "string") {
+    return "<li>" + _plusEsc(item) + "</li>";
+  }
+  return '<li class="plus-riesgo-item">'
+    + '<div class="plus-card-head">'
+    + "<strong>" + _plusEsc(item.titulo) + "</strong>"
+    + _plusBadgeHtml(item.urgencia)
     + "</div>"
-    + '<p class="plus-report-p">' + _plusEsc(act.descripcion) + "</p>"
+    + '<span class="plus-finding-desc">' + _plusEsc(item.descripcion) + "</span>"
+    + "</li>";
+}
+
+function _plusRenderHallazgo(h) {
+  if (!h) return "";
+  return '<div class="plus-finding-card">'
+    + '<div class="plus-card-head">'
+    + "<strong>" + _plusEsc(h.titulo) + "</strong>"
+    + _plusBadgeHtml(h.severidad)
+    + "</div>"
+    + '<div class="plus-finding-desc">' + _plusEsc(h.descripcion) + "</div>"
+    + '<div class="plus-source">Fuente: ' + _plusEsc(h.fuente || "combinado") + "</div>"
+    + "</div>";
+}
+
+function _plusRenderAccionInmediata(act) {
+  var urgBadge = act.urgencia ? _plusBadgeHtml(act.urgencia) : "";
+  return '<div class="plus-report-sub">Acción inmediata</div>'
+    + '<div class="plus-action-card plus-action-card-inmediata">'
+    + '<div class="plus-card-head">'
+    + "<strong>" + _plusEsc(act.titulo) + "</strong>"
+    + urgBadge
+    + "</div>"
+    + '<div class="plus-action-desc">' + _plusEsc(act.descripcion) + "</div>"
+    + "</div>";
+}
+
+function _plusRenderAccionCard(act) {
+  if (!act) return "";
+  var orden = act.orden != null ? act.orden : "";
+  return '<div class="plus-action-card">'
+    + '<div class="plus-card-head">'
+    + "<div>"
+    + '<span class="plus-action-number">' + _plusEsc(orden) + "</span>"
+    + '<span class="plus-action-title">' + _plusEsc(act.titulo) + "</span>"
+    + "</div>"
+    + _plusBadgeHtml(act.urgencia)
+    + "</div>"
+    + '<div class="plus-action-desc">' + _plusEsc(act.descripcion) + "</div>"
     + "</div>";
 }
 
@@ -2381,6 +2477,12 @@ function renderPlusInforme(informe) {
   var sec5 = informe.seccion_5_acciones || {};
   var sec6 = informe.seccion_6_horizonte || {};
   var escProb = sec6.escenario_probable || {};
+  var horizRec = sec6.horizonte_recalificacion || {};
+  var accionInmediata = sec5.accion_inmediata || {
+    titulo: "Acción recomendada",
+    descripcion: "Revisá tus prioridades financieras.",
+  };
+  var tiempoEst = escProb.tiempo_estimado || sec6.tiempo_estimado || "";
 
   var html = '<div class="plus-report">'
     + '<div class="plus-report-header">'
@@ -2388,70 +2490,76 @@ function renderPlusInforme(informe) {
     + '<h2 class="plus-header-title">Tu informe Mi Plan Plus</h2>'
     + "</div>";
 
-  html += '<div class="plan-card plus-report-section">'
-    + _plusSectionTitle("Tu situación financiera hoy")
+  html += '<div class="plus-section-card">'
+    + _plusSectionTitle("📌 Tu situación financiera hoy")
     + '<p class="plus-report-p">' + _plusEsc(sec1.situacion_general) + "</p>"
     + '<div class="plus-report-sub">Fortalezas</div>'
-    + _plusListHtml(sec1.fortalezas || [], function(item) {
-        return "<li>" + _plusEsc(item) + "</li>";
-      })
+    + _plusListHtml(sec1.fortalezas || [], _plusFortalezaItem)
     + '<div class="plus-report-sub">Riesgos</div>'
-    + _plusListHtml(sec1.riesgos || [], function(item) {
-        return "<li>" + _plusEsc(item) + "</li>";
-      })
+    + '<ul class="plus-report-list plus-riesgos-list">'
+    + (sec1.riesgos || []).map(_plusRiesgoItem).join("")
+    + "</ul>"
     + '<div class="plus-report-sub">Bloqueador principal</div>'
-    + '<p class="plus-report-p">' + _plusEsc(sec1.bloqueador_principal) + "</p>"
+    + '<p class="plus-report-p">' + _plusEsc(_plusBloqueadorTexto(sec1.bloqueador_principal)) + "</p>"
     + '<div class="plus-report-sub">Horizonte</div>'
     + '<p class="plus-report-p">' + _plusEsc(sec1.horizonte_resumen) + "</p>"
     + '<p class="plus-report-disclaimer">' + _plusEsc(sec1.nota_disclaimer) + "</p>"
+    + _plusAiSignature()
     + "</div>";
 
   if (informe.seccion_3_nota_diferencias) {
-    html += '<div class="plan-card plus-report-section">'
-      + _plusSectionTitle("Diferencias detectadas")
+    html += '<div class="plus-section-card plus-section-card-diferencias">'
+      + _plusSectionTitle("🔎 Diferencias detectadas")
       + '<p class="plus-report-p">' + _plusEsc(informe.seccion_3_nota_diferencias) + "</p>"
       + "</div>";
   }
 
-  html += '<div class="plan-card plus-report-section">'
-    + _plusSectionTitle("Qué significa esto")
+  html += '<div class="plus-section-card">'
+    + _plusSectionTitle("🧠 Qué significa esto")
     + '<p class="plus-report-p">' + _plusEsc(sec4.interpretacion_general) + "</p>"
-    + _plusListHtml(sec4.hallazgos || [], function(h) {
-        return "<li><strong>" + _plusEsc(h.titulo) + "</strong> — " + _plusEsc(h.descripcion) + "</li>";
-      })
-    + '<div class="plus-report-sub">Patrón detectado</div>'
-    + '<p class="plus-report-p">' + _plusEsc(sec4.patron_detectado) + "</p>"
+    + (sec4.hallazgos || []).map(_plusRenderHallazgo).join("")
+    + (sec4.patron_detectado
+      ? '<div class="plus-report-sub">Patrón detectado</div>'
+        + '<p class="plus-report-p">' + _plusEsc(sec4.patron_detectado) + "</p>"
+      : "")
     + '<div class="plus-report-sub">Perfil de riesgo real</div>'
     + '<p class="plus-report-p">' + _plusEsc(sec4.perfil_riesgo_real) + "</p>"
+    + (sec4.diferencia_perfil_declarado_vs_real
+      ? '<div class="plus-report-sub">Diferencia declarado vs real</div>'
+        + '<p class="plus-report-p">' + _plusEsc(sec4.diferencia_perfil_declarado_vs_real) + "</p>"
+      : "")
     + "</div>";
 
-  html += '<div class="plan-card plus-report-section">'
-    + _plusSectionTitle("Qué hacer ahora")
-    + _plusRenderAccion(sec5.accion_inmediata, true)
-    + (sec5.acciones || []).map(function(act) {
-        return _plusRenderAccion(act, false);
-      }).join("")
+  html += '<div class="plus-section-card">'
+    + _plusSectionTitle("✅ Qué hacer ahora")
+    + _plusRenderAccionInmediata(accionInmediata)
+    + (sec5.acciones || []).map(_plusRenderAccionCard).join("")
+    + _plusAiSignature()
     + "</div>";
 
-  html += '<div class="plan-card plus-report-section">'
-    + _plusSectionTitle("Tu horizonte")
+  html += '<div class="plus-section-card">'
+    + _plusSectionTitle("⏳ Tu horizonte")
     + '<p class="plus-report-p">' + _plusEsc(sec6.situacion_actual) + "</p>"
     + '<div class="plus-report-sub">Escenario probable</div>'
     + '<p class="plus-report-p">' + _plusEsc(escProb.descripcion) + "</p>"
     + '<div class="plus-report-sub">Tiempo estimado</div>'
-    + '<p class="plus-report-p plus-report-emphasis">' + _plusEsc(sec6.tiempo_estimado) + "</p>"
+    + '<p class="plus-report-p plus-report-emphasis">' + _plusEsc(tiempoEst) + "</p>"
+    + '<div class="plus-report-sub">Condiciones</div>'
+    + _plusListHtml(escProb.condiciones || [], function(item) {
+        return "<li>" + _plusEsc(item) + "</li>";
+      })
     + '<div class="plus-report-sub">Qué debe cambiar</div>'
     + _plusListHtml(sec6.que_debe_cambiar || [], function(item) {
         return "<li>" + _plusEsc(item) + "</li>";
       })
-    + '<div class="plus-report-sub">Estimación</div>'
-    + '<p class="plus-report-p">' + _plusEsc(sec6.estimacion) + "</p>"
+    + '<div class="plus-report-sub">Estimación de recalificación</div>'
+    + '<p class="plus-report-p">' + _plusEsc(horizRec.estimacion || sec6.estimacion) + "</p>"
     + '<div class="plus-report-sub">Factores bloqueantes</div>'
-    + _plusListHtml(sec6.factores_bloqueantes || [], function(item) {
+    + _plusListHtml(horizRec.factores_bloqueantes || sec6.factores_bloqueantes || [], function(item) {
         return "<li>" + _plusEsc(item) + "</li>";
       })
     + '<div class="plus-report-sub">Factores favorables</div>'
-    + _plusListHtml(sec6.factores_favorables || [], function(item) {
+    + _plusListHtml(horizRec.factores_favorables || sec6.factores_favorables || [], function(item) {
         return "<li>" + _plusEsc(item) + "</li>";
       })
     + '<p class="plus-report-disclaimer">Este informe es orientativo y se basa en los registros '
