@@ -1628,15 +1628,12 @@ function renderTabPlan() {
     // 4. Horizonte estimado para recalificar
     + renderHorizonteRecalificacion(diag)
 
-    // Sprint 9 — Hidden Factor CTA
-    // Rendered only when user appears financially healthy but came from a rejection.
-    // Reuses existing Mi Plan Plus flow. No new checkout or route created.
+    // Sprint 9 / 14.0c — Hidden Factor entry → ★ Mi Plan Plus tab
     + (typeof detectHiddenFactorOpportunity === "function" && detectHiddenFactorOpportunity(diag)
         ? '<div class="plan-card" id="cz-hf-cta" style="background:rgba(64,215,255,.05);border-color:rgba(64,215,255,.2);">'
-          + '<div style="font-size:13px;font-weight:800;color:#40d7ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">🔍 Puede haber factores que esta simulación no alcanza a ver</div>'
-          + '<div style="font-size:16px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:12px;">Partís de una solicitud rechazada. Con lo declarado acá, todavía puede haber información externa o registros del sistema financiero que no entraron en este diagnóstico.</div>'
-          + '<div style="font-size:14px;color:#8390b5;line-height:1.6;margin-bottom:20px;">Mi Plan Plus puede ayudarte a revisar esa información y aclarar qué pudo influir en la evaluación.</div>'
-          + '<button class="btn btn-primary" id="btn-hf-cta" style="width:100%;height:60px;font-size:18px;">Ver mi informe completo</button>'
+          + '<div style="font-size:13px;font-weight:800;color:#40d7ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">⚠️ Este diagnóstico se basa únicamente en la información que declaraste</div>'
+          + '<div style="font-size:16px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:20px;">Mi Plan Plus contrasta esta información con registros de BCU y Clearing para detectar diferencias, acreedores no declarados y otros factores que podrían estar afectando tu perfil financiero.</div>'
+          + '<button class="btn btn-primary" id="btn-hf-cta" style="width:100%;height:60px;font-size:18px;">Ver mi situación real</button>'
           + '</div>'
         : '')
 
@@ -1837,12 +1834,11 @@ function renderTabPlan() {
         : "")
     + _dashIaSectionClose()
 
-    // 12. Premium
-    + '<div class="premium-card">'
-    + '<div class="premium-badge">Recomendado para tu caso</div>'
-    + '<div class="premium-title">Mi Plan Plus</div>'
-    + '<div class="premium-text">Tu diagnostico parte de lo que analizamos juntos. El informe Clearing muestra lo que el banco ya tiene sobre vos — y la IA te dice que cambiar primero.</div>'
-    + '<button class="btn btn-secondary" style="height:68px;font-size:20px;" id="btn-conocer-plus">Ver que incluye para mi caso</button>'
+    // 12. Mi Plan Plus entry (Sprint 14.0c — routes to ★ Mi Plan Plus tab)
+    + '<div class="plan-card" id="cz-plus-entry" style="background:rgba(64,215,255,.05);border-color:rgba(64,215,255,.2);">'
+    + '<div style="font-size:13px;font-weight:800;color:#40d7ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">★ Mi Plan Plus</div>'
+    + '<div style="font-size:16px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:20px;">Mi Plan Plus contrasta esta información con registros de BCU y Clearing para detectar diferencias, acreedores no declarados y otros factores que podrían estar afectando tu perfil financiero.</div>'
+    + '<button class="btn btn-primary" id="btn-conocer-plus" style="width:100%;height:60px;font-size:18px;">Ver mi situación real</button>'
     + '</div>'
 
     // Sprint 10.1 — suggestion box (last element in Mi Plan tab)
@@ -2227,7 +2223,7 @@ function renderTabIA() {
       + '<div class="locked-blur" style="height:280px;background:rgba(255,255,255,.03);border-radius:22px;"></div>'
       + '<div class="locked-gate"><div class="locked-icon">🤖</div><div class="locked-title">Tu analisis esta casi listo</div>'
       + '<div class="locked-text">En cuanto tengamos tu informe Clearing real, la IA te dice exactamente que esta bloqueando tu aprobacion y cual es el primer paso concreto para tu caso.</div>'
-      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-ia">Ver que incluye para mi caso</button>'
+      + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-ia">Ver mi situación real</button>'
       + '</div></div></div>';
   }
   if (!ia) return '<div class="fade"><div class="result"><h3>Generando tu analisis...</h3><p>El asistente esta procesando tu informe Clearing.</p></div></div>';
@@ -3176,132 +3172,12 @@ function renderHerramientasPlan5() {
 }
 
 // =============================================================================
-// MODAL PREMIUM
+// MODAL PREMIUM — legacy redirect (Sprint 14.0c)
+// Opens ★ Mi Plan Plus tab instead of legacy premium modal.
 // =============================================================================
-function renderModalPremium() {
-  return '<div class="premium-modal-content">'
-
-    // Header: badge + headline + close
-    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;">'
-    + '<div>'
-    + '<div class="premium-badge">El siguiente paso</div>'
-    + '<div style="font-size:30px;font-weight:900;line-height:1.15;margin-top:8px;">Tu perfil financiero real.</div>'
-    + '<div style="font-size:16px;color:#8390b5;margin-top:8px;line-height:1.5;">Interpretado con IA. Con un plan concreto para volver a calificar.</div>'
-    + '</div>'
-    + '<button id="btn-cerrar-premium" class="modal-close-btn" type="button">&#215;</button>'
-    + '</div>'
-
-    // Guarantee — moved to top, visually prominent
-    + '<div style="background:rgba(52,255,175,.07);border:1px solid rgba(52,255,175,.22);border-radius:16px;padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;">'
-    + '<div style="font-size:28px;flex-shrink:0;">🛡</div>'
-    + '<div>'
-    + '<div style="font-size:15px;font-weight:800;color:#34ffaf;margin-bottom:3px;">Garantia de devolucion — 7 dias</div>'
-    + '<div style="font-size:14px;color:#8390b5;line-height:1.5;">Si en 7 dias no te sirve, te devolvemos el dinero. Sin preguntas. El informe es provisto por <strong style="color:rgba(255,255,255,.7);">Clearing de Informes Uruguay</strong>.</div>'
-    + '</div>'
-    + '</div>'
-
-    // Intro — BCU + Clearing + AI positioning
-    + '<div class="premium-text" style="margin-bottom:18px;">Tu diagnostico actual usa estimaciones. Mi Plan Plus analiza tu historial real del sistema financiero uruguayo — Clearing, BCU y mas — y te dice exactamente que esta frenando tu aprobacion y como resolverlo.</div>'
-
-    // Feature list — errores first (highest emotional impact)
-    + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:22px;margin-bottom:18px;">'
-    + '<div style="font-size:13px;color:#8390b5;font-weight:800;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px;">Que incluye</div>'
-
-    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
-    + '<span style="font-size:22px;flex-shrink:0;">✓</span>'
-    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Deteccion de errores en tu historial</div>'
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">Si hay algo mal registrado que te esta bloqueando, te lo mostramos. Eso solo puede cambiar el resultado.</div></div></div>'
-
-    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
-    + '<span style="font-size:22px;flex-shrink:0;">🔍</span>'
-    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Datos reales del sistema financiero</div>'
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">Historial de Clearing, informacion del BCU y consultas activas sobre tu perfil</div></div></div>'
-
-    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
-    + '<span style="font-size:22px;flex-shrink:0;">🤖</span>'
-    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Analisis con IA</div>'
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">La IA lee tu informe y te dice que corregir primero, en base a tu caso</div></div></div>'
-
-    + '<div style="display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
-    + '<span style="font-size:22px;flex-shrink:0;">📋</span>'
-    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Plan recalculado con datos reales</div>'
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">Tu plan se actualiza con lo que realmente figura — no con lo que estimaste</div></div></div>'
-
-    + '<div style="display:flex;gap:14px;padding:12px 0;">'
-    + '<span style="font-size:22px;flex-shrink:0;">✉️</span>'
-    + '<div><div style="font-size:18px;font-weight:700;margin-bottom:3px;">Todo en tu correo en menos de 24hs</div>'
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.5;">Recibis el informe y el analisis directamente</div></div></div>'
-
-    + '</div>'
-
-    // Single pricing card
-    + '<div style="background:rgba(64,215,255,.06);border:2px solid rgba(64,215,255,.3);border-radius:22px;padding:24px;margin-bottom:18px;" data-elegir-plan="one_time">'
-    + '<div style="font-size:13px;color:#40d7ff;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Diagnostico completo</div>'
-    + '<div class="price-amount">990</div>'
-    + '<div class="price-label">UYU · pago unico</div>'
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.6;margin-top:10px;">Informe financiero real + analisis IA + plan de accion. Pago unico. Sin suscripcion.</div>'
-    + '<button class="btn btn-primary" style="width:100%;height:56px;font-size:18px;margin-top:16px;" data-elegir-plan="one_time">Acceder al diagnostico completo</button>'
-    + '</div>'
-
-    + '</div>';
-}
-
 function abrirModalPremium() {
-  var diag    = _diag();
-  var content = document.getElementById("modal-premium-content");
-  var overlay = document.getElementById("modal-premium");
-
-  trackEvent(CZ_EVENT_NAMES.PREMIUM_OPENED, { plan_id: diag && diag.planId });
-
-  if (content) content.innerHTML = renderModalPremium();
-
-  if (overlay) {
-    overlay.classList.remove("hidden");
-    document.body.classList.add("modal-open");
-    overlay.scrollTop = 0;
-
-    var closeBtn = document.getElementById("btn-cerrar-premium");
-
-    function cerrarPremium() {
-      overlay.classList.add("hidden");
-      document.body.classList.remove("modal-open");
-    }
-
-    if (closeBtn) closeBtn.onclick = cerrarPremium;
-
-    overlay.onclick = function(e) {
-      if (e.target === overlay) cerrarPremium();
-    };
-
-    overlay.querySelectorAll("[data-elegir-plan]").forEach(function(btn) {
-      btn.onclick = function() {
-        var tipo = btn.getAttribute("data-elegir-plan");
-        // Checkout started — recovery state + temporal tracking
-        if (window.CZState) {
-          window.CZState.temporal.payment_completed_at = null; // reset in case of re-entry
-          setRecoveryState("checkout_started");
-          trackEvent(CZ_EVENT_NAMES.CHECKOUT_STARTED, {
-            plan_id: diag && diag.planId,
-            source:  tipo,
-            currency: "UYU",
-          });
-        }
-        trackEvent(CZ_EVENT_NAMES.CLICK_RESET_PLUS, { plan_id: diag && diag.planId, source: tipo });
-
-        if (content) {
-          content.innerHTML = '<div style="padding:48px 28px;text-align:center;">'
-            + '<div style="font-size:44px;margin-bottom:22px;">📩</div>'
-            + '<div style="font-size:24px;font-weight:900;margin-bottom:12px;line-height:1.2;">Recibimos tu pedido</div>'
-            + '<div style="font-size:17px;color:#8390b5;line-height:1.7;margin-bottom:24px;">'
-            + 'En breve te vamos a contactar para completar el proceso y enviarte tu informe Clearing.'
-            + '</div>'
-            + '<div style="padding:14px 18px;background:rgba(64,215,255,.07);border:1px solid rgba(64,215,255,.15);border-radius:14px;font-size:15px;color:#8390b5;line-height:1.6;">'
-            + 'Cualquier consulta: <strong style="color:#40d7ff;">info@credizona.com.uy</strong>'
-            + '</div>'
-            + '</div>';
-        }
-      };
-    });
+  if (typeof switchTab === "function") {
+    switchTab("plus");
   }
 }
 function bindTabEvents() {
