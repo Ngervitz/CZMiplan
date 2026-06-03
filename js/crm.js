@@ -8,12 +8,16 @@ function buildCRMData(motor) {
   var iv2 = (motor && motor.interpretacion_v2) || null;
   var enc = (motor && motor.enc) || null;
   const st = window.CZState || {};
+  var crmEmail = PRE.email;
+  if (typeof sanitizeUrlEmail === "function" && sanitizeUrlEmail(st.user_email)) {
+    crmEmail = sanitizeUrlEmail(st.user_email);
+  }
   return {
     crm_contact_id: (window.CZIdentity && window.CZIdentity.crm_contact_id) || null,
     user: {
       nombre:           PRE.nombre,
       cedula:           PRE.cedula,
-      email:            PRE.email,
+      email:            crmEmail,
       telefono:         PRE.telefono,
       ingreso_declarado: PRE.ingreso,
       situacion_laboral: PRE.laboral,

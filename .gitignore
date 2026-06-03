@@ -1,3 +1,5 @@
 # Optional local overrides with secrets — never deploy
 js/config.local.js
 config.local.js
+
+config.js

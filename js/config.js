@@ -78,14 +78,25 @@ function colorRiesgo(r) { return r === "Critico" ? "#ff4e72" : r === "Medio" ? "
 function nivelTexto(n)  { return n === "A" ? "Manejable" : n === "B+" ? "Muy bueno" : n === "B" ? "En proceso" : "Requiere accion"; }
 
 // --- Pre-loaded data desde URL params ---
+function sanitizeUrlEmail(raw) {
+  if (raw == null || raw === "") return null;
+  var e = String(raw).trim().toLowerCase();
+  if (e.indexOf("@") < 1 || e.indexOf(".") < 0) return null;
+  return e;
+}
+
 function getPreLoaded() {
   const p = new URLSearchParams(window.location.search);
   const resp = {};
   for (let i = 1; i <= 10; i++) resp["p" + i] = p.get("p" + i) || null;
+  var emailParam = p.get("email");
+  var emailFromUrl = sanitizeUrlEmail(emailParam);
   return {
     nombre:   p.get("nombre")   || "Martin Rodriguez",
     cedula:   p.get("cedula")   || "3.456.789-0",
-    email:    p.get("email")    || "martin@email.com",
+    email:    emailFromUrl != null
+      ? emailFromUrl
+      : (emailParam ? "" : "martin@email.com"),
     telefono: p.get("telefono") || "",
     ingreso:  parseFloat(p.get("ingreso")) || 65000,
     laboral:  p.get("laboral")  || "relacion_dependencia",
@@ -121,9 +132,9 @@ var CZ_HANDY_ENDPOINT = "";
 
 // Sprint 14.2 — Claude LLM (key vacía en producción; backend o config.local.js en dev)
 var CZ_CLAUDE_API_KEY = "";
-var CZ_CLAUDE_MODEL = "claude-sonnet-4-20250514";
+var CZ_CLAUDE_MODEL = "claude-sonnet-4-5";
 var CZ_PLUS_USE_MOCK = false;
-var CZ_CLAUDE_ALLOW_BROWSER_KEY = false;
+var CZ_CLAUDE_ALLOW_BROWSER_KEY = true;
 
 // Consent event names
 const CZ_CONSENT_EVENTS = Object.freeze({

@@ -835,6 +835,17 @@ select option{background:#0a1026;}
   font-size:15px;
 }
 .plus-inline-msg,
+.plus-email-preload-msg{
+  font-size:15px;color:rgba(255,255,255,.78);line-height:1.55;margin:0 0 8px;
+  word-break:break-word;
+}
+.plus-email-preload-msg strong{color:#40d7ff;font-weight:800;}
+.plus-email-change-wrap{margin:0 0 14px;}
+.plus-email-change-link{
+  background:none;border:none;padding:0;cursor:pointer;
+  font-size:13px;color:#8390b5;text-decoration:underline;line-height:1.5;
+}
+.plus-email-change-link:hover{color:#40d7ff;}
 .plus-email-success{
   font-size:13px;
   line-height:1.5;
@@ -1206,6 +1217,45 @@ body.modal-open{
 .debt-card,
 .nav-back{
   scroll-margin-bottom:var(--cz-scroll-margin-cta);
+}
+
+/* Sprint 15.celebration — milestone overlay + confetti */
+.cz-celebration-canvas{
+  position:fixed;inset:0;width:100%;height:100%;
+  z-index:9999;pointer-events:none;
+}
+.cz-celebration-root{
+  position:fixed;inset:0;z-index:10000;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px;pointer-events:auto;
+  box-sizing:border-box;
+}
+.cz-celebration-backdrop{
+  position:absolute;inset:0;
+  background:rgba(5,8,22,.55);
+  pointer-events:auto;
+}
+.cz-celebration-card{
+  position:relative;z-index:1;
+  width:100%;max-width:340px;
+  padding:28px 22px 24px;
+  border-radius:20px;
+  background:linear-gradient(165deg,rgba(22,28,48,.98),rgba(12,16,32,.98));
+  border:1px solid rgba(64,215,255,.22);
+  box-shadow:0 0 40px rgba(64,215,255,.12),0 18px 48px rgba(0,0,0,.45);
+  text-align:center;
+  pointer-events:auto;
+}
+.cz-celebration-emoji{
+  font-size:48px;line-height:1;margin-bottom:14px;
+}
+.cz-celebration-title{
+  font-size:28px;font-weight:900;color:#fff;
+  line-height:1.2;margin-bottom:10px;letter-spacing:-.02em;
+}
+.cz-celebration-subtitle{
+  font-size:15px;font-weight:500;color:#8390b5;
+  line-height:1.55;
 }
 
 @media(max-width:768px){

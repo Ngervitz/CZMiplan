@@ -2434,7 +2434,9 @@ function _plusAiSignature() {
 }
 
 function _plusHasValidEmail(email) {
-  return typeof email === "string" && email.trim().indexOf("@") > 0;
+  return typeof sanitizeUrlEmail === "function"
+    ? sanitizeUrlEmail(email) != null
+    : (typeof email === "string" && email.trim().indexOf("@") > 0 && email.indexOf(".") > 0);
 }
 
 function renderPlusActionsBlock(st) {
@@ -2448,9 +2450,21 @@ function renderPlusActionsBlock(st) {
   if (st.plus_email_requested) {
     html += '<p class="plus-inline-msg plus-email-success">Te enviamos una copia del informe. '
       + "Solicitud registrada. El envío real se conectará cuando el backend esté disponible.</p>";
+  } else if (st._plus_email_edit_mode) {
+    var prefill = _plusHasValidEmail(st.user_email) ? _plusEsc(st.user_email.trim()) : "";
+    html += '<label class="plus-email-label" for="plus-email-input">Enviarme copia por email</label>'
+      + '<input type="email" class="plus-email-input" id="plus-email-input" placeholder="Ingresá tu email" '
+      + 'autocomplete="email" value="' + prefill + '"/>'
+      + '<button type="button" class="btn btn-secondary plus-cta-btn plus-cta-secondary" id="btn-plus-enviar-email">'
+      + "Enviar informe</button>";
   } else if (_plusHasValidEmail(st.user_email)) {
-    html += '<button type="button" class="btn btn-secondary plus-cta-btn plus-cta-secondary" id="btn-plus-enviar-email">'
-      + "✉️ Enviar a: " + _plusEsc(st.user_email.trim()) + "</button>";
+    html += '<p class="plus-email-preload-msg">Enviamos el informe a '
+      + '<strong>' + _plusEsc(st.user_email.trim()) + "</strong></p>"
+      + '<p class="plus-email-change-wrap">'
+      + '<button type="button" class="plus-email-change-link" id="btn-plus-email-cambiar">'
+      + "¿No es tu email? Cambiar</button></p>"
+      + '<button type="button" class="btn btn-secondary plus-cta-btn plus-cta-secondary" id="btn-plus-enviar-email">'
+      + "Enviar informe</button>";
   } else {
     html += '<label class="plus-email-label" for="plus-email-input">Enviarme copia por email</label>'
       + '<input type="email" class="plus-email-input" id="plus-email-input" placeholder="Ingresá tu email" autocomplete="email"/>'

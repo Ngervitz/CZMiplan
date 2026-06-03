@@ -89,14 +89,41 @@ window.CZState = {
 };
 
 // =============================================================================
+// Sprint 15.celebration — sober milestone overlays (no-op if script missing)
+// =============================================================================
+function _safeCelebration(opts) {
+  if (typeof window.triggerCelebration === "function") {
+    window.triggerCelebration(opts);
+  }
+}
+
+function _maybeCelebratePositiveFlow(st, prevFlujo) {
+  if (!st || st._celebratedPositiveFlow) return;
+  if (prevFlujo == null || prevFlujo > 0) return;
+  var fin = st.diag && st.diag.fin;
+  if (!fin || fin.flujoLibre == null || fin.flujoLibre <= 0) return;
+  st._celebratedPositiveFlow = true;
+  _safeCelebration({
+    emoji: "💚",
+    title: "¡Tu flujo es positivo!",
+    subtitle: "Tus números empiezan a cerrar. Ahora hay que sostenerlo.",
+  });
+}
+
+// =============================================================================
 // Sprint 12.2 — debt edit / delete / paid helpers
 // =============================================================================
 function recalcDiagYGuardar() {
   var st = window.CZState;
+  var prevFlujo = null;
+  if (st.diag && st.diag.fin && st.diag.fin.flujoLibre != null) {
+    prevFlujo = st.diag.fin.flujoLibre;
+  }
   if (typeof calcularMotor === "function") {
     st.diag = calcularMotor();
   }
   window.guardarLocal();
+  _maybeCelebratePositiveFlow(st, prevFlujo);
 }
 
 function isDebtDraftAdd(d) {
@@ -561,7 +588,9 @@ function _plusTrackingIds() {
 }
 
 function _plusIsValidEmail(email) {
-  return typeof email === "string" && email.trim().indexOf("@") > 0;
+  return typeof sanitizeUrlEmail === "function"
+    ? sanitizeUrlEmail(email) != null
+    : (typeof email === "string" && email.trim().indexOf("@") > 0 && email.indexOf(".") > 0);
 }
 
 function preloadUserEmailFromUrl() {
@@ -569,10 +598,12 @@ function preloadUserEmailFromUrl() {
   var st = window.CZState;
   try {
     var p = new URLSearchParams(window.location.search);
-    var raw = p.get("email");
-    if (raw && _plusIsValidEmail(raw)) {
-      st.user_email = raw.trim();
-    }
+    var email = typeof sanitizeUrlEmail === "function"
+      ? sanitizeUrlEmail(p.get("email"))
+      : null;
+    if (!email) return;
+    st.user_email = email;
+    window.guardarLocal();
   } catch (e) {}
 }
 
@@ -588,15 +619,29 @@ async function onPlusEmailRequest() {
   var st = window.CZState;
   if (st.plus_status !== "PLUS_READY" || !st.plus_informe || st.plus_email_requested) return;
 
+  var input = document.getElementById("plus-email-input");
   var email = st.user_email;
-  if (!_plusIsValidEmail(email)) {
-    var input = document.getElementById("plus-email-input");
-    email = input ? String(input.value || "").trim() : "";
+  if (st._plus_email_edit_mode && input) {
+    email = typeof sanitizeUrlEmail === "function"
+      ? sanitizeUrlEmail(input.value)
+      : String(input.value || "").trim().toLowerCase();
+    if (!email) {
+      input.focus();
+      return;
+    }
+    st.user_email = email;
+    st._plus_email_edit_mode = false;
+    window.guardarLocal();
+  } else if (!_plusIsValidEmail(email)) {
+    email = typeof sanitizeUrlEmail === "function"
+      ? sanitizeUrlEmail(input ? input.value : "")
+      : (input ? String(input.value || "").trim() : "");
     if (!_plusIsValidEmail(email)) {
       if (input) input.focus();
       return;
     }
     st.user_email = email;
+    window.guardarLocal();
   }
 
   var ids = _plusTrackingIds();
@@ -919,6 +964,11 @@ function next() {
       has_gastos:   !st.gastos_missing_confirmed,
     });
 
+    var isFirstDiagnosis = !st.first_assessment_at;
+    if (isFirstDiagnosis) {
+      st.first_assessment_at = new Date().toISOString();
+    }
+
     window.guardarLocal();
     enviarCRM("reset_plan_generated", st.diag);
 
@@ -927,6 +977,14 @@ function next() {
     st._toastPending = true;   // Sprint 10 — dashboard confirmation toast (first arrival only)
 
     window.CredizonaUI.renderAll();
+
+    if (isFirstDiagnosis) {
+      _safeCelebration({
+        emoji: "📊",
+        title: "¡Diagnóstico completo!",
+        subtitle: "Ya sabés dónde estás parado. Ese es el primer paso real.",
+      });
+    }
   }
 }
 
@@ -2246,6 +2304,14 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
+      if (e.target.id === "btn-plus-email-cambiar") {
+        st._plus_email_edit_mode = true;
+        if (window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
+          window.CredizonaUI.renderTab();
+        }
+        return;
+      }
+
       var plusFbScore = e.target.getAttribute("data-plus-fb-score");
       if (plusFbScore !== null) {
         st.plus_feedback_score = parseInt(plusFbScore, 10);
@@ -2321,6 +2387,12 @@ document.addEventListener("DOMContentLoaded", function() {
           st.temporal.last_debt_update_at = new Date().toISOString();
           trackCRMDebtEvent("debt_marked_paid", { debt_index: pagadaIdx });
           recalcDiagYGuardar();
+
+          _safeCelebration({
+            emoji: "🎯",
+            title: "¡Deuda cancelada!",
+            subtitle: "Cada deuda que cerrás es un peso menos sobre tus hombros.",
+          });
 
           if (st.step === 3) {
             window.CredizonaUI.renderTab();
