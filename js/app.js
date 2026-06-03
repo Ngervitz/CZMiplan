@@ -170,8 +170,12 @@ function validateDebtForSave(d) {
   if (isNaN(saldo) || saldo <= 0) {
     return { ok: false, msg: "El saldo debe ser mayor a 0." };
   }
-  var pagoMensual = parseFloat(d.pago);
-  if (isNaN(pagoMensual) || pagoMensual < 0) {
+  var pagoStr = d.pago == null ? "" : String(d.pago).trim();
+  var pagoMensual = parseFloat(pagoStr);
+  if (pagoStr === "" || Number.isNaN(pagoMensual)) {
+    return { ok: false, msg: "Ingresá un pago mensual válido." };
+  }
+  if (pagoMensual < 0) {
     return { ok: false, msg: "El pago mensual no puede ser negativo." };
   }
   if (!d.situacion_ui) {
