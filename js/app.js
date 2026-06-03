@@ -158,6 +158,17 @@ function createEmptyDebtObject() {
   };
 }
 
+function normalizeDebtPagoForSave(d) {
+  if (!d) return;
+  var pagoStr = d.pago == null ? "" : String(d.pago).trim();
+  var pagoMensual = parseFloat(pagoStr);
+  if (pagoStr === "" || Number.isNaN(pagoMensual)) {
+    d.pago = 0;
+  } else {
+    d.pago = pagoMensual;
+  }
+}
+
 function validateDebtForSave(d) {
   if (!d) {
     return { ok: false, msg: "Completá los datos de la deuda para continuar." };
@@ -171,12 +182,11 @@ function validateDebtForSave(d) {
     return { ok: false, msg: "El saldo debe ser mayor a 0." };
   }
   var pagoStr = d.pago == null ? "" : String(d.pago).trim();
-  var pagoMensual = parseFloat(pagoStr);
-  if (pagoStr === "" || Number.isNaN(pagoMensual)) {
-    return { ok: false, msg: "Ingresá un pago mensual válido." };
-  }
-  if (pagoMensual < 0) {
-    return { ok: false, msg: "El pago mensual no puede ser negativo." };
+  if (pagoStr !== "") {
+    var pagoMensual = parseFloat(pagoStr);
+    if (!Number.isNaN(pagoMensual) && pagoMensual < 0) {
+      return { ok: false, msg: "El pago mensual no puede ser negativo." };
+    }
   }
   if (!d.situacion_ui) {
     return { ok: false, msg: "Seleccioná qué está pasando con esta deuda." };
@@ -418,6 +428,7 @@ function finalizeDebtEdit(saveIdx) {
 
   st._deuda_validation_error = null;
 
+  normalizeDebtPagoForSave(d);
   normalizeDebtCreditorFields(d);
   sanitizeDebtFieldsForSituacion(d);
   if (typeof enriquecerDeuda === "function") enriquecerDeuda(d);

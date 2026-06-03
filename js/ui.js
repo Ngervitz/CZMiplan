@@ -574,14 +574,10 @@ function _renderPagoSection(d, i) {
       + '" data-deuda-field="' + field + '" data-deuda-idx="' + i + '"/></div>';
   };
 
-  // Case A — pagando normalmente
+  // Case A — pagando normalmente (pago capturado en la tarjeta; solo aclaración si quedó en 0)
   if (situacion === "pagando_normal") {
     var showClarif = (!d.pago || parseFloat(d.pago) === 0);
     return '<div style="margin-top:16px;">'
-      + '<div class="field"><label>¿Cuánto pagás por mes?</label>'
-      + numIn("pago", d.pago)
-      + '<div style="font-size:13px;color:#8390b5;margin-top:4px;">No tiene que ser exacto.</div>'
-      + '</div>'
       + (showClarif
           ? '<div id="clarif-block-' + i + '" style="margin-top:12px;padding:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;">'
             + '<div style="font-size:14px;color:rgba(255,255,255,.75);margin-bottom:10px;">¿Esta deuda no tiene cuota este mes o preferís no declararlo?</div>'
@@ -836,6 +832,12 @@ function renderDeudaCard(d, i) {
     // Monto
     + '<div class="field"><label>Monto de la deuda</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
     + '<input type="number" style="padding-left:36px;" placeholder="0" value="' + (d.monto || "") + '" data-deuda-field="monto" data-deuda-idx="' + i + '"/></div></div>'
+
+    // Pago mensual — opcional (CSS label → PAGO MENSUAL (SI LO SABÉS))
+    + '<div class="field"><label>Pago mensual (si lo sabés)</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
+    + '<input type="number" style="padding-left:36px;" placeholder="0" value="'
+    + (d.pago != null && d.pago !== "" ? d.pago : "")
+    + '" data-deuda-field="pago" data-deuda-idx="' + i + '"/></div></div>'
 
     + '</div>'
 
