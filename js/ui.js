@@ -800,12 +800,21 @@ function renderDeudaCard(d, i) {
   var insight     = d.tipo ? getMicroInsight(d.tipo) : null;
   var pagada      = _isDeudaPagadaUI(d);
   var st          = _st();
-  var editBanner  = (st.editing_debt_index === i)
-    ? '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.22);border-radius:12px;font-size:15px;font-weight:700;color:#40d7ff;">Editando deuda: ' + _deudaDisplayName(d, i) + '</div>'
+  var editBanner  = "";
+  if (st.editing_debt_index === i) {
+    if (st._deuda_is_new_add) {
+      editBanner = '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.22);border-radius:12px;font-size:15px;font-weight:700;color:#40d7ff;">Nueva deuda — completá los datos y guardá los cambios</div>';
+    } else {
+      editBanner = '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.22);border-radius:12px;font-size:15px;font-weight:700;color:#40d7ff;">Editando deuda: ' + _deudaDisplayName(d, i) + '</div>';
+    }
+  }
+  var validationErr = (st.editing_debt_index === i && st._deuda_validation_error)
+    ? '<div id="deuda-validation-msg" class="deuda-validation-msg" role="alert">' + st._deuda_validation_error + '</div>'
     : "";
 
   return '<div class="debt-card" id="debt-card-' + i + '" style="border-left:3px solid ' + borderColor + ';opacity:' + (pagada ? "0.7" : "1") + ';">'
     + editBanner
+    + validationErr
     + '<div class="debt-top"><div class="debt-name">' + (pagada ? "✅ " : "") + "Deuda #" + (i + 1) + (d.acreedor ? " — " + d.acreedor : "") + (pagada ? " — Pagada" : "") + '</div></div>'
     + '<div class="grid">'
 
@@ -847,7 +856,7 @@ function renderDeudaCard(d, i) {
     + _renderPresionNote(d)
 
     + (insight ? '<div class="micro-insight micro-' + insight.cls + '">' + insight.txt + '</div>' : "")
-    + renderDeudaActionButtons(i, d)
+    + (st.editing_debt_index === i ? "" : renderDeudaActionButtons(i, d))
     + '</div>';
 }
 
@@ -2147,9 +2156,27 @@ function renderRadiografia() {
 // =============================================================================
 function renderDeudasEmptyActivas() {
   return '<div class="deudas-empty-activas">'
-    + '<div class="deudas-empty-activas-title">✅ No registrás deudas activas</div>'
-    + '<div class="deudas-empty-activas-text">Las deudas que marcaste como pagadas '
-    + "siguen disponibles en tu historial.</div>"
+    + '<div class="deudas-empty-activas-title">No tenés deudas activas registradas.</div>'
+    + '<div class="deudas-empty-activas-text">Si asumiste una nueva obligación o te faltó cargar '
+    + "una, agregala para actualizar tu diagnóstico.</div>"
+    + "</div>";
+}
+
+function renderDeudaTabAddBar(st) {
+  var busy = st.editing_debt_index != null;
+  return '<div class="deuda-tab-add-bar">'
+    + '<button type="button" class="btn btn-secondary" id="btn-add-debt"'
+    + (busy ? ' disabled style="opacity:.45;cursor:not-allowed;"' : "")
+    + ">➕ Agregar deuda</button>"
+    + "</div>";
+}
+
+function renderDeudaTabEditActions(st) {
+  if (st.editing_debt_index == null) return "";
+  return '<div class="deuda-tab-edit-actions">'
+    + '<button type="button" class="btn btn-secondary" id="btn-guardar-deuda-edicion">'
+    + (st._deuda_is_new_add ? "Guardar deuda" : "Guardar cambios") + "</button>"
+    + '<button type="button" class="btn btn-secondary" id="btn-cancelar-edicion-deuda">Cancelar</button>'
     + "</div>";
 }
 
@@ -2195,7 +2222,16 @@ function renderTabDeudas() {
 
   var activasHtml = "";
   if (stats.activaCount === 0) {
-    activasHtml = renderDeudasEmptyActivas();
+    if (st.editing_debt_index != null && st._deuda_is_new_add && st.deudas[st.editing_debt_index]) {
+      activasHtml = renderDeudaLive(
+        st.deudas[st.editing_debt_index],
+        st.editing_debt_index,
+        totalDeudaActiva,
+        ingreso
+      );
+    } else {
+      activasHtml = renderDeudasEmptyActivas();
+    }
   } else {
     activasHtml = activasList.map(function(item) {
       return renderDeudaLive(item.d, item.i, totalDeudaActiva, ingreso);
@@ -2217,7 +2253,9 @@ function renderTabDeudas() {
     + _deudasSubtitleCounter(stats.activaCount, stats.pagadaCount)
     + '<div class="section-text">Actualiza tus saldos a medida que vas pagando. El plan y el puntaje se recalculan solos.</div>'
     + renderDeudasResumen(deudas)
+    + renderDeudaTabAddBar(st)
     + activasHtml
+    + renderDeudaTabEditActions(st)
     + renderDeudasHistorialToggle(stats.pagadaCount)
     + historialHtml
     + _dashIaSectionClose()

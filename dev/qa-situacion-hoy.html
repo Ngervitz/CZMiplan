@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>QA — Tu situación hoy (A–D)</title>
+<link rel="stylesheet" href="../css/styles.css"/>
+<style>
+  body { background: #050816; padding: 16px; max-width: 420px; margin: 0 auto; }
+  .qa-panel { margin-bottom: 32px; scroll-margin-top: 16px; }
+  .qa-label {
+    font-size: 13px; font-weight: 800; color: #40d7ff;
+    text-transform: uppercase; letter-spacing: .08em;
+    margin-bottom: 12px; padding: 8px 12px;
+    background: rgba(64,215,255,.08); border-radius: 8px;
+  }
+  .qa-section-title {
+    font-size: 11px; color: #8390b5; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .06em;
+    margin: 16px 0 8px;
+  }
+</style>
+</head>
+<body>
+<div id="panels"></div>
+<script src="../js/config.js"></script>
+<script src="../js/creditors.js"></script>
+<script src="../js/survey.js"></script>
+<script src="../js/algorithms.js"></script>
+<script src="../js/ui.js"></script>
+<script>
+(function() {
+  var SCENARIOS = {
+    A: {
+      label: "Escenario A — Flujo libre negativo",
+      ingreso: 35000,
+      gastos: { alquiler: 14000, alimentacion: 10000, transporte: 3500, servicios: 3000, otros: 5000 },
+      deudas: [
+        { tipo: "tarjeta", acreedor: "OCA", monto: "80000", pago: "5500", estado: "mora" },
+        { tipo: "financiera", acreedor: "Creditel", monto: "50000", pago: "4500", estado: "atraso_grave" },
+      ],
+      respuestas: { p1:null,p2:null,p3:null,p4:null,p5:null,p6:null,p7:null,p8:null,p9:null,p10:null },
+    },
+    B: {
+      label: "Escenario B — Flujo positivo, ratio pagos > 35%",
+      ingreso: 45000,
+      gastos: { alquiler: 10000, alimentacion: 7000, servicios: 1500 },
+      deudas: [
+        { tipo: "financiera", acreedor: "Creditel", monto: "80000", pago: "6500", estado: "al_dia" },
+        { tipo: "tarjeta", acreedor: "OCA", monto: "60000", pago: "5000", estado: "al_dia" },
+        { tipo: "cooperativa", acreedor: "ANDA", monto: "40000", pago: "5000", estado: "al_dia" },
+      ],
+      respuestas: { p1:null,p2:null,p3:null,p4:null,p5:null,p6:null,p7:null,p8:null,p9:null,p10:null },
+    },
+    C: {
+      label: "Escenario C — Plan 4, cero deuda activa declarada",
+      ingreso: 18000,
+      gastos: { alquiler: 7000, alimentacion: 8000 },
+      deudas: [],
+      respuestas: { p1:null,p2:null,p3:null,p4:null,p5:null,p6:null,p7:null,p8:null,p9:null,p10:null },
+      forcePlan4: true,
+    },
+    D: {
+      label: "Escenario D — Plan 1–2, flujo positivo, ratio ≤ 35%",
+      ingreso: 75000,
+      gastos: { alquiler: 18000, alimentacion: 9000, servicios: 2000, transporte: 2000 },
+      deudas: [
+        { tipo: "prestamo", acreedor: "BROU", monto: "100000", pago: "7000", estado: "al_dia" },
+      ],
+      respuestas: { p1:"A",p2:"A",p3:"A",p4:"A",p5:"A",p6:"A",p7:"A",p8:"A",p9:"A",p10:"A" },
+    },
+  };
+
+  function runScenario(sc) {
+    window.CZState = {
+      step: 3,
+      gastos: sc.gastos,
+      deudas: sc.deudas,
+      diag: null,
+      snap: null,
+      saldoIni: 0,
+      tab: "plan",
+      first_assessment_at: "2026-01-15T12:00:00.000Z",
+      temporal: { first_seen_at: "2026-01-15T12:00:00.000Z" },
+    };
+    PRE.ingreso = sc.ingreso;
+    PRE.respuestas = sc.respuestas;
+    var diag = calcularMotor();
+    if (sc.forcePlan4 && diag) {
+      diag.planId = 4;
+      if (diag.plan && PLANES && PLANES[4]) diag.plan = PLANES[4];
+    }
+    window.CZState.diag = diag;
+    return diag;
+  }
+
+  var root = document.getElementById("panels");
+  ["A", "B", "C", "D"].forEach(function(key) {
+    var sc = SCENARIOS[key];
+    var diag = runScenario(sc);
+    var fin = diag.fin || {};
+    var meta = "flujoLibre=" + fin.flujoLibre
+      + " · ratio=" + (Math.round((fin.ratio || 0) * 100)) + "%"
+      + " · plan=" + diag.planId;
+
+    var panel = document.createElement("div");
+    panel.className = "qa-panel";
+    panel.id = "scenario-" + key;
+    panel.innerHTML =
+      '<div class="qa-label">' + sc.label + '</div>'
+      + '<div style="font-size:12px;color:#5a6480;margin-bottom:12px;">' + meta + '</div>'
+      + '<div class="qa-section-title">Qué está frenando tu perfil</div>'
+      + '<div class="fade">' + renderBloqueadores(diag) + '</div>'
+      + '<div class="qa-section-title">Tu situación hoy</div>'
+      + '<div class="fade">' + _renderTuSituacionHoy(diag, window.CZState) + '</div>';
+    root.appendChild(panel);
+  });
+})();
+</script>
+</body>
+</html>
