@@ -2573,7 +2573,7 @@ function renderPlusPresentation() {
       + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-obtener-informe">'
       + "Ver mi situación real</button>"
       + '<p id="plus-cta-inline-msg" class="plus-cta-inline-msg" style="display:none;"></p>'
-      + _renderPlusDevButton()
+      + _renderPlusClaudeTestBlock()
       + '<p class="plus-disclaimer">El informe se genera en base a los datos disponibles en BCU '
       + "y Clearing al momento de la consulta.</p>"
       + _plusComingSoonBlock()
@@ -2581,14 +2581,35 @@ function renderPlusPresentation() {
   );
 }
 
-function _renderPlusDevButton() {
-  var st = _st();
-  var showDev = (typeof CZ_PLUS_PAYMENT_LIVE === "undefined" || !CZ_PLUS_PAYMENT_LIVE)
-    && (typeof CZ_PLUS_USE_MOCK !== "undefined" && CZ_PLUS_USE_MOCK)
-    && st._plusDevCtaClicked;
-  if (!showDev) return "";
-  return '<button type="button" class="btn btn-secondary plus-dev-btn" id="btn-plus-dev-generar">'
-    + "[DEV] Generar informe mock</button>";
+function _plusClaudeTestConfig() {
+  var paymentLive = typeof CZ_PLUS_PAYMENT_LIVE !== "undefined" && !!CZ_PLUS_PAYMENT_LIVE;
+  var allowBrowser = typeof CZ_CLAUDE_ALLOW_BROWSER_KEY !== "undefined" && !!CZ_CLAUDE_ALLOW_BROWSER_KEY;
+  var hasKey = typeof CZ_CLAUDE_API_KEY !== "undefined" && String(CZ_CLAUDE_API_KEY).trim() !== "";
+  return {
+    paymentLive: paymentLive,
+    allowBrowser: allowBrowser,
+    hasKey: hasKey,
+    showBlock: !paymentLive && allowBrowser,
+    canGenerate: !paymentLive && allowBrowser && hasKey,
+  };
+}
+
+function _renderPlusClaudeTestBlock() {
+  var cfg = _plusClaudeTestConfig();
+  if (!cfg.showBlock) return "";
+
+  var html = '<div class="plus-test-block">'
+    + '<p class="plus-test-helper">Uso interno: genera un informe Plus usando datos de prueba y Claude.</p>';
+
+  if (cfg.canGenerate) {
+    html += '<button type="button" class="btn btn-secondary plus-test-btn" id="btn-plus-test-generar">'
+      + "Generar informe de prueba con IA</button>";
+  } else {
+    html += '<p class="plus-test-missing-key">Falta configurar la API key local de Claude.</p>';
+  }
+
+  html += "</div>";
+  return html;
 }
 
 function _plusEsc(s) {
@@ -2830,14 +2851,19 @@ function renderPlusReady() {
 }
 
 function renderPlusError() {
+  var st = _st();
+  var errBody = st._plusInformeTestError
+    ? "No se pudo generar el informe de prueba. Revisá API key, modelo o consola."
+    : "Hubo un problema al consultar los registros financieros. No se realizó ningún cobro.";
+
   return _plusScreenWrap(
     _plusCard(
       '<div class="plus-status-icon" aria-hidden="true">⚠️</div>'
       + '<h2 class="plus-status-title">No pudimos generar tu informe</h2>'
-      + '<p class="plus-status-body">Hubo un problema al consultar los registros financieros. '
-      + "No se realizó ningún cobro.</p>"
+      + '<p class="plus-status-body">' + _plusEsc(errBody) + "</p>"
       + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-reintentar">'
       + "Intentar nuevamente</button>"
+      + _renderPlusClaudeTestBlock()
       + '<p class="plus-support-line">Si el problema persiste contactá a soporte en '
       + '<a href="mailto:credizonauy@gmail.com" class="plus-support-link">credizonauy@gmail.com</a></p>'
     )

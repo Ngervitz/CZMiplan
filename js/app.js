@@ -2212,8 +2212,14 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Sprint 14.2 — DEV mock report generation
-      if (e.target.id === "btn-plus-dev-generar") {
+      // Sprint 14.2 — local Claude test report (browser key + test input; not production)
+      if (e.target.id === "btn-plus-test-generar") {
+        var paymentLive = typeof CZ_PLUS_PAYMENT_LIVE !== "undefined" && !!CZ_PLUS_PAYMENT_LIVE;
+        var allowBrowser = typeof CZ_CLAUDE_ALLOW_BROWSER_KEY !== "undefined" && !!CZ_CLAUDE_ALLOW_BROWSER_KEY;
+        var hasKey = typeof CZ_CLAUDE_API_KEY !== "undefined" && String(CZ_CLAUDE_API_KEY).trim() !== "";
+        if (paymentLive || !allowBrowser || !hasKey) return;
+
+        st._plusInformeTestError = false;
         if (typeof setPlusStatus === "function") {
           setPlusStatus("PLUS_PROCESSING");
         }
@@ -2221,7 +2227,7 @@ document.addEventListener("DOMContentLoaded", function() {
           window.CredizonaUI.renderTab();
         }
         if (typeof generarInformePlus === "function") {
-          generarInformePlus();
+          generarInformePlus({ useTestInput: true });
         }
         return;
       }

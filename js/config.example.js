@@ -5,7 +5,9 @@
 // Desarrollo local: copiá este archivo a js/config.local.js (gitignored) y
 // sobrescribí solo las variables que necesites, por ejemplo:
 //   CZ_CLAUDE_API_KEY = "sk-ant-...";
-//   CZ_PLUS_USE_MOCK = true;
+//   CZ_CLAUDE_ALLOW_BROWSER_KEY = true;
+//   CZ_CLAUDE_MODEL = "claude-sonnet-4-5";
+// (Opcional) CZ_PLUS_USE_MOCK = true; — solo afecta getPlusReportInput() sin useTestInput
 // Luego cargá config.local.js después de config.js en un entorno local.
 // =============================================================================
 

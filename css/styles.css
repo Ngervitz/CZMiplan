@@ -493,9 +493,20 @@ select option{background:#0a1026;}
   margin:8px 0 0;text-align:center;word-break:break-word;
 }
 .plus-support-link{color:rgba(96,210,255,.85);text-decoration:underline;}
-.plus-dev-btn{
+.plus-dev-btn,
+.plus-test-btn{
   width:100%;max-width:100%;height:48px;font-size:14px;font-weight:700;
   margin-bottom:12px;box-sizing:border-box;
+}
+.plus-test-block{
+  margin:16px 0 12px;padding:14px 16px;max-width:100%;box-sizing:border-box;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;
+}
+.plus-test-helper{
+  font-size:13px;color:#8390b5;line-height:1.55;margin:0 0 12px;
+}
+.plus-test-missing-key{
+  font-size:13px;color:#ffd447;line-height:1.5;margin:0;
 }
 .plus-report{max-width:100%;box-sizing:border-box;}
 .plus-report-header{margin-bottom:18px;}
@@ -1185,6 +1196,7 @@ body.modal-open{
 #btn-plus-reintentar,
 #btn-plus-ver-informe,
 #btn-plus-dev-generar,
+#btn-plus-test-generar,
 .plus-cta-btn,
 .plus-feedback-submit,
 .plus-report-actions,

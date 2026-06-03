@@ -853,14 +853,20 @@ async function _fetchPlusReportProvider(inputData) {
   return response.json();
 }
 
-async function generarInformePlus() {
+async function generarInformePlus(opts) {
+  opts = opts || {};
+  var st = window.CZState;
+  var useTestInput = !!opts.useTestInput;
+
   try {
-    var inputData = getPlusReportInput();
+    if (useTestInput) {
+      st._plusInformeTestError = false;
+    }
+    var inputData = useTestInput ? getMockPlusInput() : getPlusReportInput();
     var apiResponse = await _fetchPlusReportProvider(inputData);
     var rawText = extractAnthropicMessageText(apiResponse);
     var informe = parsePlusInformeFromLlmText(rawText);
 
-    var st = window.CZState;
     st.plus_informe = informe;
     st.plus_report_id = "plus_" + Date.now();
 
@@ -881,10 +887,14 @@ async function generarInformePlus() {
   } catch (err) {
     console.error(err);
 
+    if (useTestInput) {
+      st._plusInformeTestError = true;
+    }
+
     if (typeof setPlusStatus === "function") {
       setPlusStatus("PLUS_ERROR");
     } else {
-      window.CZState.plus_status = "PLUS_ERROR";
+      st.plus_status = "PLUS_ERROR";
       window.guardarLocal();
     }
 
