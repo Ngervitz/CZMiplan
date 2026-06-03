@@ -514,6 +514,8 @@ function calcularMotor() {
   result.interpretacion_v2.guardrail_applied  = guardrail.guardrail_applied;
   result.interpretacion_v2.guardrail_reason   = guardrail.guardrail_reason;
 
+  alignInterpretacionV2ConPlan(result.interpretacion_v2, result.planId);
+
   return result;
 }
 
@@ -837,6 +839,66 @@ function calcularSeveridadFinanciera(fin, deudas, ingreso) {
 // Safe lookup — never use array indices on narrativa_jerarquizada.
 function getNarrativaByTipo(narrativa, tipo) {
   return narrativa.find(function(e) { return e.tipo === tipo; }) || null;
+}
+
+// Sprint 15 — align "Qué está pasando" with assigned plan when no debt pattern detected.
+function _getProblemaPrincipalSinPatron(planId) {
+  var id = parseInt(planId, 10);
+  if (id === 1) {
+    return {
+      causa: "falta_organizacion",
+      texto: "Todavía no tenés una visión completa de ingresos, gastos y deudas. Sin ese mapa es difícil tomar decisiones.",
+    };
+  }
+  if (id === 2) {
+    return {
+      causa: "deuda_manejable",
+      texto: "Tu situación muestra señales de manejo posible. El foco ahora es ordenar prioridades y sostener decisiones simples.",
+    };
+  }
+  if (id === 3) {
+    return {
+      causa: "presion_deuda",
+      texto: "Tu situación muestra presión de deuda. El foco principal es identificar qué pagos pesan más y evitar que el problema siga creciendo.",
+    };
+  }
+  if (id === 4) {
+    return {
+      causa: "situacion_critica",
+      texto: "Tu situación muestra presión financiera alta. El objetivo inmediato es estabilizar el flujo y evitar nuevas decisiones que agraven el problema.",
+    };
+  }
+  return null;
+}
+
+function _applyProblemaPrincipalSinPatron(narrativa, planId) {
+  var pp = _getProblemaPrincipalSinPatron(planId);
+  if (!pp || !narrativa) return null;
+  var entry = getNarrativaByTipo(narrativa, "problema_principal");
+  if (!entry) return null;
+  entry.causa = pp.causa;
+  entry.texto = pp.texto;
+  return pp.causa;
+}
+
+// Sprint 15 — single post-plan alignment (final planId required).
+function alignInterpretacionV2ConPlan(iv2, planId) {
+  if (!iv2 || iv2.patron_deuda !== "sin_patron") return false;
+  var narr = iv2.narrativa_jerarquizada;
+  if (!narr || !narr.length) return false;
+  var pp = _getProblemaPrincipalSinPatron(planId);
+  if (!pp) return false;
+
+  var entry = getNarrativaByTipo(narr, "problema_principal") || narr[0];
+  if (!entry) return false;
+  entry.causa = pp.causa;
+  entry.texto = pp.texto;
+  if (narr[0]) {
+    narr[0].causa = pp.causa;
+    narr[0].texto = pp.texto;
+  }
+  iv2.causa_principal = pp.causa;
+  return true;
 }
 
 // Fills narrativa_jerarquizada[].texto with display-ready Spanish strings.
@@ -1898,3 +1960,5 @@ function buildDiagnosisSnapshot() {
     })(),
   };
 }
+
+window.alignInterpretacionV2ConPlan = alignInterpretacionV2ConPlan;

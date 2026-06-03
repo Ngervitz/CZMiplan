@@ -1233,6 +1233,14 @@ async function init() {
     if (dataToUse.first_assessment_at) st.first_assessment_at = dataToUse.first_assessment_at;
   }
 
+  if (
+    st.diag
+    && st.diag.interpretacion_v2
+    && typeof alignInterpretacionV2ConPlan === "function"
+  ) {
+    alignInterpretacionV2ConPlan(st.diag.interpretacion_v2, st.diag.planId);
+  }
+
   // Temporal tracking — update session fields
   var tmp = st.temporal;
   if (tmp.last_seen_at) {
