@@ -1558,6 +1558,109 @@ function renderNarrativaInterpretacion(diag) {
 }
 
 // =============================================================================
+// TAB: MI PLAN — "Tu situación hoy" (interpretive snapshot)
+// =============================================================================
+function _ensureFirstAssessmentAt(st) {
+  if (st.first_assessment_at) return st.first_assessment_at;
+  var fallback = null;
+  if (st.temporal && st.temporal.first_seen_at) {
+    fallback = st.temporal.first_seen_at;
+  } else if (window.CZIdentity && window.CZIdentity.created_at) {
+    fallback = window.CZIdentity.created_at;
+  } else if (st.snap && st.snap.fecha_inicio) {
+    fallback = st.snap.fecha_inicio;
+  }
+  st.first_assessment_at = fallback || new Date().toISOString();
+  if (typeof window.guardarLocal === "function") {
+    window.guardarLocal();
+  }
+  return st.first_assessment_at;
+}
+
+function _diasDesdePrimeraEvaluacion(iso) {
+  var t = Date.parse(iso);
+  if (!iso || isNaN(t)) return null;
+  return Math.floor((Date.now() - t) / 86400000) + 1;
+}
+
+function _lineaDiaEvaluacion(st) {
+  var iso  = _ensureFirstAssessmentAt(st);
+  var dias = _diasDesdePrimeraEvaluacion(iso);
+  if (dias == null || dias < 1) {
+    return "Primera evaluación registrada hoy.";
+  }
+  return "Día " + dias + " desde tu primera evaluación.";
+}
+
+function _renderTuSituacionHoy(diag, st) {
+  var fin         = (diag && diag.fin) ? diag.fin : {};
+  var flujoLibre  = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  var ratioPagos  = fin.ratio != null ? fin.ratio : 0;
+  var planId      = diag ? diag.planId : null;
+  var debtStats   = _deudasResumenStats(st.deudas || []);
+  var activaCount = debtStats.activaCount;
+  var totalActiva = debtStats.totalActiva;
+
+  var primaryType;
+  var primaryText;
+  var consequenceText;
+
+  if (flujoLibre < 0) {
+    primaryType = "negative_flow";
+    primaryText = "Tu principal desafío es que tus gastos superan lo que entra cada mes.";
+    consequenceText = "Mientras esa diferencia siga siendo negativa, va a ser difícil mejorar tu perfil ante cualquier institución financiera.";
+  } else if (ratioPagos > 0.35) {
+    primaryType = "high_dti";
+    primaryText = "Tu principal desafío es que gran parte de tu ingreso ya está comprometido con pagos.";
+    consequenceText = "Cuando muchos ingresos ya están comprometidos, las financieras ven menos margen para asumir una nueva cuota.";
+  } else if (planId === 4) {
+    primaryType = "plan4_hidden";
+    if (totalActiva <= 0) {
+      primaryText = "Tu principal desafío puede estar en tu historial crediticio, no en las deudas que declaraste.";
+      consequenceText = "Aunque hoy no tengas pagos activos declarados, una institución puede ver antecedentes que todavía afectan tu perfil.";
+    } else {
+      primaryText = "Tu principal desafío puede estar en factores que no se ven solo mirando los números declarados.";
+      consequenceText = "Puede haber información en tu historial crediticio que esté pesando más que los datos que declaraste.";
+    }
+  } else {
+    primaryType = "manageable";
+    primaryText = "Tu situación tiene margen para mejorar con algunos cambios concretos.";
+    consequenceText = "Con algunos ajustes, tu perfil puede quedar más ordenado para volver a intentar más adelante.";
+  }
+
+  var secondary = [];
+  if (ratioPagos > 0.35 && primaryType !== "high_dti") {
+    secondary.push("Gran parte de tu ingreso ya está comprometido.");
+  }
+  if (activaCount > 3) {
+    secondary.push("Tenés varias obligaciones activas al mismo tiempo.");
+  }
+  if (planId === 4 && totalActiva <= 0 && primaryType !== "plan4_hidden") {
+    secondary.push("Puede haber información en BCU, Clearing u otros registros que no estás viendo.");
+  }
+  secondary = secondary.slice(0, 2);
+
+  var secondaryHtml = "";
+  if (secondary.length > 0) {
+    secondaryHtml = '<div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);">'
+      + '<div style="font-size:14px;color:#8390b5;font-weight:700;margin-bottom:10px;">También influye:</div>'
+      + secondary.map(function(s) {
+          return '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.55;margin-bottom:8px;padding-left:14px;position:relative;">'
+            + '<span style="position:absolute;left:0;">•</span>' + s + "</div>";
+        }).join("")
+      + "</div>";
+  }
+
+  return '<div class="plan-card" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);">'
+    + '<div style="font-size:20px;font-weight:800;margin-bottom:14px;line-height:1.3;">📌 Tu situación hoy</div>'
+    + '<div style="font-size:14px;color:#8390b5;margin-bottom:16px;line-height:1.5;">' + _lineaDiaEvaluacion(st) + "</div>"
+    + '<p style="font-size:16px;color:rgba(255,255,255,.92);line-height:1.65;margin:0 0 12px;">' + primaryText + "</p>"
+    + '<p style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;margin:0;">' + consequenceText + "</p>"
+    + secondaryHtml
+    + "</div>";
+}
+
+// =============================================================================
 // TAB: MI PLAN
 // =============================================================================
 function renderTabPlan() {
@@ -1566,7 +1669,6 @@ function renderTabPlan() {
   var fin    = diag.fin;
   var pc     = diag.plan.color;
   var prio   = diag.prio;
-  var prog   = st.saldoIni > 0 ? Math.max(0, (st.saldoIni - fin.totalDeuda) / st.saldoIni * 100) : 0;
 
   // Sprint 9 — gastos missing warning card (near top of plan tab)
   var _gastosMissingCard = (st.gastos_missing_confirmed)
@@ -1824,14 +1926,7 @@ function renderTabPlan() {
         : "")
     + '</div>'
 
-    + (st.saldoIni > 0
-        ? '<div class="plan-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><div><div style="font-size:20px;font-weight:800;">Tu progreso</div><div style="font-size:15px;color:#8390b5;margin-top:4px;">Dia ' + diag.diasRec + ' de recuperacion</div></div>'
-          + '<div style="text-align:right;"><div style="font-size:52px;font-weight:900;color:' + (prog > 0 ? "#34ffaf" : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + Math.round(prog) + '%</div><div style="font-size:14px;color:#8390b5;">reducido</div></div></div>'
-          + '<div class="progress-wrap"><div class="progress-bar" style="width:' + prog + '%;background:' + (prog > 50 ? "#34ffaf" : prog > 20 ? "#ffd36f" : "#ff4e72") + ';"></div></div>'
-          + '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:15px;color:#8390b5;"><span>Inicio: ' + fmt(st.saldoIni) + '</span><span>Hoy: ' + fmt(fin.totalDeuda) + '</span></div>'
-          + (prog > 0 ? '<div style="margin-top:12px;font-size:12px;color:#8390b5;line-height:1.6;">ℹ️ Esta mejora muestra el impacto de los cambios que hiciste sobre tus deudas. El diagnóstico de base no cambia hasta que se actualice tu evaluación.</div>' : '')
-          + '</div>'
-        : "")
+    + _renderTuSituacionHoy(diag, st)
     + _dashIaSectionClose()
 
     // 12. Mi Plan Plus entry (Sprint 14.0c — routes to ★ Mi Plan Plus tab)
