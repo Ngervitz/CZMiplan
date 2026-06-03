@@ -158,10 +158,81 @@ function createEmptyDebtObject() {
   };
 }
 
+function sanitizeDebtNumericInputString(raw) {
+  if (raw == null) return "";
+  var s = String(raw);
+  var out = "";
+  var sepUsed = false;
+  for (var i = 0; i < s.length; i++) {
+    var c = s[i];
+    if (c >= "0" && c <= "9") {
+      out += c;
+    } else if ((c === "." || c === ",") && !sepUsed) {
+      out += c;
+      sepUsed = true;
+    }
+  }
+  return out;
+}
+
+function debtNumericValueForState(sanitized) {
+  if (sanitized === "") return "";
+  return String(sanitized).replace(",", ".");
+}
+
+function parseDebtNumeric(val) {
+  if (val == null) return NaN;
+  var s = String(val).trim();
+  if (s === "") return NaN;
+  return parseFloat(s.replace(",", "."));
+}
+
+function applyDebtNumericInputSanitize(inputEl) {
+  if (!inputEl) return;
+  var sanitized = sanitizeDebtNumericInputString(inputEl.value);
+  if (inputEl.value !== sanitized) inputEl.value = sanitized;
+}
+
+function syncDebtNumericFieldFromInput(inputEl, field, deudaIdx) {
+  var st = window.CZState;
+  if (!inputEl || !st.deudas[deudaIdx]) return;
+  applyDebtNumericInputSanitize(inputEl);
+  st.deudas[deudaIdx][field] = debtNumericValueForState(inputEl.value);
+}
+
+function applyDebtNumericFieldBlur(inputEl, field, deudaIdx) {
+  var st = window.CZState;
+  var d = st.deudas[deudaIdx];
+  if (!d || !inputEl) return;
+  applyDebtNumericInputSanitize(inputEl);
+  var display = inputEl.value;
+  var stored = debtNumericValueForState(display);
+  if (field === "monto") {
+    var n = parseDebtNumeric(stored);
+    if (display === "" || Number.isNaN(n) || n <= 0) {
+      inputEl.value = "";
+      d.monto = "";
+      return;
+    }
+    inputEl.value = display;
+    d.monto = stored;
+    return;
+  }
+  if (field === "pago") {
+    if (display === "" || Number.isNaN(parseDebtNumeric(stored))) {
+      inputEl.value = "";
+      d.pago = "";
+      return;
+    }
+    inputEl.value = display;
+    d.pago = stored;
+  }
+}
+
 function normalizeDebtPagoForSave(d) {
   if (!d) return;
   var pagoStr = d.pago == null ? "" : String(d.pago).trim();
-  var pagoMensual = parseFloat(pagoStr);
+  var pagoMensual = parseDebtNumeric(pagoStr);
   if (pagoStr === "" || Number.isNaN(pagoMensual)) {
     d.pago = 0;
   } else {
@@ -177,13 +248,13 @@ function validateDebtForSave(d) {
   if (!acreedor) {
     return { ok: false, msg: "Ingresá el acreedor para continuar." };
   }
-  var saldo = parseFloat(d.monto);
+  var saldo = parseDebtNumeric(d.monto);
   if (isNaN(saldo) || saldo <= 0) {
     return { ok: false, msg: "El saldo debe ser mayor a 0." };
   }
   var pagoStr = d.pago == null ? "" : String(d.pago).trim();
   if (pagoStr !== "") {
-    var pagoMensual = parseFloat(pagoStr);
+    var pagoMensual = parseDebtNumeric(pagoStr);
     if (!Number.isNaN(pagoMensual) && pagoMensual < 0) {
       return { ok: false, msg: "El pago mensual no puede ser negativo." };
     }
@@ -1408,7 +1479,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (st.deudas[deudaIdx]) {
           var d = st.deudas[deudaIdx];
-          d[deudaField] = e.target.value;
+          if (deudaField === "monto" || deudaField === "pago") {
+            syncDebtNumericFieldFromInput(e.target, deudaField, deudaIdx);
+          } else {
+            d[deudaField] = e.target.value;
+          }
 
           // Normalize creditor data on every keystroke
           if (deudaField === "acreedor") {
@@ -1425,7 +1500,7 @@ document.addEventListener("DOMContentLoaded", function() {
           // without a full card re-render (input fires on every character typed).
           if (deudaField === "pago") {
             d.pago_fuente = "declarado";
-            var pagoNum = parseFloat(e.target.value) || 0;
+            var pagoNum = parseDebtNumeric(d.pago) || 0;
             if (d.situacion_ui === "pagando_normal") {
               var clarifEl = document.getElementById("clarif-block-" + deudaIdx);
               if (clarifEl) clarifEl.style.display = pagoNum > 0 ? "none" : "";
@@ -1501,6 +1576,15 @@ document.addEventListener("DOMContentLoaded", function() {
     main.addEventListener("focusout", function(e) {
       if (e.target.getAttribute("data-editar-deuda") !== null) {
         commitDeudaQuickMontoFromInput(e.target);
+        return;
+      }
+      var blurField = e.target.getAttribute("data-deuda-field");
+      var blurIdx   = e.target.getAttribute("data-deuda-idx");
+      if (blurField === "monto" || blurField === "pago") {
+        blurIdx = parseInt(blurIdx, 10);
+        if (!isNaN(blurIdx)) {
+          applyDebtNumericFieldBlur(e.target, blurField, blurIdx);
+        }
       }
     });
 
@@ -1530,7 +1614,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (st.deudas[deudaIdx]) {
           var dC = st.deudas[deudaIdx];
-          dC[deudaField] = e.target.value;
+          if (deudaField === "monto" || deudaField === "pago") {
+            syncDebtNumericFieldFromInput(e.target, deudaField, deudaIdx);
+          } else {
+            dC[deudaField] = e.target.value;
+          }
 
           // Normalize creditor on change (catches paste / blur without input event)
           if (deudaField === "acreedor") {

@@ -808,10 +808,15 @@ function renderDeudaCard(d, i) {
     ? '<div id="deuda-validation-msg" class="deuda-validation-msg" role="alert">' + st._deuda_validation_error + '</div>'
     : "";
 
+  var isDraftAdd = !!(d._is_draft_add || (st.editing_debt_index === i && st._deuda_is_new_add));
+  var debtNameLabel = isDraftAdd
+    ? "Nueva deuda"
+    : "Deuda #" + (i + 1) + (d.acreedor ? " — " + d.acreedor : "") + (pagada ? " — Pagada" : "");
+
   return '<div class="debt-card" id="debt-card-' + i + '" style="border-left:3px solid ' + borderColor + ';opacity:' + (pagada ? "0.7" : "1") + ';">'
     + editBanner
     + validationErr
-    + '<div class="debt-top"><div class="debt-name">' + (pagada ? "✅ " : "") + "Deuda #" + (i + 1) + (d.acreedor ? " — " + d.acreedor : "") + (pagada ? " — Pagada" : "") + '</div></div>'
+    + '<div class="debt-top"><div class="debt-name">' + (pagada ? "✅ " : "") + debtNameLabel + '</div></div>'
     + '<div class="grid">'
 
     // Tipo — TASAS remain internal; no rate labels shown
@@ -831,11 +836,11 @@ function renderDeudaCard(d, i) {
 
     // Monto
     + '<div class="field"><label>Monto de la deuda</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
-    + '<input type="number" style="padding-left:36px;" placeholder="0" value="' + (d.monto || "") + '" data-deuda-field="monto" data-deuda-idx="' + i + '"/></div></div>'
+    + '<input type="text" inputmode="decimal" autocomplete="off" style="padding-left:36px;" placeholder="0" value="' + (d.monto || "") + '" data-deuda-field="monto" data-deuda-idx="' + i + '"/></div></div>'
 
     // Pago mensual — opcional (CSS label → PAGO MENSUAL (SI LO SABÉS))
     + '<div class="field"><label>Pago mensual (si lo sabés)</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
-    + '<input type="number" style="padding-left:36px;" placeholder="0" value="'
+    + '<input type="text" inputmode="decimal" autocomplete="off" style="padding-left:36px;" placeholder="0" value="'
     + (d.pago != null && d.pago !== "" ? d.pago : "")
     + '" data-deuda-field="pago" data-deuda-idx="' + i + '"/></div></div>'
 
@@ -2307,7 +2312,7 @@ function renderDeudaLive(d, i, totalDeuda, ingreso) {
   }
 
   var contextLines = "";
-  if (pctDeuda != null) {
+  if (!pagada && pctDeuda != null) {
     contextLines += '<div style="font-size:12px;color:rgba(255,255,255,.4);line-height:1.5;margin-bottom:6px;">'
       + "Representa " + pctDeuda + "% de tu deuda activa</div>";
   }
