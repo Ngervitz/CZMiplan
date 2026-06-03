@@ -2913,8 +2913,8 @@ function renderHerramientas() {
 
   var html = '<div style="margin-top:4px;">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-    + '<div><div style="font-size:20px;font-weight:900;">Herramientas del plan</div>'
-    + '<div style="font-size:15px;color:#8390b5;margin-top:2px;">Cada paso que completas nos ayuda a ayudarte mejor</div></div>'
+    + '<div><div style="font-size:20px;font-weight:900;">Herramientas recomendadas</div>'
+    + '<div style="font-size:15px;color:#8390b5;margin-top:2px;">Usá estas herramientas para entender mejor tu situación.</div></div>'
     + '<div style="text-align:right;"><div style="font-size:44px;font-weight:900;color:' + (comp === 3 ? pc : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + comp + '/3</div>'
     + '<div style="font-size:14px;color:#8390b5;">completadas</div></div></div>'
     + '<div class="progress-wrap" style="margin-bottom:18px;"><div class="progress-bar" style="width:' + Math.round(comp / 3 * 100) + '%;background:' + pc + ';"></div></div>';
