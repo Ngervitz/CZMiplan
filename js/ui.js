@@ -1692,8 +1692,7 @@ function renderTabPlan() {
     // 1. Plan card — situacion actual
     + '<div class="plan-card" style="border-color:' + pc + '33;">'
     + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;">'
-    + '<div><div class="plan-badge" style="background:' + pc + '20;color:' + pc + ';">Plan #' + diag.planId + ' · ' + diag.plan.titulo + '</div>'
-    + '<div class="plan-title-big">' + diag.plan.icon + ' ' + diag.plan.titulo + '</div>'
+    + '<div><div class="plan-title-big">' + diag.plan.icon + ' ' + diag.plan.titulo + '</div>'
     + '<div class="plan-desc">' + diag.plan.problema + '</div></div>'
     + '<div style="text-align:right;flex-shrink:0;">'
     + '<div class="score-big" style="color:' + colorScore(diag.scoreReset) + ';">' + diag.scoreReset + '</div>'
