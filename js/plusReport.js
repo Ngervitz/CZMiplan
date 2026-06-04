@@ -860,6 +860,14 @@ async function _fetchPlusReportProvider(inputData) {
   return response.json();
 }
 
+function _plusErrorSourceFromErr(err) {
+  if (!err) return "unknown";
+  var msg = String(err.message || err).toLowerCase();
+  if (msg.indexOf("timeout") !== -1 || msg.indexOf("timed out") !== -1) return "timeout";
+  if (msg.indexOf("anthropic") !== -1 || msg.indexOf("api error") !== -1) return "claude_api";
+  return "unknown";
+}
+
 async function generarInformePlus(opts) {
   opts = opts || {};
   var st = window.CZState;
@@ -896,6 +904,13 @@ async function generarInformePlus(opts) {
 
     if (useTestInput) {
       st._plusInformeTestError = true;
+    }
+
+    if (typeof trackEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined") {
+      trackEvent(CZ_EVENT_NAMES.PLUS_ERROR, {
+        error_source: _plusErrorSourceFromErr(err),
+        plus_status: "PLUS_ERROR",
+      });
     }
 
     if (typeof setPlusStatus === "function") {

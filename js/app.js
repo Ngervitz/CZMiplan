@@ -1149,6 +1149,31 @@ function detectReturnSource() {
   return "direct";
 }
 
+var CZ_MIPLAN_SESSION_STARTED_KEY = "cz_miplan_session_started";
+
+function trackMiplanSessionStartedOnce() {
+  try {
+    if (sessionStorage.getItem(CZ_MIPLAN_SESSION_STARTED_KEY) === "1") return;
+    sessionStorage.setItem(CZ_MIPLAN_SESSION_STARTED_KEY, "1");
+  } catch (e) {
+    return;
+  }
+
+  var urlConsent = typeof readConsentFromURL === "function" ? readConsentFromURL() : null;
+  var storedConsent = typeof loadStoredConsent === "function" ? loadStoredConsent() : null;
+  var entryChannel = typeof detectEntryChannel === "function"
+    ? detectEntryChannel()
+    : detectReturnSource();
+
+  if (typeof trackEvent === "function") {
+    trackEvent(CZ_EVENT_NAMES.MIPLAN_SESSION_STARTED, {
+      source: document.referrer ? detectReturnSource() : "direct",
+      has_consent_params: !!(urlConsent || storedConsent),
+      entry_channel: entryChannel,
+    });
+  }
+}
+
 // =============================================================================
 // INIT
 // DATA SOURCE PRIORITY:
@@ -1157,6 +1182,8 @@ function detectReturnSource() {
 //   3. Bridge screen (step 0) — when neither source has valid behavioral data
 // =============================================================================
 async function init() {
+  trackMiplanSessionStartedOnce();
+
   var crmContactId = CZIdentity.crm_contact_id;
   var crmData = null;
 
@@ -2394,6 +2421,13 @@ document.addEventListener("DOMContentLoaded", function() {
           st._deuda_quick_edit_prev_monto = null;
           st.temporal.last_debt_update_at = new Date().toISOString();
           trackCRMDebtEvent("debt_marked_paid", { debt_index: pagadaIdx });
+          if (typeof trackEvent === "function") {
+            trackEvent(CZ_EVENT_NAMES.DEBT_MARKED_PAID, {
+              debt_count_affected: 1,
+              source: st.step === 3 ? "dashboard" : "funnel",
+              action: "mark_paid",
+            });
+          }
           recalcDiagYGuardar();
 
           _safeCelebration({

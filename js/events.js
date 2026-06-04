@@ -36,6 +36,9 @@ var CZ_GTM_EVENTS = [
   "plus_pdf_downloaded",
   "plus_report_email_requested",
   "plus_feedback_submitted",
+  "miplan_session_started",
+  "debt_marked_paid",
+  "plus_error",
 ];
 
 var CZ_INTERNAL_EVENTS = [
@@ -100,6 +103,11 @@ var CZ_GTM_SAFE_FIELDS = [
   "score",
   "clarity",
   "value",
+  "has_consent_params",
+  "debt_count_affected",
+  "action",
+  "error_source",
+  "plus_status",
 ];
 
 // =============================================================================
@@ -118,6 +126,7 @@ var CZ_EVENT_NAMES = Object.freeze({
   DEBT_REFINEMENT_STARTED:         "debt_refinement_started",
   DEBT_ADDED:                      "debt_added",
   DEBT_REFINEMENT_COMPLETED:       "debt_refinement_completed",
+  DEBT_MARKED_PAID:                "debt_marked_paid",
   // TODO: wire this event or remove in cleanup sprint
   EXPENSE_REFINEMENT_STARTED:      "expense_refinement_started",
   EXPENSE_REFINEMENT_COMPLETED:    "expense_refinement_completed",
@@ -153,6 +162,7 @@ var CZ_EVENT_NAMES = Object.freeze({
   MIPLAN_CONSENT_ACCEPTED:         "miplan_consent_accepted",
   MIPLAN_CONSENT_SCREEN_VIEWED:    "miplan_consent_screen_viewed",
   MIPLAN_SUGGESTION_SUBMITTED:     "miplan_suggestion_submitted",
+  MIPLAN_SESSION_STARTED:          "miplan_session_started",
   GASTOS_MISSING_WARNING_SHOWN:    "gastos_missing_warning_shown",
   GASTOS_MISSING_CONFIRMED:        "gastos_missing_confirmed",
   HIDDEN_FACTOR_CTA_SHOWN:         "hidden_factor_cta_shown",
@@ -166,6 +176,7 @@ var CZ_EVENT_NAMES = Object.freeze({
   // Sprint 14.0 — Mi Plan Plus (GTM)
   PLUS_CTA_VIEWED:                   "plus_cta_viewed",
   PLUS_CTA_CLICKED:                  "plus_cta_clicked",
+  PLUS_ERROR:                        "plus_error",
 
   // CRM_ONLY — backend handles this; never route to GTM/dataLayer
   RESET_PLAN_GENERATED:              "reset_plan_generated",
