@@ -807,14 +807,12 @@ function handlePlusPaymentReturn() {
 
 function onPlusCtaClick() {
   var st = window.CZState;
-  var ids = _plusTrackingIds();
   var paymentLive = typeof CZ_PLUS_PAYMENT_LIVE !== "undefined" && CZ_PLUS_PAYMENT_LIVE;
 
   if (typeof trackEvent === "function") {
     trackEvent(CZ_EVENT_NAMES.PLUS_CTA_CLICKED, {
-      czuid:        ids.czuid,
-      plan_id:      ids.plan_id,
       payment_live: paymentLive,
+      cta_source:   "plus_tab",
     });
   }
 
@@ -959,9 +957,7 @@ function next() {
     setRecoveryState("dashboard_generated");
     trackEvent(CZ_EVENT_NAMES.EXPENSE_REFINEMENT_COMPLETED);
     trackEvent(CZ_EVENT_NAMES.DASHBOARD_GENERATED, {
-      plan_id:      st.diag.planId,
-      funnel_stage: st.diag.nivelR,
-      has_gastos:   !st.gastos_missing_confirmed,
+      has_gastos: !st.gastos_missing_confirmed,
     });
 
     var isFirstDiagnosis = !st.first_assessment_at;
@@ -2423,7 +2419,6 @@ document.addEventListener("DOMContentLoaded", function() {
           trackCRMDebtEvent("debt_marked_paid", { debt_index: pagadaIdx });
           if (typeof trackEvent === "function") {
             trackEvent(CZ_EVENT_NAMES.DEBT_MARKED_PAID, {
-              debt_count_affected: 1,
               source: st.step === 3 ? "dashboard" : "funnel",
               action: "mark_paid",
             });

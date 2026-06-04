@@ -33,9 +33,6 @@ var CZ_GTM_EVENTS = [
   "dashboard_toast_shown",
   "plus_cta_viewed",
   "plus_cta_clicked",
-  "plus_pdf_downloaded",
-  "plus_report_email_requested",
-  "plus_feedback_submitted",
   "miplan_session_started",
   "debt_marked_paid",
   "plus_error",
@@ -89,9 +86,6 @@ var CZ_GTM_SAFE_FIELDS = [
   "session_id",
   "anonymous_id",
   "step",
-  "funnel_stage",
-  "plan_id",
-  "czuid",
   "payment_live",
   "has_gastos",
   "entry_channel",
@@ -99,16 +93,46 @@ var CZ_GTM_SAFE_FIELDS = [
   "source",
   "cta_source",
   "currency",
-  "plus_report_id",
-  "score",
-  "clarity",
-  "value",
   "has_consent_params",
-  "debt_count_affected",
   "action",
   "error_source",
   "plus_status",
 ];
+
+// Sprint 11.8 — neutral GTM acquisition buckets (no CRM cohort signals)
+function gtmEntryChannel(raw) {
+  var ch = raw;
+  if (ch == null && typeof detectEntryChannel === "function") {
+    ch = detectEntryChannel();
+  }
+  if (ch === "crm_link") return "partner";
+  if (ch === "email" || ch === "whatsapp") return "paid";
+  if (ch === "direct") return "direct";
+  return "organic";
+}
+
+function gtmSource(raw) {
+  if (!raw) return "system";
+  if (raw === "crm_reactivation" || raw === "crm_link") return "system";
+  if (
+    raw === "dashboard"
+    || raw === "dashboard_first_view"
+    || raw === "funnel"
+    || raw === "deudas_tab"
+  ) {
+    return "dashboard";
+  }
+  if (raw === "plus_tab" || raw === "hidden_factor") return "premium";
+  if (
+    raw === "bridge_screen"
+    || raw === "diagnosis_screen"
+    || raw === "diag_inicial"
+    || raw === "miplan_tab"
+  ) {
+    return "onboarding";
+  }
+  return "system";
+}
 
 // =============================================================================
 // STANDARDIZED EVENT NAMES
@@ -215,15 +239,6 @@ function safeGTMPayload(eventName, payload) {
     }
   });
 
-  // transactional value only
-  if (
-    (eventName === "checkout_started" ||
-     eventName === "payment_completed") &&
-    isGTMPrimitive(payload.value)
-  ) {
-    safe.value = payload.value;
-  }
-
   return safe;
 }
 
@@ -278,8 +293,16 @@ function trackEvent(eventName, payload) {
 
     try {
 
+      var gtmEnriched = Object.assign({}, enriched);
+      if (gtmEnriched.entry_channel !== undefined) {
+        gtmEnriched.entry_channel = gtmEntryChannel(gtmEnriched.entry_channel);
+      }
+      if (gtmEnriched.source !== undefined) {
+        gtmEnriched.source = gtmSource(gtmEnriched.source);
+      }
+
       var gtmPayload =
-        safeGTMPayload(eventName, enriched);
+        safeGTMPayload(eventName, gtmEnriched);
 
       window.dataLayer =
         window.dataLayer || [];

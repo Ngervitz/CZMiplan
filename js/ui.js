@@ -2375,20 +2375,10 @@ function renderTabIA() {
 // =============================================================================
 // TAB: Mi Plan PLUS — Sprint 14.0
 // =============================================================================
-function _plusTrackingPayload() {
-  var id = window.CZIdentity || {};
-  return {
-    czuid:   id.crm_contact_id || id.anonymous_id || null,
-    plan_id: (_st().diag ? _st().diag.planId : null),
-  };
-}
-
 function _trackPlusCtaViewed() {
   if (typeof trackEvent !== "function") return;
-  var p = _plusTrackingPayload();
   trackEvent(CZ_EVENT_NAMES.PLUS_CTA_VIEWED, {
-    czuid:   p.czuid,
-    plan_id: p.plan_id,
+    cta_source: "plus_tab",
   });
 }
 
