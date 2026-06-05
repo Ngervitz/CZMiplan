@@ -121,6 +121,7 @@ function recalcDiagYGuardar() {
   }
   if (typeof calcularMotor === "function") {
     st.diag = calcularMotor();
+    st._diagSource = "live_calc";
   }
   window.guardarLocal();
   _maybeCelebratePositiveFlow(st, prevFlujo);
@@ -1021,6 +1022,7 @@ function next() {
     }
 
     st.diag = calcularMotor();
+    st._diagSource = "live_calc";
 
     st.saldoIni = st.deudas.reduce(function(s, d) {
       return s + (parseFloat(d.monto) || 0);
@@ -1257,10 +1259,20 @@ function trackMiplanSessionStartedOnce() {
 // =============================================================================
 // INIT
 // DATA SOURCE PRIORITY:
+//   0. Complete survey URL (p1–p10) — fresh evaluation (ignores stored diag/debts/gastos)
 //   1. CRM hydration via czuid (if present in URL)
 //   2. localStorage (authoritative fallback — never overwritten by null CRM)
 //   3. Bridge screen (step 0) — when neither source has valid behavioral data
 // =============================================================================
+function _hasCompleteSurveyParams() {
+  return PRE
+    && PRE.respuestas
+    && ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"].every(function(k) {
+      var v = PRE.respuestas[k];
+      return v !== null && v !== undefined && v !== "";
+    });
+}
+
 async function init() {
   trackMiplanSessionStartedOnce();
 
@@ -1275,16 +1287,17 @@ async function init() {
 
   // Step 2 — localStorage (always checked; authoritative when CRM returns null)
   var sesion = cargarLocal();
+  var hasSurveyParams = _hasCompleteSurveyParams();
 
-  // Resolve priority: CRM > localStorage > bridge
+  // Resolve priority: complete survey URL > CRM > localStorage > bridge
   // Rule: a null CRM response NEVER overwrites valid localStorage state
   var dataToUse = null;
 
-  if (crmData && crmData.diag) {
+  if (!hasSurveyParams && crmData && crmData.diag) {
     dataToUse = crmData;
     trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_APPLIED, { source: "crm_link" });
 
-  } else if (sesion && sesion.diag) {
+  } else if (!hasSurveyParams && sesion && sesion.diag) {
     dataToUse = sesion;
     if (crmContactId) {
       trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_FALLBACK_TO_LOCAL, { source: "crm_link" });
@@ -1294,8 +1307,39 @@ async function init() {
   var st  = window.CZState;
   var now = new Date().toISOString();
 
+  st._localStoragePresent = !!(sesion && sesion.diag);
+  st._crmHydrated = !!(crmData && crmData.diag);
+
+  if (hasSurveyParams) {
+    st._diagSource = "fresh_url";
+    st.diag = null;
+    st.snap = null;
+    st.deudas = [];
+    st.gastos = {};
+    st.custom_expenses = [];
+    st.saldoIni = 0;
+    st.step = 3;
+    st.tab = "plan";
+    st.gastos_missing_confirmed = true;
+
+    if (typeof calcularMotor === "function") {
+      st.diag = calcularMotor();
+    }
+
+    st.snap = {
+      fecha_inicio:  now,
+      score_reset:   st.diag ? st.diag.scoreReset : null,
+      nivel:         st.diag ? st.diag.nivelR : null,
+      plan_id:       st.diag ? st.diag.planId : null,
+      saldo_inicial: 0,
+    };
+    st.first_assessment_at = now;
+    st.temporal.dashboard_generated_at = now;
+    setRecoveryState("dashboard_generated");
+
   // Restore saved state (including new infrastructure fields)
-  if (dataToUse) {
+  } else if (dataToUse) {
+    st._diagSource = st._crmHydrated ? "crm" : "localStorage";
     st.step               = 3;
     st.gastos             = typeof migrateGastosKeys === "function"
       ? migrateGastosKeys(dataToUse.gastos || {})
@@ -1338,6 +1382,8 @@ async function init() {
     // Sprint 10.1 — restore feedback suggestions
     if (dataToUse.feedback_suggestions) st.feedback_suggestions = dataToUse.feedback_suggestions;
     if (dataToUse.first_assessment_at) st.first_assessment_at = dataToUse.first_assessment_at;
+  } else {
+    st._diagSource = "url_pending";
   }
 
   if (
@@ -1362,7 +1408,9 @@ async function init() {
 
   // Set initial recovery state if not yet established
   if (!st.user_recovery_state) {
-    if (dataToUse) {
+    if (hasSurveyParams) {
+      // set in fresh URL path above
+    } else if (dataToUse) {
       setRecoveryState("dashboard_generated");
     } else if (TIENE_ENCUESTA) {
       setRecoveryState("survey_completed");

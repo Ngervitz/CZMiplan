@@ -1408,43 +1408,6 @@ function renderBloqueadores(diag) {
     + '</div>';
 }
 
-function _isRetryCtaDebugEnabled() {
-  if (typeof window === "undefined" || !window.location) return false;
-  var search = window.location.search || "";
-  return /[?&]debug_retry=1(?:&|$)/.test(search);
-}
-
-function renderRetryCtaDebugPanel(diag, st) {
-  if (!_isRetryCtaDebugEnabled()) return "";
-  diag = diag || {};
-  st = st || window.CZState || _st();
-  var fin = diag.fin || {};
-  var iv2 = diag.interpretacion_v2 || {};
-  var h = diag.horizonte || {};
-  var retryState = (window.CredizonaUI && typeof window.CredizonaUI.getRetryCtaState === "function")
-    ? window.CredizonaUI.getRetryCtaState(diag, st)
-    : (typeof getRetryCtaState === "function" ? getRetryCtaState(diag, st) : "n/a");
-  var row = function(label, val) {
-    return '<div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.06);">'
-      + '<span style="color:#8390b5;">' + label + "</span>"
-      + '<span style="color:#ffd36f;font-weight:700;text-align:right;">' + (val != null ? String(val) : "—") + "</span>"
-      + "</div>";
-  };
-  return '<div id="cz-retry-cta-debug" class="plan-card" style="margin-top:12px;background:rgba(255,211,111,.06);border:1px solid rgba(255,211,111,.25);">'
-    + '<div style="font-size:12px;font-weight:800;color:#ffd36f;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Debug retry CTA</div>'
-    + row("score", diag.scoreReset)
-    + row("planId", diag.planId)
-    + row("horizon banda", h.banda)
-    + row("flujoLibre", fin.flujoLibre)
-    + row("ratio", fin.ratio)
-    + row("confidence_level", iv2.confidence_level)
-    + row("financial_reality_warning", diag.financial_reality_warning)
-    + row("missing_payment_information", diag.missing_payment_information)
-    + row("retryState", retryState)
-    + row("snap.plan_id", st.snap ? st.snap.plan_id : null)
-    + "</div>";
-}
-
 function _retryHorizonAddonHtml(diag, st) {
   diag = diag || {};
   st = st || (typeof window !== "undefined" ? window.CZState : null) || _st();
@@ -1924,7 +1887,6 @@ function renderTabPlan() {
 
     // 4. Horizonte estimado para recalificar
     + renderHorizonteRecalificacion(diag, st)
-    + renderRetryCtaDebugPanel(diag, st)
 
     // Sprint 9 / 14.0c — Hidden Factor entry → ★ Mi Plan Plus tab
     + (typeof detectHiddenFactorOpportunity === "function" && detectHiddenFactorOpportunity(diag)
