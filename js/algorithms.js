@@ -333,6 +333,43 @@ function calcularHorizonte(fin, ing) {
 }
 
 // =============================================================================
+// FINANCIAL REALITY WARNING — additive presentation layer
+// Uses fin.totalPago and PRE.ingreso from calcularFinanciero(); does not alter
+// scoring, plan assignment, guardrails, DTI, horizonte, or interpretation.
+// =============================================================================
+function evaluarFinancialRealityWarning(fin, ingreso) {
+  fin = fin || {};
+  var totalPagosDeuda = fin.totalPago != null ? fin.totalPago : 0;
+  ingreso = ingreso != null ? ingreso : 0;
+
+  if (ingreso <= 0) {
+    return {
+      financial_reality_warning: false,
+      financial_reality_warning_type: null,
+    };
+  }
+
+  if (totalPagosDeuda > ingreso) {
+    return {
+      financial_reality_warning: true,
+      financial_reality_warning_type: "payments_exceed_income",
+    };
+  }
+
+  if (totalPagosDeuda >= ingreso * 0.8 && totalPagosDeuda <= ingreso) {
+    return {
+      financial_reality_warning: true,
+      financial_reality_warning_type: "high_payment_pressure",
+    };
+  }
+
+  return {
+    financial_reality_warning: false,
+    financial_reality_warning_type: null,
+  };
+}
+
+// =============================================================================
 // MOTOR COMPLETO
 // =============================================================================
 // =============================================================================
@@ -636,6 +673,10 @@ function calcularMotor() {
   result.interpretacion_v2.guardrail_reason   = guardrail.guardrail_reason;
 
   alignInterpretacionV2ConPlan(result.interpretacion_v2, result.planId);
+
+  var frWarning = evaluarFinancialRealityWarning(fin, PRE.ingreso);
+  result.financial_reality_warning      = frWarning.financial_reality_warning;
+  result.financial_reality_warning_type = frWarning.financial_reality_warning_type;
 
   return result;
 }

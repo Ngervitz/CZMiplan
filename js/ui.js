@@ -1253,6 +1253,27 @@ function renderRelacionDeudaIngreso(diag) {
     + '</div>';
 }
 
+function renderFinancialRealityWarning(diag) {
+  if (!diag || !diag.financial_reality_warning) return "";
+
+  var msg = "";
+  if (diag.financial_reality_warning_type === "high_payment_pressure") {
+    msg = "⚠️ Tus pagos de deuda consumen casi todo tu ingreso mensual. Tu margen para afrontar imprevistos es muy reducido.";
+  } else if (diag.financial_reality_warning_type === "payments_exceed_income") {
+    msg = "🚨 Los pagos de deuda que registraste superan tu ingreso mensual. Con estos datos, tu situación financiera no parece sostenible en el tiempo.";
+  }
+  if (!msg) return "";
+
+  var isCritical = diag.financial_reality_warning_type === "payments_exceed_income";
+  return '<div class="financial-reality-warning" role="alert" style="'
+    + (isCritical
+        ? "background:rgba(255,78,114,.08);border:1px solid rgba(255,78,114,.28);"
+        : "background:rgba(255,196,0,.08);border:1px solid rgba(255,196,0,.25);")
+    + 'border-radius:14px;padding:14px 18px;margin-bottom:16px;font-size:14px;line-height:1.6;color:'
+    + (isCritical ? "#ff8fa8" : "#ffd447")
+    + ';">' + msg + "</div>";
+}
+
 function renderPlan4SinDeudaActivaExplicacion(diag) {
   if (!diag || diag.planId !== 4) return "";
 
@@ -1695,6 +1716,7 @@ function renderTabPlan() {
 
   return '<div class="fade">'
     + _gastosMissingCard
+    + renderFinancialRealityWarning(diag)
     + _dashIaSectionOpen(true, "situacion")
     + _dashIaLabel("Tu situación actual", "situacion")
     + '<div style="margin-bottom:20px;padding:14px 18px;'
