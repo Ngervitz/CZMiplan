@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>QA — Synthetic Motor (20 profiles)</title>
+<style>
+  body { font-family: Inter, system-ui, sans-serif; background: #050816; color: #c8d0e8; padding: 16px; }
+  h1 { font-size: 18px; color: #40d7ff; }
+  p { font-size: 14px; line-height: 1.5; color: #8390b5; }
+  button { margin-top: 12px; padding: 10px 16px; font-size: 14px; cursor: pointer; }
+</style>
+<!-- Survey params on load so TIENE_ENCUESTA is true for encuesta profiles -->
+<script>
+  if (!location.search) {
+    var q = ["ingreso=1"];
+    for (var i = 1; i <= 10; i++) q.push("p" + i + "=A");
+    location.replace(location.pathname + "?" + q.join("&"));
+  }
+</script>
+</head>
+<body>
+<h1>Synthetic Motor QA</h1>
+<p>Runs 20 profiles through <code>calcularMotor()</code> with an isolated PRE/CZState adapter. Open DevTools console for output.</p>
+<button type="button" id="btn-run">Run SyntheticMotorQA.runAll()</button>
+<script src="../js/config.js"></script>
+<script src="../js/creditors.js"></script>
+<script src="../js/survey.js"></script>
+<script src="../js/algorithms.js"></script>
+<script src="synthetic-motor-test.js"></script>
+<script>
+  document.getElementById("btn-run").addEventListener("click", function() {
+    if (window.SyntheticMotorQA) SyntheticMotorQA.runAll();
+    else console.error("SyntheticMotorQA not loaded");
+  });
+  if (window.SyntheticMotorQA) SyntheticMotorQA.runAll();
+</script>
+</body>
+</html>
