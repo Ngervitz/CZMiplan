@@ -1713,32 +1713,45 @@ function _renderTuSituacionHoy(diag, st) {
 }
 
 // =============================================================================
-// RETRY APPLICATION CTA — Mi Plan dashboard (locked / unlocked)
-// Not preapproval. Lower planId = better (snap.plan_id > diag.planId = improvement).
+// RETRY APPLICATION CTA — Mi Plan dashboard (locked / unlocked / hidden)
+// Not preapproval. snap is used for contextual copy only, not eligibility.
 // =============================================================================
 function getRetryCtaState(diag, st) {
   diag = diag || {};
   st = st || {};
-  if (!st.snap) return "hidden";
-
-  var snapPlan = parseInt(st.snap.plan_id, 10);
   var diagPlan = parseInt(diag.planId, 10);
-  if (isNaN(snapPlan) || isNaN(diagPlan)) return "locked";
+
+  if (!st.snap && (isNaN(diagPlan) || diagPlan > 2)) return "hidden";
 
   var fin = diag.fin || {};
   var iv2 = diag.interpretacion_v2 || {};
+  var h = diag.horizonte || {};
   var flujo = fin.flujoLibre != null ? fin.flujoLibre : 0;
   var ratio = fin.ratio != null ? fin.ratio : 0;
+  var isPositiveHorizon = h.banda === "inmediato" || h.banda === "corto";
 
-  var unlocked = snapPlan > diagPlan
+  var unlocked = !isNaN(diagPlan)
     && diagPlan <= 2
     && flujo > 0
     && iv2.confidence_level !== "low"
     && diag.financial_reality_warning !== true
     && diag.missing_payment_information !== true
-    && ratio <= 0.35;
+    && ratio <= 0.35
+    && isPositiveHorizon;
 
   return unlocked ? "unlocked" : "locked";
+}
+
+function _retryCtaUnlockedCopy(diag, st) {
+  st = st || {};
+  if (st.snap) {
+    var snapPlan = parseInt(st.snap.plan_id, 10);
+    var diagPlan = parseInt(diag.planId, 10);
+    if (!isNaN(snapPlan) && !isNaN(diagPlan) && snapPlan > diagPlan) {
+      return "Tu situación mejoró desde tu evaluación inicial.";
+    }
+  }
+  return "Con los datos actuales, tu perfil parece estar en condiciones de revisar una nueva solicitud.";
 }
 
 function _trackRetryCtaShown(state, diag, st) {
@@ -1770,7 +1783,12 @@ function renderRetryCtaHorizonAddon(diag, st) {
     ? "width:100%;height:52px;font-size:16px;opacity:.9;cursor:not-allowed;margin-top:16px;" + btnGreen
     : "width:100%;height:52px;font-size:16px;margin-top:16px;" + btnGreen;
 
+  var introCopy = _retryCtaUnlockedCopy(diag, st);
+
   return '<div style="margin-top:16px;">'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.85);line-height:1.65;margin-bottom:14px;">'
+    + introCopy
+    + "</div>"
     + '<button type="button" class="btn btn-primary" id="btn-retry-application"'
     + (btnDisabled ? " disabled" : "")
     + ' style="' + btnStyle + '">Solicitar préstamo nuevamente</button>'
