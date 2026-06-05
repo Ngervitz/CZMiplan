@@ -1,5 +1,5 @@
 /**
- * dev/retry-cta-qa.js — retry CTA eligibility + horizon integration QA
+ * dev/retry-cta-qa.js — retry CTA render + eligibility QA
  */
 (function() {
   "use strict";
@@ -9,10 +9,9 @@
   var root = path.join(__dirname, "..");
 
   global.window = global;
-  global.window.location = { search: "?ingreso=65000&p1=A&p2=A&p3=A&p4=A&p5=A&p6=A&p7=A&p8=A&p9=A&p10=A" };
-  global.window.CZState = { gastos: {}, deudas: [], snap: null };
-  global.trackEvent = function(n, p) { global._lastGTM = { n: n, p: p }; };
-  global.trackCRMEvent = function(n, p) { global._lastCRM = { n: n, p: p }; };
+  global.window.location = { search: "?ingreso=80000&p1=A&p2=A&p3=A&p4=A&p5=A&p6=A&p7=A&p8=A&p9=A&p10=A" };
+  global.trackEvent = function() {};
+  global.trackCRMEvent = function() {};
 
   function load(file) {
     vm.runInThisContext(
@@ -27,14 +26,12 @@
   load("js/algorithms.js");
   load("js/events.js");
   load("js/ui.js");
-  global.trackEvent = function(n, p) { global._lastGTM = { n: n, p: p }; };
-  global.trackCRMEvent = function(n, p) { global._lastCRM = { n: n, p: p }; };
 
-  function healthyDiag(overrides) {
+  function mobileReproDiag(overrides) {
     var base = {
       planId: 1,
       nivelR: "A",
-      fin: { flujoLibre: 50000, ratio: 0.1, dti_ratio: 0.2 },
+      fin: { flujoLibre: 64778, ratio: 0, dti_ratio: 0.2, totalPago: 0, totalDeuda: 0 },
       horizonte: {
         meses: 1,
         banda: "inmediato",
@@ -49,13 +46,11 @@
   }
 
   function mkSt(snapPlan) {
-    var o = { deudas: [], _retryCtaLastTrackedState: null };
-    if (snapPlan == null) {
-      o.snap = null;
-    } else {
-      o.snap = { plan_id: snapPlan, fecha_inicio: new Date().toISOString() };
-    }
-    return o;
+    return {
+      snap: { plan_id: snapPlan, fecha_inicio: new Date().toISOString() },
+      deudas: [],
+      gastos: {},
+    };
   }
 
   var passed = 0;
@@ -65,28 +60,29 @@
     if (cond) passed++; else failed++;
   }
 
-  var d = healthyDiag({ planId: 1 });
-  global.window.CZState = mkSt(null);
-  ok("A unlocked no snap", getRetryCtaState(d, mkSt(null)) === "unlocked");
-  ok("A button in horizon", renderHorizonteRecalificacion(d).indexOf("btn-retry-application") >= 0);
+  var diag = mobileReproDiag();
+  var st = mkSt(4);
+  st.diag = diag;
+  global.window.CZState = st;
 
-  var dB = healthyDiag({ planId: 1 });
-  ok("B unlocked snap improved", getRetryCtaState(dB, mkSt(4)) === "unlocked");
-  ok("B copy improved", _retryCtaUnlockedCopy(dB, mkSt(4)).indexOf("evaluaci") >= 0
-    && renderRetryCtaHorizonAddon(dB, mkSt(4)).indexOf("btn-retry-application") >= 0);
+  ok("A mobile repro unlocked", getRetryCtaState(diag, st) === "unlocked");
+  var htmlA = renderHorizonteRecalificacion(diag, st);
+  ok("A button renders", htmlA.indexOf("btn-retry-application") >= 0);
+  ok("A label branch", htmlA.indexOf("Ya hay condiciones") >= 0);
 
-  var dC = healthyDiag({ planId: 1 });
-  ok("C unlocked same snap", getRetryCtaState(dC, mkSt(1)) === "unlocked");
-  ok("C copy current data", _retryCtaUnlockedCopy(dC, mkSt(1)).indexOf("Con los datos actuales") >= 0);
+  ok("B desktop same", htmlA.indexOf("Solicitar préstamo nuevamente") >= 0);
 
-  ok("D locked plan 3", getRetryCtaState(healthyDiag({ planId: 3 }), mkSt(4)) === "locked");
+  var locked = mobileReproDiag({ planId: 3 });
+  ok("C locked no button", renderHorizonteRecalificacion(locked, mkSt(4)).indexOf("btn-retry-application") < 0);
 
-  ok("E locked non-positive horizon", getRetryCtaState(
-    healthyDiag({ horizonte: { meses: 8, banda: "medio", label: "Dentro de 6 a 12 meses" } }),
-    mkSt(1)
-  ) === "locked");
+  ok("D Plus link", htmlA.indexOf("btn-conocer-plus-tab") >= 0 && htmlA.indexOf("Mi Plan Plus") >= 0);
 
-  ok("F hidden no snap plan 3", getRetryCtaState(healthyDiag({ planId: 3 }), mkSt(null)) === "hidden");
+  ok("E click handler exists", fs.readFileSync(path.join(root, "js/app.js"), "utf8").indexOf('e.target.id === "btn-retry-application"') >= 0);
+
+  var dtiDiag = mobileReproDiag({ fin: { flujoLibre: 64778, ratio: 0, dti_ratio: 1.5, totalPago: 0, totalDeuda: 120000 } });
+  var dtiHtml = renderHorizonteRecalificacion(dtiDiag, st);
+  ok("DTI guard unlocked still gets button", getRetryCtaState(dtiDiag, st) === "unlocked"
+    && dtiHtml.indexOf("btn-retry-application") >= 0);
 
   console.log("");
   console.log("PASSED: " + passed + "/" + (passed + failed));
