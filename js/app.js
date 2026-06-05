@@ -267,6 +267,36 @@ function normalizeDebtPagoForSave(d) {
   }
 }
 
+var DEBT_MSG_PAGO_ACTIVO_REQUERIDO = "Para indicar que la deuda está siendo pagada necesitás ingresar un pago mensual mayor a $0.";
+var DEBT_MSG_PAGO_EXCEDE_SALDO = "El pago mensual no puede ser mayor al saldo total de la deuda.";
+
+function debtActivePagoAmount(d) {
+  if (!d) return NaN;
+  var sit = d.situacion_ui || "";
+  if (sit === "atrasado_pagando") {
+    var ultStr = d.ultimo_pago_declarado == null ? "" : String(d.ultimo_pago_declarado).trim();
+    if (ultStr !== "") return parseDebtNumeric(ultStr);
+    var pagoStr = d.pago == null ? "" : String(d.pago).trim();
+    if (pagoStr !== "") return parseDebtNumeric(pagoStr);
+    return NaN;
+  }
+  if (sit === "pagando_normal") {
+    var ps = d.pago == null ? "" : String(d.pago).trim();
+    if (ps === "") return NaN;
+    return parseDebtNumeric(ps);
+  }
+  return NaN;
+}
+
+function debtDeclaredPagoAmount(d) {
+  if (!d) return NaN;
+  var sit = d.situacion_ui || "";
+  if (sit === "atrasado_pagando") return debtActivePagoAmount(d);
+  var pagoStr = d.pago == null ? "" : String(d.pago).trim();
+  if (pagoStr === "") return NaN;
+  return parseDebtNumeric(pagoStr);
+}
+
 function validateDebtForSave(d) {
   if (!d) {
     return { ok: false, msg: "Completá los datos de la deuda para continuar." };
@@ -279,6 +309,18 @@ function validateDebtForSave(d) {
   if (isNaN(saldo) || saldo <= 0) {
     return { ok: false, msg: "El saldo debe ser mayor a 0." };
   }
+  if (!d.situacion_ui) {
+    return { ok: false, msg: "Seleccioná qué está pasando con esta deuda." };
+  }
+
+  var sit = d.situacion_ui || "";
+  if (sit === "pagando_normal" || sit === "atrasado_pagando") {
+    var pagoActivo = debtActivePagoAmount(d);
+    if (Number.isNaN(pagoActivo) || pagoActivo <= 0) {
+      return { ok: false, msg: DEBT_MSG_PAGO_ACTIVO_REQUERIDO };
+    }
+  }
+
   var pagoStr = d.pago == null ? "" : String(d.pago).trim();
   if (pagoStr !== "") {
     var pagoMensual = parseDebtNumeric(pagoStr);
@@ -286,9 +328,12 @@ function validateDebtForSave(d) {
       return { ok: false, msg: "El pago mensual no puede ser negativo." };
     }
   }
-  if (!d.situacion_ui) {
-    return { ok: false, msg: "Seleccioná qué está pasando con esta deuda." };
+
+  var pagoDeclarado = debtDeclaredPagoAmount(d);
+  if (!Number.isNaN(pagoDeclarado) && pagoDeclarado > saldo) {
+    return { ok: false, msg: DEBT_MSG_PAGO_EXCEDE_SALDO };
   }
+
   return { ok: true, msg: "" };
 }
 
@@ -755,6 +800,13 @@ function completarCompraPlus() {
       plus_purchased_at: now,
       plan_id:          ids.plan_id,
       score_reset:      st.diag ? st.diag.scoreReset : null,
+    });
+  }
+
+  if (typeof trackEvent === "function") {
+    trackEvent(CZ_EVENT_NAMES.PLUS_PURCHASED, {
+      value:    1290,
+      currency: "UYU",
     });
   }
 
