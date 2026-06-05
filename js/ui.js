@@ -3056,19 +3056,13 @@ function renderTabPlus() {
 function renderHerramientas() {
   var diag = _diag();
   if (!diag) return "";
-  var herr = _herr();
   var pid  = diag.planId;
-  var pc   = diag.plan.color;
-  var comp = contarCompletadas();
-  var totalHerr = totalHerramientas();
 
   var html = '<div style="margin-top:4px;">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-    + '<div><div style="font-size:20px;font-weight:900;">Herramientas recomendadas</div>'
-    + '<div style="font-size:15px;color:#8390b5;margin-top:2px;">Usá estas herramientas para entender mejor tu situación.</div></div>'
-    + '<div style="text-align:right;"><div style="font-size:44px;font-weight:900;color:' + (comp === totalHerr ? pc : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + comp + '/' + totalHerr + '</div>'
-    + '<div style="font-size:14px;color:#8390b5;">completadas</div></div></div>'
-    + '<div class="progress-wrap" style="margin-bottom:18px;"><div class="progress-bar" style="width:' + Math.round(comp / totalHerr * 100) + '%;background:' + pc + ';"></div></div>';
+    + '<div style="margin-bottom:18px;">'
+    + '<div style="font-size:20px;font-weight:900;">Acciones recomendadas</div>'
+    + '<div style="font-size:15px;color:#8390b5;margin-top:2px;">Pasos concretos basados en tu diagnóstico actual.</div>'
+    + '</div>';
 
   if      (pid === 1) html += renderHerramientasPlan1();
   else if (pid === 2) html += renderHerramientasPlan2();
@@ -3077,26 +3071,6 @@ function renderHerramientas() {
   else                html += renderHerramientasPlan5();
 
   return html + '</div>';
-}
-
-function totalHerramientas() {
-  var pid = (_diag() || {}).planId;
-  if (pid === 4) return 2;
-  if (pid === 5) return 1;
-  if (pid === 1) return 3;
-  return 3;
-}
-
-function contarCompletadas() {
-  var herr = _herr();
-  var pid  = (_diag() || {}).planId;
-  if (pid === 1) return [herr.ingresos && herr.ingresos.total > 0, Object.keys(herr.gastos_cls||{}).length > 0, herr.ingresos && herr.ingresos.total > 0 && Object.keys(herr.gastos_cls||{}).length > 0].filter(Boolean).length;
-  if (pid === 2) return [Object.keys(herr.gestiones||{}).length > 0, Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
-  // Plan 3 h1 is now a derived pressure diagnostic (always complete — no date inputs required)
-  if (pid === 3) return [true, Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
-  if (pid === 4) return [Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
-  if (pid === 5) return [Object.keys(herr.atrasos||{}).length > 0].filter(Boolean).length;
-  return 0;
 }
 
 function renderToolCard(num, titulo, desc, contenido, done) {
@@ -3165,10 +3139,26 @@ function renderAccionRecomendadaItem(accion, index) {
     + '<div class="compromiso-text">' + accion.texto + '</div></div></div>';
 }
 
+function _fallbackAccionesPlan5() {
+  return [
+    { id: "plan5_atrasos_reportados", texto: "Revisar si tus atrasos siguen reportados", tipo: "accion", urgencia: "alta" },
+    { id: "plan5_pagos_reflejados", texto: "Confirmar que tus pagos recientes estén reflejados", tipo: "accion", urgencia: "media" },
+    { id: "plan5_evitar_solicitudes", texto: "Evitar nuevas solicitudes hasta ordenar el estado reportado", tipo: "accion", urgencia: "media" },
+  ];
+}
+
 function renderAccionesRecomendadasHtml(diag) {
   var acciones = typeof seleccionarAccionesRecomendadas === "function"
     ? seleccionarAccionesRecomendadas(diag)
     : [];
+  if (diag && diag.planId === 5 && acciones.length < 3) {
+    var fb5 = _fallbackAccionesPlan5();
+    for (var fi = 0; fi < fb5.length && acciones.length < 3; fi++) {
+      if (!acciones.some(function(a) { return a.id === fb5[fi].id; })) {
+        acciones.push(fb5[fi]);
+      }
+    }
+  }
   if (acciones.length > 5) acciones = acciones.slice(0, 5);
   _trackAccionesMostradasOnce(diag, acciones);
 
@@ -3427,9 +3417,10 @@ function renderHerramientasPlan4() {
 
 // ---- Plan 5 ----
 function renderHerramientasPlan5() {
-  var herr = _herr();
-  var atr  = herr.atrasos  || {};
-  var c1 = Object.keys(atr).length > 0;
+  var diag  = _diag();
+  var herr  = _herr();
+  var atr   = herr.atrasos || {};
+  var deudas = _st().deudas || [];
   var EATR = [
     { v: "sin_gestionar", l: "Sin gestionar" },
     { v: "en_negociacion",l: "En proceso de negociacion" },
@@ -3437,9 +3428,15 @@ function renderHerramientasPlan5() {
     { v: "regularizada",  l: "Regularizada" },
   ];
 
-  var h1 = renderToolCard(1, "Estado de tus atrasos reportados", "Actualiza el estado de cada deuda a medida que avanzas.",
+  var h1 = renderToolCard(1, "Acciones recomendadas para tu situación", "Basadas en tu diagnóstico actual.",
+    renderAccionesRecomendadasHtml(diag),
+    accionesRecomendadasCompletadas(diag));
+
+  if (!deudas.length) return h1;
+
+  var h2 = renderToolCard(2, "Estado de tus atrasos reportados", "Actualiza el estado de cada deuda a medida que avanzas.",
     '<div style="margin-top:8px;">'
-    + (_st().deudas || []).map(function(d, i) {
+    + deudas.map(function(d, i) {
         var key = d.acreedor || d.tipo || "d" + (i + 1);
         var est = atr[key] || "sin_gestionar";
         return '<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
@@ -3448,9 +3445,9 @@ function renderHerramientasPlan5() {
           + (est === "regularizada" ? '<div class="micro-insight" style="margin-top:8px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);color:#34ffaf;">Excelente! Eso mejora directamente tu perfil crediticio.</div>' : "")
           + '</div>';
       }).join("")
-    + '</div>', c1);
+    + '</div>', Object.keys(atr).length > 0);
 
-  return h1;
+  return h1 + h2;
 }
 
 // =============================================================================
