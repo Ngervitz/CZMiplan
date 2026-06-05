@@ -1509,6 +1509,23 @@ function renderHorizonteRecalificacion(diag, st) {
 
   var horizonLabel = h.label;
   var isPositiveHorizon = h.banda === "inmediato" || h.banda === "corto";
+  var isLowConfidencePositiveHorizon =
+    iv2.confidence_level === "low"
+    && isPositiveHorizon;
+
+  if (isLowConfidencePositiveHorizon) {
+    return '<div class="plan-card" style="border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);">'
+      + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
+      + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">Necesitamos completar tu diagnóstico</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Hay señales positivas en la información que registraste, pero todavía faltan datos para estimar con confianza si estás en condiciones de presentar una nueva solicitud.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Completá la información pendiente para obtener una evaluación más precisa.</div>'
+      + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
+      + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
+      + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
+      + '</div>'
+      + '</div>';
+  }
+
   var col  = isPositiveHorizon ? "#34ffaf" : h.banda === "medio" ? "#ffd36f" : "#8390b5";
   var bg   = isPositiveHorizon ? "rgba(52,255,175,.06)"  : h.banda === "medio" ? "rgba(255,211,111,.06)"  : "rgba(255,255,255,.03)";
   var bord = isPositiveHorizon ? "rgba(52,255,175,.2)"   : h.banda === "medio" ? "rgba(255,211,111,.18)"  : "rgba(255,255,255,.08)";

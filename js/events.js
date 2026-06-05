@@ -37,7 +37,6 @@ var CZ_GTM_EVENTS = [
   "debt_marked_paid",
   "plus_error",
   "plus_purchased",
-  "retry_cta_shown",
   "retry_cta_clicked",
 ];
 
@@ -77,7 +76,6 @@ var CZ_CRM_ONLY_EVENTS = [
   "plus_report_email_requested",
   "plus_feedback_submitted",
   "retry_cta_shown",
-  "retry_cta_clicked",
 ];
 
 // =============================================================================
