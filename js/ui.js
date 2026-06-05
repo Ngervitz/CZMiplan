@@ -1492,9 +1492,14 @@ function renderHorizonteRecalificacion(diag) {
   }
 
   var horizonLabel = h.label;
-  var col  = (h.banda === "inmediato" || h.banda === "corto") ? "#34ffaf" : h.banda === "medio" ? "#ffd36f" : "#8390b5";
-  var bg   = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.06)"  : h.banda === "medio" ? "rgba(255,211,111,.06)"  : "rgba(255,255,255,.03)";
-  var bord = (h.banda === "inmediato" || h.banda === "corto") ? "rgba(52,255,175,.2)"   : h.banda === "medio" ? "rgba(255,211,111,.18)"  : "rgba(255,255,255,.08)";
+  var isPositiveHorizon = h.banda === "inmediato" || h.banda === "corto";
+  var col  = isPositiveHorizon ? "#34ffaf" : h.banda === "medio" ? "#ffd36f" : "#8390b5";
+  var bg   = isPositiveHorizon ? "rgba(52,255,175,.06)"  : h.banda === "medio" ? "rgba(255,211,111,.06)"  : "rgba(255,255,255,.03)";
+  var bord = isPositiveHorizon ? "rgba(52,255,175,.2)"   : h.banda === "medio" ? "rgba(255,211,111,.18)"  : "rgba(255,255,255,.08)";
+  var hzSt = _st();
+  var retryHorizonAddon = (isPositiveHorizon && getRetryCtaState(diag, hzSt) === "unlocked")
+    ? renderRetryCtaHorizonAddon(diag, hzSt)
+    : "";
   return '<div class="plan-card" style="border-color:' + bord + ';background:' + bg + ';">'
     + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
     + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + horizonLabel + '</div>'
@@ -1502,7 +1507,9 @@ function renderHorizonteRecalificacion(diag) {
     + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
     + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
     + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
-    + '</div></div>';
+    + '</div>'
+    + retryHorizonAddon
+    + '</div>';
 }
 
 // @deprecated — hidden Sprint 7.1
@@ -1709,20 +1716,10 @@ function _renderTuSituacionHoy(diag, st) {
 // RETRY APPLICATION CTA — Mi Plan dashboard (locked / unlocked)
 // Not preapproval. Lower planId = better (snap.plan_id > diag.planId = improvement).
 // =============================================================================
-function _retryCtaActiveDebtCount(st) {
-  return typeof deudasActivasParaCalculo === "function"
-    ? deudasActivasParaCalculo((st && st.deudas) || []).length
-    : 0;
-}
-
 function getRetryCtaState(diag, st) {
   diag = diag || {};
   st = st || {};
   if (!st.snap) return "hidden";
-
-  var activeCount = _retryCtaActiveDebtCount(st);
-  var hasContext = (typeof TIENE_ENCUESTA !== "undefined" && TIENE_ENCUESTA) || activeCount > 0;
-  if (!hasContext) return "hidden";
 
   var snapPlan = parseInt(st.snap.plan_id, 10);
   var diagPlan = parseInt(diag.planId, 10);
@@ -1762,49 +1759,32 @@ function _trackRetryCtaShown(state, diag, st) {
   }
 }
 
-function renderRetryCta(diag, st) {
-  var state = getRetryCtaState(diag, st);
-  if (state === "hidden") return "";
-  _trackRetryCtaShown(state, diag, st);
-
-  if (state === "locked") {
-    return '<div id="cz-retry-cta" class="plan-card" style="margin-bottom:16px;'
-      + "background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);opacity:.88;"
-      + '">'
-      + '<div style="font-size:22px;margin-bottom:10px;line-height:1;">🔒</div>'
-      + '<div style="font-size:17px;font-weight:700;color:rgba(255,255,255,.72);margin-bottom:10px;">Nueva solicitud</div>'
-      + '<div style="font-size:14px;color:#6b7280;line-height:1.65;">'
-      + "Seguí mejorando tu situación en Mi Plan.<br>"
-      + "Cuando tu perfil esté listo, vas a poder revisar una nueva solicitud desde acá."
-      + "</div></div>";
-  }
+function renderRetryCtaHorizonAddon(diag, st) {
+  if (getRetryCtaState(diag, st) !== "unlocked") return "";
+  _trackRetryCtaShown("unlocked", diag, st);
 
   var retryUrl = typeof buildRetryApplicationUrl === "function" ? buildRetryApplicationUrl() : null;
   var btnDisabled = !retryUrl;
   var btnStyle = btnDisabled
-    ? "width:100%;height:52px;font-size:16px;opacity:.5;cursor:not-allowed;"
-    : "width:100%;height:52px;font-size:16px;";
+    ? "width:100%;height:52px;font-size:16px;opacity:.5;cursor:not-allowed;margin-top:16px;"
+    : "width:100%;height:52px;font-size:16px;margin-top:16px;";
 
-  return '<div id="cz-retry-cta" class="plan-card" style="margin-bottom:16px;'
-    + "background:rgba(91,124,255,.08);border:1px solid rgba(91,124,255,.28);"
-    + '">'
-    + '<div style="font-size:22px;margin-bottom:10px;line-height:1;">✅</div>'
-    + '<div style="font-size:17px;font-weight:800;color:#5b7cff;margin-bottom:10px;">Podés volver a intentarlo</div>'
-    + '<div style="font-size:14px;color:rgba(255,255,255,.85);line-height:1.65;margin-bottom:14px;">'
-    + "Tu situación mejoró desde tu evaluación inicial.<br>"
-    + "Si querés, podés revisar una nueva solicitud con estos datos."
-    + "</div>"
-    + '<div style="font-size:12px;color:#8390b5;line-height:1.6;margin-bottom:16px;">'
+  return '<div style="margin-top:16px;">'
+    + '<button type="button" class="btn btn-primary" id="btn-retry-application"'
+    + (btnDisabled ? " disabled" : "")
+    + ' style="' + btnStyle + '">Solicitar préstamo nuevamente</button>'
+    + '<div style="font-size:12px;color:#8390b5;line-height:1.6;margin-top:12px;">'
     + "Esto no garantiza aprobación.<br>"
     + "La decisión final depende de la financiera y sus políticas vigentes."
     + "</div>"
-    + '<button type="button" class="btn btn-primary" id="btn-retry-application"'
-    + (btnDisabled ? " disabled" : "")
-    + ' style="' + btnStyle + '">Volver a intentar</button>'
     + (btnDisabled
         ? '<div style="margin-top:10px;font-size:13px;color:#8390b5;">Próximamente disponible</div>'
         : "")
     + "</div>";
+}
+
+function renderRetryCta(diag, st) {
+  return "";
 }
 
 // =============================================================================
@@ -1855,8 +1835,6 @@ function renderTabPlan() {
         ? '<div style="margin-top:14px;font-size:12px;color:#8390b5;line-height:1.6;">ℹ️ Este plan se basa en tu situación al momento del diagnóstico. Los cambios que hacés en deudas o gastos actualizan la simulación, pero el punto de partida sigue siendo tu evaluación original.</div>'
         : '')
     + '</div>'
-
-    + renderRetryCta(diag, st)
 
     // 2. Interpretacion v2 — narrative blocks (Sprint 7B)
     + renderNarrativaInterpretacion(diag)
