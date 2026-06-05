@@ -3060,14 +3060,15 @@ function renderHerramientas() {
   var pid  = diag.planId;
   var pc   = diag.plan.color;
   var comp = contarCompletadas();
+  var totalHerr = totalHerramientas();
 
   var html = '<div style="margin-top:4px;">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
     + '<div><div style="font-size:20px;font-weight:900;">Herramientas recomendadas</div>'
     + '<div style="font-size:15px;color:#8390b5;margin-top:2px;">Usá estas herramientas para entender mejor tu situación.</div></div>'
-    + '<div style="text-align:right;"><div style="font-size:44px;font-weight:900;color:' + (comp === 3 ? pc : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + comp + '/3</div>'
+    + '<div style="text-align:right;"><div style="font-size:44px;font-weight:900;color:' + (comp === totalHerr ? pc : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + comp + '/' + totalHerr + '</div>'
     + '<div style="font-size:14px;color:#8390b5;">completadas</div></div></div>'
-    + '<div class="progress-wrap" style="margin-bottom:18px;"><div class="progress-bar" style="width:' + Math.round(comp / 3 * 100) + '%;background:' + pc + ';"></div></div>';
+    + '<div class="progress-wrap" style="margin-bottom:18px;"><div class="progress-bar" style="width:' + Math.round(comp / totalHerr * 100) + '%;background:' + pc + ';"></div></div>';
 
   if      (pid === 1) html += renderHerramientasPlan1();
   else if (pid === 2) html += renderHerramientasPlan2();
@@ -3078,6 +3079,14 @@ function renderHerramientas() {
   return html + '</div>';
 }
 
+function totalHerramientas() {
+  var pid = (_diag() || {}).planId;
+  if (pid === 4) return 2;
+  if (pid === 5) return 1;
+  if (pid === 1) return 3;
+  return 3;
+}
+
 function contarCompletadas() {
   var herr = _herr();
   var pid  = (_diag() || {}).planId;
@@ -3085,8 +3094,8 @@ function contarCompletadas() {
   if (pid === 2) return [Object.keys(herr.gestiones||{}).length > 0, Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
   // Plan 3 h1 is now a derived pressure diagnostic (always complete — no date inputs required)
   if (pid === 3) return [true, Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
-  if (pid === 4) return [Object.keys(herr.semaforo||{}).length === 3, Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
-  if (pid === 5) return [Object.keys(herr.habitos||{}).length > 0, Object.keys(herr.atrasos||{}).length > 0, true].filter(Boolean).length;
+  if (pid === 4) return [Object.values(herr.compromisos||{}).some(Boolean), true].filter(Boolean).length;
+  if (pid === 5) return [Object.keys(herr.atrasos||{}).length > 0].filter(Boolean).length;
   return 0;
 }
 
@@ -3369,17 +3378,8 @@ function renderHerramientasPlan3() {
 
 // ---- Plan 4 ----
 function renderHerramientasPlan4() {
-  var herr  = _herr();
-  var sem   = herr.semaforo   || {};
   var diag  = _diag();
-  var c1 = Object.keys(sem).length === 3;
-  var c2 = accionesRecomendadasCompletadas(diag);
-  var semOk = sem.nueva_deuda === false && sem.pago_minimos === true && sem.flujo_positivo === true;
-  var PREGS = [
-    { id: "nueva_deuda",    l: "Tomaste alguna deuda nueva este mes?" },
-    { id: "pago_minimos",   l: "Pudiste pagar todos los minimos?" },
-    { id: "flujo_positivo", l: "Tu flujo este mes fue positivo?" },
-  ];
+  var c1 = accionesRecomendadasCompletadas(diag);
   var gastos     = _st().gastos || {};
   var flujoBase  = diag ? diag.fin.flujoLibre : 0;
   var maxSlider  = Math.max(2000, typeof getTotalMonthlyExpenses === "function"
@@ -3387,23 +3387,10 @@ function renderHerramientasPlan4() {
     : Object.values(gastos).reduce(function(s, v) { return s + (parseFloat(v) || 0); }, 0));
   var flujoColor = flujoBase >= 0 ? "#34ffaf" : "#ff4e72";
 
-  var h1 = renderToolCard(1, "Semaforo de tu situacion", "Tres preguntas para saber como estas esta semana.",
-    '<div style="margin-top:8px;">'
-    + PREGS.map(function(p) {
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
-          + '<span style="font-size:17px;font-weight:700;flex:1;">' + p.l + '</span>'
-          + '<div style="display:flex;gap:8px;">'
-          + '<button data-sem-id="' + p.id + '" data-sem-val="true" style="padding:8px 18px;border-radius:12px;border:1.5px solid ' + (sem[p.id] === true ? "#34ffaf" : "rgba(255,255,255,.15)") + ';background:' + (sem[p.id] === true ? "rgba(52,255,175,.1)" : "transparent") + ';color:' + (sem[p.id] === true ? "#34ffaf" : "rgba(255,255,255,.6)") + ';font-size:16px;font-weight:800;cursor:pointer;">Si</button>'
-          + '<button data-sem-id="' + p.id + '" data-sem-val="false" style="padding:8px 18px;border-radius:12px;border:1.5px solid ' + (sem[p.id] === false ? "#ff4e72" : "rgba(255,255,255,.15)") + ';background:' + (sem[p.id] === false ? "rgba(255,78,114,.1)" : "transparent") + ';color:' + (sem[p.id] === false ? "#ff4e72" : "rgba(255,255,255,.6)") + ';font-size:16px;font-weight:800;cursor:pointer;">No</button>'
-          + '</div></div>';
-      }).join("")
-    + (c1 ? '<div style="margin-top:14px;padding:16px;border-radius:14px;background:' + (semOk ? "rgba(52,255,175,.1)" : "rgba(255,78,114,.1)") + ';border:1px solid ' + (semOk ? "rgba(52,255,175,.25)" : "rgba(255,78,114,.25)") + ';text-align:center;font-size:18px;font-weight:800;color:' + (semOk ? "#34ffaf" : "#ff4e72") + ';"><span style="font-size:28px;">' + (semOk ? "✅" : "⚠️") + '</span><br>' + (semOk ? "Bien encaminado — seguila" : "Hay senales de alerta") + '</div>' : "")
-    + '</div>', c1);
+  var h1 = renderToolCard(1, "Acciones recomendadas para tu situación", "Basadas en tu diagnóstico actual.",
+    renderAccionesRecomendadasHtml(diag), c1);
 
-  var h2 = renderToolCard(2, "Acciones recomendadas para tu situación", "Basadas en tu diagnóstico actual.",
-    renderAccionesRecomendadasHtml(diag), c2);
-
-  var h3 = renderToolCard(3, "Cuanto podrias liberar por mes",
+  var h2 = renderToolCard(2, "Cuanto podrias liberar por mes",
     "Indica un monto mensual posible. No importa de que gasto venga.",
     '<div style="margin-top:8px;">'
 
@@ -3435,22 +3422,14 @@ function renderHerramientasPlan4() {
 
     + '</div>', true);
 
-  return h1 + h2 + h3;
+  return h1 + h2;
 }
 
 // ---- Plan 5 ----
 function renderHerramientasPlan5() {
   var herr = _herr();
-  var hab  = herr.habitos  || {};
   var atr  = herr.atrasos  || {};
-  var diag = _diag();
-  var c1 = Object.keys(hab).length > 0;
-  var c2 = Object.keys(atr).length > 0;
-  var diasR = diag.diasRec || 0;
-  var pct90 = Math.min(Math.round(diasR / 90 * 100), 100);
-  var hoy = new Date();
-  var dias7 = [];
-  for (var i = 6; i >= 0; i--) { var d = new Date(hoy); d.setDate(hoy.getDate() - i); dias7.push(d.toISOString().slice(0, 10)); }
+  var c1 = Object.keys(atr).length > 0;
   var EATR = [
     { v: "sin_gestionar", l: "Sin gestionar" },
     { v: "en_negociacion",l: "En proceso de negociacion" },
@@ -3458,22 +3437,7 @@ function renderHerramientasPlan5() {
     { v: "regularizada",  l: "Regularizada" },
   ];
 
-  var h1 = renderToolCard(1, "Tu tracker de constancia", "Marca los dias en que mantuviste tus habitos positivos.",
-    '<div style="margin-top:10px;"><div style="display:flex;gap:8px;justify-content:space-between;margin-bottom:14px;">'
-    + dias7.map(function(f) {
-        var dd = new Date(f);
-        var lbl = ["Do","Lu","Ma","Mi","Ju","Vi","Sa"][dd.getDay()];
-        var num = dd.getDate();
-        var m   = hab[f];
-        return '<div style="text-align:center;cursor:pointer;" data-toggle-habito="' + f + '">'
-          + '<div style="font-size:13px;color:#8390b5;margin-bottom:6px;">' + lbl + '</div>'
-          + '<div style="width:40px;height:40px;border-radius:50%;border:2px solid ' + (m ? "#34ffaf" : "rgba(255,255,255,.2)") + ';background:' + (m ? "rgba(52,255,175,.2)" : "transparent") + ';display:flex;align-items:center;justify-content:center;font-size:' + (m ? "18" : "16") + 'px;font-weight:900;color:' + (m ? "#34ffaf" : "rgba(255,255,255,.4)") + ';margin:0 auto;">' + (m ? "&#10003;" : num) + '</div></div>';
-      }).join("")
-    + '</div>'
-    + (diasR > 0 ? '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.2);border-radius:12px;"><span style="font-size:17px;font-weight:700;color:#40d7ff;">' + diasR + ' dias de constancia</span><span style="font-size:15px;color:#8390b5;">Meta: 90 dias</span></div>' : "")
-    + '</div>', c1);
-
-  var h2 = renderToolCard(2, "Estado de tus atrasos reportados", "Actualiza el estado de cada deuda a medida que avanzas.",
+  var h1 = renderToolCard(1, "Estado de tus atrasos reportados", "Actualiza el estado de cada deuda a medida que avanzas.",
     '<div style="margin-top:8px;">'
     + (_st().deudas || []).map(function(d, i) {
         var key = d.acreedor || d.tipo || "d" + (i + 1);
@@ -3484,20 +3448,9 @@ function renderHerramientasPlan5() {
           + (est === "regularizada" ? '<div class="micro-insight" style="margin-top:8px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);color:#34ffaf;">Excelente! Eso mejora directamente tu perfil crediticio.</div>' : "")
           + '</div>';
       }).join("")
-    + '</div>', c2);
+    + '</div>', c1);
 
-  var h3 = renderToolCard(3, "Tu progreso a 90 dias", "La meta es 90 dias de habitos sostenidos.",
-    '<div style="margin-top:8px;">'
-    + '<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:17px;font-weight:700;"><span>Dia ' + diasR + ' de 90</span><span style="color:#40d7ff;">' + pct90 + '%</span></div>'
-    + '<div class="progress-wrap" style="height:14px;margin-bottom:14px;"><div class="progress-bar" style="width:' + pct90 + '%;background:#40d7ff;height:14px;"></div></div>'
-    + '<div class="grid">'
-    + [{d:30,l:"Primera revision"},{d:60,l:"Mitad del camino"},{d:90,l:"Meta final"}].map(function(m) {
-        var ok = diasR >= m.d;
-        return '<div style="text-align:center;padding:14px;background:' + (ok ? "rgba(52,255,175,.1)" : "rgba(255,255,255,.03)") + ';border:1px solid ' + (ok ? "rgba(52,255,175,.25)" : "rgba(255,255,255,.08)") + ';border-radius:14px;"><div style="font-size:13px;font-weight:800;color:' + (ok ? "#34ffaf" : "#8390b5") + ';margin-bottom:4px;">' + (ok ? "&#10003; " : "") + 'Dia ' + m.d + '</div><div style="font-size:13px;color:#8390b5;">' + m.l + '</div></div>';
-      }).join("")
-    + '</div></div>', true);
-
-  return h1 + h2 + h3;
+  return h1;
 }
 
 // =============================================================================
