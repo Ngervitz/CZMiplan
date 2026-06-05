@@ -234,25 +234,48 @@ function applyDebtNumericFieldBlur(inputEl, field, deudaIdx) {
   applyDebtNumericInputSanitize(inputEl);
   var display = inputEl.value;
   var stored = debtNumericValueForState(display);
+
+  if (display === "") {
+    var pre = inputEl.dataset.prefocusValue;
+    if (pre != null && String(pre).trim() !== "") {
+      var preStored = debtNumericValueForState(String(pre).trim());
+      var preNum = parseDebtNumeric(preStored);
+      if (!Number.isNaN(preNum) && preNum > 0) {
+        inputEl.value = String(pre).trim();
+        d[field] = preStored;
+        delete inputEl.dataset.prefocusValue;
+        return;
+      }
+    }
+    inputEl.value = "";
+    d[field] = "";
+    delete inputEl.dataset.prefocusValue;
+    return;
+  }
+
   if (field === "monto") {
     var n = parseDebtNumeric(stored);
-    if (display === "" || Number.isNaN(n) || n <= 0) {
+    if (Number.isNaN(n) || n <= 0) {
       inputEl.value = "";
       d.monto = "";
+      delete inputEl.dataset.prefocusValue;
       return;
     }
     inputEl.value = display;
     d.monto = stored;
+    delete inputEl.dataset.prefocusValue;
     return;
   }
   if (field === "pago") {
-    if (display === "" || Number.isNaN(parseDebtNumeric(stored))) {
+    if (Number.isNaN(parseDebtNumeric(stored))) {
       inputEl.value = "";
       d.pago = "";
+      delete inputEl.dataset.prefocusValue;
       return;
     }
     inputEl.value = display;
     d.pago = stored;
+    delete inputEl.dataset.prefocusValue;
   }
 }
 
@@ -315,9 +338,18 @@ function validateDebtForSave(d) {
 
   var sit = d.situacion_ui || "";
   if (sit === "pagando_normal" || sit === "atrasado_pagando") {
-    var pagoActivo = debtActivePagoAmount(d);
-    if (Number.isNaN(pagoActivo) || pagoActivo <= 0) {
-      return { ok: false, msg: DEBT_MSG_PAGO_ACTIVO_REQUERIDO };
+    if (sit === "pagando_normal") {
+      var pagoRaw = d.pago == null ? "" : String(d.pago).trim();
+      var pagoValue = parseFloat(pagoRaw);
+      var pagoInvalid = pagoRaw === "" || Number.isNaN(pagoValue) || pagoValue <= 0;
+      if (pagoInvalid) {
+        return { ok: false, msg: DEBT_MSG_PAGO_ACTIVO_REQUERIDO };
+      }
+    } else {
+      var pagoActivo = debtActivePagoAmount(d);
+      if (Number.isNaN(pagoActivo) || pagoActivo <= 0) {
+        return { ok: false, msg: DEBT_MSG_PAGO_ACTIVO_REQUERIDO };
+      }
     }
   }
 
@@ -1719,6 +1751,7 @@ document.addEventListener("DOMContentLoaded", function() {
       if (focusField !== "monto" && focusField !== "pago") return;
       var focusIdx = parseInt(e.target.getAttribute("data-deuda-idx"), 10);
       if (isNaN(focusIdx) || !st.deudas[focusIdx]) return;
+      e.target.dataset.prefocusValue = e.target.value;
       if (String(e.target.value).trim() === "0") {
         e.target.value = "";
         st.deudas[focusIdx][focusField] = "";
