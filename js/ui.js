@@ -1765,9 +1765,10 @@ function renderRetryCtaHorizonAddon(diag, st) {
 
   var retryUrl = typeof buildRetryApplicationUrl === "function" ? buildRetryApplicationUrl() : null;
   var btnDisabled = !retryUrl;
+  var btnGreen = "background:#34d399;box-shadow:0 15px 50px rgba(52,211,153,.25);";
   var btnStyle = btnDisabled
-    ? "width:100%;height:52px;font-size:16px;opacity:.5;cursor:not-allowed;margin-top:16px;"
-    : "width:100%;height:52px;font-size:16px;margin-top:16px;";
+    ? "width:100%;height:52px;font-size:16px;opacity:.9;cursor:not-allowed;margin-top:16px;" + btnGreen
+    : "width:100%;height:52px;font-size:16px;margin-top:16px;" + btnGreen;
 
   return '<div style="margin-top:16px;">'
     + '<button type="button" class="btn btn-primary" id="btn-retry-application"'
