@@ -125,6 +125,17 @@ const LEGAL_VERSION_PRIVACY        = "PP_v2.0_202605";
 const CONSENT_STORAGE_KEY          = "cz_consent_v1";
 const MIPLAN_UNAUTHORIZED_REDIRECT = "https://credizona.com.uy";
 
+// Sprint — retry application CTA (Mi Plan dashboard). Empty = button disabled.
+var CZ_RETRY_APPLICATION_URL = "";
+
+function buildRetryApplicationUrl() {
+  var base = typeof CZ_RETRY_APPLICATION_URL !== "undefined"
+    ? String(CZ_RETRY_APPLICATION_URL).trim()
+    : "";
+  if (!base) return null;
+  return base + (base.indexOf("?") >= 0 ? "&" : "?") + "source=miplan_retry&cl=2";
+}
+
 // Sprint 14.0 — Mi Plan Plus feature flags (IT flips when Handy / Equifax ready)
 var CZ_PLUS_PAYMENT_LIVE = false;
 var CZ_PLUS_BCU_CLEARING_LIVE = false;

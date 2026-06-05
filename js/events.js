@@ -36,6 +36,9 @@ var CZ_GTM_EVENTS = [
   "miplan_session_started",
   "debt_marked_paid",
   "plus_error",
+  "plus_purchased",
+  "retry_cta_shown",
+  "retry_cta_clicked",
 ];
 
 var CZ_INTERNAL_EVENTS = [
@@ -69,11 +72,12 @@ var CZ_CRM_ONLY_EVENTS = [
   "habito_marcado",
   "acciones_mostradas",
   "accion_comprometida",
-  "plus_purchased",
   "plus_report_ready",
   "plus_pdf_downloaded",
   "plus_report_email_requested",
   "plus_feedback_submitted",
+  "retry_cta_shown",
+  "retry_cta_clicked",
 ];
 
 // =============================================================================
@@ -97,6 +101,7 @@ var CZ_GTM_SAFE_FIELDS = [
   "action",
   "error_source",
   "plus_status",
+  "state",
 ];
 
 // Sprint 11.8 — neutral GTM acquisition buckets (no CRM cohort signals)
@@ -114,6 +119,7 @@ function gtmEntryChannel(raw) {
 function gtmSource(raw) {
   if (!raw) return "system";
   if (raw === "crm_reactivation" || raw === "crm_link") return "system";
+  if (raw === "miplan_tab") return "miplan_tab";
   if (
     raw === "dashboard"
     || raw === "dashboard_first_view"
@@ -201,6 +207,11 @@ var CZ_EVENT_NAMES = Object.freeze({
   PLUS_CTA_VIEWED:                   "plus_cta_viewed",
   PLUS_CTA_CLICKED:                  "plus_cta_clicked",
   PLUS_ERROR:                        "plus_error",
+  PLUS_PURCHASED:                    "plus_purchased",
+
+  // Mi Plan — retry application CTA (GTM: state only)
+  RETRY_CTA_SHOWN:                   "retry_cta_shown",
+  RETRY_CTA_CLICKED:                 "retry_cta_clicked",
 
   // CRM_ONLY — backend handles this; never route to GTM/dataLayer
   RESET_PLAN_GENERATED:              "reset_plan_generated",
@@ -214,7 +225,6 @@ var CZ_EVENT_NAMES = Object.freeze({
   HABITO_MARCADO:                  "habito_marcado",
   ACCIONES_MOSTRADAS:              "acciones_mostradas",
   ACCION_COMPROMETIDA:             "accion_comprometida",
-  PLUS_PURCHASED:                  "plus_purchased",
   PLUS_REPORT_READY:               "plus_report_ready",
 });
 
@@ -238,6 +248,20 @@ function safeGTMPayload(eventName, payload) {
       safe[field] = val;
     }
   });
+
+  // Privacy exception:
+  // `value` is allowed only for `plus_purchased` real transaction events.
+  // Do not use `value` for diagnosis, score, debt, income, loan amount, or financial profiling.
+  if (
+    (eventName === "plus_purchased"
+      || (typeof CZ_EVENT_NAMES !== "undefined"
+        && CZ_EVENT_NAMES.PLUS_PURCHASED === eventName))
+    && typeof payload.value === "number"
+    && isFinite(payload.value)
+    && payload.value > 0
+  ) {
+    safe.value = payload.value;
+  }
 
   return safe;
 }

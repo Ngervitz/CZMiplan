@@ -2061,6 +2061,27 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
+      // Mi Plan — retry application CTA (no financial data in redirect URL)
+      if (e.target.id === "btn-retry-application") {
+        var retryUrl = typeof buildRetryApplicationUrl === "function"
+          ? buildRetryApplicationUrl()
+          : null;
+        if (!retryUrl) return;
+        var retryState = (window.CredizonaUI && typeof window.CredizonaUI.getRetryCtaState === "function")
+          ? window.CredizonaUI.getRetryCtaState(st.diag, st)
+          : "locked";
+        trackEvent(CZ_EVENT_NAMES.RETRY_CTA_CLICKED, { source: "miplan_tab" });
+        if (typeof trackCRMEvent === "function") {
+          trackCRMEvent(CZ_EVENT_NAMES.RETRY_CTA_CLICKED, {
+            state: retryState,
+            plan_id: st.diag ? st.diag.planId : null,
+            snap_plan_id: st.snap ? st.snap.plan_id : null,
+          });
+        }
+        window.location.href = retryUrl;
+        return;
+      }
+
       // Sprint 12 — agregar gasto personalizado
       if (e.target.id === "btn-agregar-gasto-custom") {
         if (!st.custom_expenses) st.custom_expenses = [];

@@ -1706,6 +1706,108 @@ function _renderTuSituacionHoy(diag, st) {
 }
 
 // =============================================================================
+// RETRY APPLICATION CTA — Mi Plan dashboard (locked / unlocked)
+// Not preapproval. Lower planId = better (snap.plan_id > diag.planId = improvement).
+// =============================================================================
+function _retryCtaActiveDebtCount(st) {
+  return typeof deudasActivasParaCalculo === "function"
+    ? deudasActivasParaCalculo((st && st.deudas) || []).length
+    : 0;
+}
+
+function getRetryCtaState(diag, st) {
+  diag = diag || {};
+  st = st || {};
+  if (!st.snap) return "hidden";
+
+  var activeCount = _retryCtaActiveDebtCount(st);
+  var hasContext = (typeof TIENE_ENCUESTA !== "undefined" && TIENE_ENCUESTA) || activeCount > 0;
+  if (!hasContext) return "hidden";
+
+  var snapPlan = parseInt(st.snap.plan_id, 10);
+  var diagPlan = parseInt(diag.planId, 10);
+  if (isNaN(snapPlan) || isNaN(diagPlan)) return "locked";
+
+  var fin = diag.fin || {};
+  var iv2 = diag.interpretacion_v2 || {};
+  var flujo = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  var ratio = fin.ratio != null ? fin.ratio : 0;
+
+  var unlocked = snapPlan > diagPlan
+    && diagPlan <= 2
+    && flujo > 0
+    && iv2.confidence_level !== "low"
+    && diag.financial_reality_warning !== true
+    && diag.missing_payment_information !== true
+    && ratio <= 0.35;
+
+  return unlocked ? "unlocked" : "locked";
+}
+
+function _trackRetryCtaShown(state, diag, st) {
+  if (state === "hidden") return;
+  st = st || _st();
+  if (st._retryCtaLastTrackedState === state) return;
+  st._retryCtaLastTrackedState = state;
+  if (typeof trackEvent === "function") {
+    trackEvent(CZ_EVENT_NAMES.RETRY_CTA_SHOWN, { state: state });
+  }
+  if (typeof trackCRMEvent === "function") {
+    var snapPlan = st.snap ? parseInt(st.snap.plan_id, 10) : null;
+    trackCRMEvent(CZ_EVENT_NAMES.RETRY_CTA_SHOWN, {
+      state: state,
+      plan_id: diag ? diag.planId : null,
+      snap_plan_id: isNaN(snapPlan) ? null : snapPlan,
+    });
+  }
+}
+
+function renderRetryCta(diag, st) {
+  var state = getRetryCtaState(diag, st);
+  if (state === "hidden") return "";
+  _trackRetryCtaShown(state, diag, st);
+
+  if (state === "locked") {
+    return '<div id="cz-retry-cta" class="plan-card" style="margin-bottom:16px;'
+      + "background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);opacity:.88;"
+      + '">'
+      + '<div style="font-size:22px;margin-bottom:10px;line-height:1;">🔒</div>'
+      + '<div style="font-size:17px;font-weight:700;color:rgba(255,255,255,.72);margin-bottom:10px;">Nueva solicitud</div>'
+      + '<div style="font-size:14px;color:#6b7280;line-height:1.65;">'
+      + "Seguí mejorando tu situación en Mi Plan.<br>"
+      + "Cuando tu perfil esté listo, vas a poder revisar una nueva solicitud desde acá."
+      + "</div></div>";
+  }
+
+  var retryUrl = typeof buildRetryApplicationUrl === "function" ? buildRetryApplicationUrl() : null;
+  var btnDisabled = !retryUrl;
+  var btnStyle = btnDisabled
+    ? "width:100%;height:52px;font-size:16px;opacity:.5;cursor:not-allowed;"
+    : "width:100%;height:52px;font-size:16px;";
+
+  return '<div id="cz-retry-cta" class="plan-card" style="margin-bottom:16px;'
+    + "background:rgba(91,124,255,.08);border:1px solid rgba(91,124,255,.28);"
+    + '">'
+    + '<div style="font-size:22px;margin-bottom:10px;line-height:1;">✅</div>'
+    + '<div style="font-size:17px;font-weight:800;color:#5b7cff;margin-bottom:10px;">Podés volver a intentarlo</div>'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.85);line-height:1.65;margin-bottom:14px;">'
+    + "Tu situación mejoró desde tu evaluación inicial.<br>"
+    + "Si querés, podés revisar una nueva solicitud con estos datos."
+    + "</div>"
+    + '<div style="font-size:12px;color:#8390b5;line-height:1.6;margin-bottom:16px;">'
+    + "Esto no garantiza aprobación.<br>"
+    + "La decisión final depende de la financiera y sus políticas vigentes."
+    + "</div>"
+    + '<button type="button" class="btn btn-primary" id="btn-retry-application"'
+    + (btnDisabled ? " disabled" : "")
+    + ' style="' + btnStyle + '">Volver a intentar</button>'
+    + (btnDisabled
+        ? '<div style="margin-top:10px;font-size:13px;color:#8390b5;">Próximamente disponible</div>'
+        : "")
+    + "</div>";
+}
+
+// =============================================================================
 // TAB: MI PLAN
 // =============================================================================
 function renderTabPlan() {
@@ -1753,6 +1855,8 @@ function renderTabPlan() {
         ? '<div style="margin-top:14px;font-size:12px;color:#8390b5;line-height:1.6;">ℹ️ Este plan se basa en tu situación al momento del diagnóstico. Los cambios que hacés en deudas o gastos actualizan la simulación, pero el punto de partida sigue siendo tu evaluación original.</div>'
         : '')
     + '</div>'
+
+    + renderRetryCta(diag, st)
 
     // 2. Interpretacion v2 — narrative blocks (Sprint 7B)
     + renderNarrativaInterpretacion(diag)
@@ -3652,6 +3756,8 @@ window.CredizonaUI = {
   mostrarEvaluacion: mostrarEvaluacion,
   updateGastosTotalDisplay: updateGastosTotalDisplay,
   updateCustomExpenseClassificationUI: updateCustomExpenseClassificationUI,
+  getRetryCtaState: getRetryCtaState,
+  renderRetryCta: renderRetryCta,
 };
 
 window.renderAll = renderAll;
