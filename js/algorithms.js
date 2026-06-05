@@ -677,6 +677,8 @@ function calcularMotor() {
   var frWarning = evaluarFinancialRealityWarning(fin, PRE.ingreso);
   result.financial_reality_warning      = frWarning.financial_reality_warning;
   result.financial_reality_warning_type = frWarning.financial_reality_warning_type;
+  result.missing_payment_information    = !!(result.interpretacion_v2
+    && result.interpretacion_v2.missing_payment_information);
 
   return result;
 }
@@ -1383,6 +1385,32 @@ function interpretarDiagnostico(diag) {
     confidence_level = "low";
   }
 
+  var missing_payment_information = false;
+  var deudasActivasConf = deudasActivasParaCalculo(deudas);
+  if (deudasActivasConf.length > 0) {
+    var todasLegitimasSinPago = deudasActivasConf.every(function(d) {
+      var sit = d.situacion_ui || "";
+      return sit === "deje_pagar" || sit === "mora_reclamo" || sit === "informal"
+        || d.tipo === "informal";
+    });
+    var totalPagosActivos = deudasActivasConf.reduce(function(s, d) {
+      var sit = d.situacion_ui || "";
+      if (sit === "pagando_normal" || sit === "atrasado_pagando") {
+        return s + (parseFloat(d.pago) || 0);
+      }
+      return s;
+    }, 0);
+    var totalDeudaConf = fin.totalDeuda != null ? fin.totalDeuda : deudasActivasConf.reduce(function(s, d) {
+      return s + (parseFloat(d.monto) || 0);
+    }, 0);
+    if (!todasLegitimasSinPago
+        && totalDeudaConf >= ingreso * 3
+        && totalPagosActivos === 0) {
+      confidence_level = "low";
+      missing_payment_information = true;
+    }
+  }
+
   var interpretacion_parcial = false;
   if (confidence_level === "low") {
     if (sev.severity_level !== "critico" && sev.severity_level !== "alto") {
@@ -1460,6 +1488,7 @@ function interpretarDiagnostico(diag) {
     contradiccion_conductual,
     narrativa_jerarquizada,
     confidence_level,
+    missing_payment_information,
     interpretacion_parcial,
     interpretation_version: "miplan_v1",
     severity_stock:           sev.severity_stock,

@@ -1713,6 +1713,18 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
 
+    // Clear default "0" on monto/pago focus so typing does not prepend (new + edit debt forms)
+    main.addEventListener("focusin", function(e) {
+      var focusField = e.target.getAttribute("data-deuda-field");
+      if (focusField !== "monto" && focusField !== "pago") return;
+      var focusIdx = parseInt(e.target.getAttribute("data-deuda-idx"), 10);
+      if (isNaN(focusIdx) || !st.deudas[focusIdx]) return;
+      if (String(e.target.value).trim() === "0") {
+        e.target.value = "";
+        st.deudas[focusIdx][focusField] = "";
+      }
+    });
+
     // Sprint 12.4d — quick edit monto: commit al salir del campo o Enter
     main.addEventListener("focusout", function(e) {
       if (e.target.getAttribute("data-editar-deuda") !== null) {

@@ -1309,6 +1309,7 @@ function renderDtiStockBlockerCard() {
 
 function renderConfianzaDiagnostico(diag) {
   var fin  = (diag && diag.fin) ? diag.fin : {};
+  var iv2  = (diag && diag.interpretacion_v2) || {};
   var conf = fin.confianza_diagnostico;
   if (conf == null) return "";
 
@@ -1325,11 +1326,18 @@ function renderConfianzaDiagnostico(diag) {
     explicacion = "Faltan datos o existen señales que limitan la precisión de este diagnóstico.";
   }
 
+  var missingPayMsg = (diag.missing_payment_information || iv2.missing_payment_information)
+    ? '<div style="margin-top:12px;padding:12px 14px;background:rgba(255,196,0,.06);border:1px solid rgba(255,196,0,.2);border-radius:10px;font-size:14px;color:#ffd447;line-height:1.6;">'
+      + "Registraste deuda activa pero no informaste pagos mensuales. Algunas estimaciones pueden ser menos precisas hasta completar esa información."
+      + "</div>"
+    : "";
+
   return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);'
     + _dashSectionAccentCss("confianza") + '">'
     + _dashCardTitle("🎯", "Confianza del diagnóstico", "confianza")
     + '<div style="font-size:20px;font-weight:800;color:rgba(255,255,255,.92);margin-bottom:10px;">' + nivelLabel + '</div>'
     + '<div style="font-size:15px;color:#8390b5;line-height:1.65;">' + explicacion + '</div>'
+    + missingPayMsg
     + '</div>';
 }
 
