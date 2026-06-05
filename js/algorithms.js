@@ -370,30 +370,151 @@ function aplicarGuardrailSeveridad(scores, severityLevel) {
 }
 
 // =============================================================================
-// PLAN GUARDRAIL — Sprint 12.1.c
+// PLAN GUARDRAIL — Sprint 12.1.c (conservative affordability revision)
 //
-// Post-processes planId after interpretarDiagnostico() resolves severity_level.
-// Does NOT modify asignarPlan(). First matching rule wins (critico → DTI≥24 → DTI≥10 cap).
+// Post-processes planId after interpretarDiagnostico().
+// fin.ratio (monthly payments / income) is the primary affordability pressure metric.
+// fin.dti_ratio remains structural stock load — may raise plan by at most +1, never
+// force Plan 4 alone when flow is positive, monthly ratio is manageable, and there is
+// no mora / real survey or external critical risk.
 // =============================================================================
+function _guardrailEncuestaIncompleta(resp) {
+  if (!TIENE_ENCUESTA) return true;
+  resp = resp || {};
+  var answered = 0;
+  for (var i = 1; i <= 10; i++) {
+    var v = resp["p" + i];
+    if (v === "A" || v === "B" || v === "C" || v === "D") answered++;
+  }
+  return answered === 0;
+}
+
+function _guardrailEncuestaCriticaReal(enc, resp) {
+  if (_guardrailEncuestaIncompleta(resp)) return false;
+  enc = enc || {};
+  return enc.nivel === "C" || (enc.flagsRiesgo && enc.flagsRiesgo.length > 0);
+}
+
+function _guardrailHasActiveMora(fin, iv2, behav) {
+  behav = behav || (fin && fin.behavioral) || {};
+  iv2   = iv2   || {};
+  fin   = fin   || {};
+  return (fin.cantMoras || 0) >= 2
+    || !!iv2.has_mora_or_deje_pagar
+    || !!behav.tiene_mora_declarada
+    || behav.dominant_situacion === "deje_pagar"
+    || behav.dominant_situacion === "mora_reclamo"
+    || iv2.severity_behavioral === "critico";
+}
+
+function _guardrailExternalBcuCritico(diag) {
+  var live = typeof CZ_PLUS_BCU_CLEARING_LIVE !== "undefined" && CZ_PLUS_BCU_CLEARING_LIVE;
+  if (!live || !diag) return false;
+  var snap = _snap();
+  if (snap && (snap.bcu_risk_critico || snap.clearing_risk_critico)) return true;
+  var iv2 = diag.interpretacion_v2 || {};
+  return !!(iv2.bcu_risk_critico || iv2.clearing_risk_critico);
+}
+
+function _guardrailAffordabilityPlan(enc, fin) {
+  var r = PRE.respuestas || {};
+  var ratio = fin.ratio != null ? fin.ratio : 0;
+  var RATIO_ALTO = 0.35;
+  var RATIO_CRITICO = 1.0;
+
+  if (fin.flujoLibre < 0 || fin.cantInformales > 0 || fin.cantMoras >= 2) return 4;
+  if (ratio >= RATIO_CRITICO) return 4;
+  if (ratio >= RATIO_ALTO || fin.cantMoras > 0 || fin.nivelRiesgo === "Critico") return 2;
+  if (fin.nivelRiesgo === "Medio"
+      && (r.p1 === "C" || r.p1 === "D" || r.p7 === "C" || r.p7 === "D")) return 1;
+  if ((enc.nivel === "A" || enc.nivel === "B+")
+      && ratio < RATIO_ALTO && fin.cantMoras === 0 && fin.flujoLibre > 0) return 3;
+  if ((r.p3 === "A" || r.p3 === "B")
+      && (r.p8 === "A" || r.p8 === "B")
+      && (r.p9 === "A" || r.p9 === "B")) return 5;
+  return 1;
+}
+
 function applyPlanGuardrail(planIdRaw, diag) {
   var iv2      = diag.interpretacion_v2 || {};
   var fin      = diag.fin || {};
-  var severity = iv2.severity_level;
+  var enc      = diag.enc || {};
+  var behav    = fin.behavioral || {};
+  var resp     = PRE.respuestas || {};
+  var ingreso  = PRE.ingreso || 0;
+  var ratio    = fin.ratio != null ? fin.ratio : 0;
   var dti      = fin.dti_ratio != null ? fin.dti_ratio : 0;
+  var flujoLibre = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  var RATIO_ALTO     = 0.35;
+  var RATIO_CRITICO  = 1.0;
+  var DTI_STOCK_BUMP = 1.5;
   var finalId  = planIdRaw;
   var reason   = null;
 
-  if (severity === "critico") {
+  var encCriticaReal = _guardrailEncuestaCriticaReal(enc, resp);
+  var hasMora        = _guardrailHasActiveMora(fin, iv2, behav);
+  var bcuCritico     = _guardrailExternalBcuCritico(diag);
+
+  var forcePlan4 = null;
+  if (ingreso <= 0) {
+    forcePlan4 = "ingreso_cero";
+  } else if (hasMora) {
+    forcePlan4 = "mora_activa";
+  } else if (fin.cantInformales > 0) {
+    forcePlan4 = "deuda_informal";
+  } else if (bcuCritico) {
+    forcePlan4 = "bcu_clearing_critico";
+  } else if (encCriticaReal) {
+    forcePlan4 = "encuesta_critica";
+  } else if (ratio >= RATIO_CRITICO) {
+    forcePlan4 = "ratio_mensual_critico";
+  } else if (flujoLibre < 0 && (ratio >= RATIO_ALTO || (fin.totalPago || 0) > 0 || dti >= 1)) {
+    forcePlan4 = "flujo_negativo_presion";
+  } else if (iv2.severe_latent_pressure && flujoLibre <= 0) {
+    forcePlan4 = "presion_latente_severa";
+  } else if (iv2.severity_stock === "critico"
+      && (flujoLibre < 0 || ratio >= RATIO_ALTO)) {
+    forcePlan4 = "stock_critico_con_presion";
+  }
+
+  if (forcePlan4) {
     finalId = 4;
-    reason  = "severity_critico";
-  } else if (dti >= 24) {
-    finalId = 4;
-    reason  = "dti_extremo";
-  } else if (dti >= 10) {
-    if (finalId === 3 || finalId === 5) {
+    reason  = forcePlan4;
+  } else if (planIdRaw === 4
+      && flujoLibre >= 0
+      && ratio < RATIO_CRITICO
+      && !hasMora
+      && ingreso > 0) {
+    finalId = _guardrailAffordabilityPlan(enc, fin);
+    reason  = "relax_plan_4_sin_presion";
+  } else if (planIdRaw === 3
+      && (fin.totalDeuda || 0) === 0
+      && ratio < RATIO_ALTO
+      && flujoLibre > 0
+      && !hasMora) {
+    finalId = 1;
+    reason  = "sin_deuda_cap_plan_1";
+  }
+
+  if (!forcePlan4 && dti >= DTI_STOCK_BUMP && finalId < 3) {
+    if (finalId === 1) {
       finalId = 2;
-      reason  = "dti_alto_cap_plan_2";
+      reason  = reason || "dti_stock_bump_plus_1";
+    } else if (finalId === 2 && ratio > RATIO_ALTO && ratio < RATIO_CRITICO) {
+      finalId = 3;
+      reason  = reason || "dti_stock_bump_plus_1";
+    } else if (finalId === 2 && ratio <= RATIO_ALTO && dti >= DTI_STOCK_BUMP) {
+      var nDeudasActivas = deudasActivasParaCalculo(_deudas()).length;
+      if ((fin.cantMoras || 0) > 0 || nDeudasActivas >= 5) {
+        finalId = 3;
+        reason  = reason || "dti_stock_bump_plus_1";
+      }
     }
+  }
+
+  if (!forcePlan4 && dti >= 10 && finalId >= 3) {
+    finalId = 2;
+    reason  = reason || "dti_stock_extremo_cap";
   }
 
   var applied = finalId !== planIdRaw;
