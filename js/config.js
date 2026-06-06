@@ -147,7 +147,7 @@ var CZ_CLAUDE_MODEL = "claude-sonnet-4-5";
 var CZ_PLUS_USE_MOCK = false;
 var CZ_CLAUDE_ALLOW_BROWSER_KEY = false;
 var CZ_PLUS_PROXY_ENABLED = true;
-var CZ_PLUS_PROXY_CLIENT_SECRET = "";
+var CZ_PLUS_PROXY_CLIENT_SECRET = "123456789987654321";
 
 // Consent event names
 const CZ_CONSENT_EVENTS = Object.freeze({
