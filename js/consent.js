@@ -191,6 +191,7 @@ function initConsent() {
   // (QA testing, dev, or deep-link from Credizona with data but without the
   // consent bridge).  Never redirect externally in this case.
   var _p = new URLSearchParams(window.location.search);
+  var isSeoIaEntry = _p.get("source") === "seo_ia";
   var skipExternalRedirect = _p.has("p1")
     || _p.has("nombre")
     || _p.has("ingreso")
@@ -229,7 +230,7 @@ function initConsent() {
   // Mi Plan operates within Credizona's recovery flow and requires
   // prior contextual information from the rejection funnel.
   // Redirect is suppressed when QA / data params are present (see guard above).
-  if (skipExternalRedirect) {
+  if (skipExternalRedirect || isSeoIaEntry) {
     return true;
   }
   if (typeof trackEvent === "function") {
