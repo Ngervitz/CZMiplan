@@ -802,62 +802,98 @@ function extractAnthropicMessageText(apiResponse) {
   return text;
 }
 
-/* MIGRATION NOTE:
+function _buildAnthropicPlusPayload(inputData) {
+  return {
+    model: typeof CZ_CLAUDE_MODEL !== "undefined"
+      ? CZ_CLAUDE_MODEL
+      : "claude-sonnet-4-20250514",
+    max_tokens: 4000,
+    system: CZ_PLUS_SYSTEM_PROMPT,
+    messages: [{
+      role: "user",
+      content: "Generá el informe Mi Plan Plus completo según el schema JSON. "
+        + "Datos de entrada:\n"
+        + JSON.stringify(inputData, null, 2),
+    }],
+  };
+}
 
-To move to backend:
+function _buildPlusProxyRequest(inputData) {
+  return {
+    report_type: "plus",
+    context: inputData || {},
+  };
+}
 
-var response = await fetch("/api/plus/generate", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify(inputData)
-});
+function _parsePlusProxyResponse(proxyData) {
+  if (!proxyData || proxyData.ok !== true) {
+    var errMsg = (proxyData && proxyData.detail)
+      ? String(proxyData.detail)
+      : ((proxyData && proxyData.error) ? String(proxyData.error) : "plus_proxy_error");
+    throw new Error(errMsg);
+  }
+  if (!proxyData.text) {
+    throw new Error("empty_proxy_response");
+  }
+  return { text: proxyData.text, usage: proxyData.usage || {} };
+}
 
-Everything else in generarInformePlus()
-stays unchanged.
-
-*/
 async function _fetchPlusReportProvider(inputData) {
+  var proxyEnabled = typeof CZ_PLUS_PROXY_ENABLED !== "undefined" && !!CZ_PLUS_PROXY_ENABLED;
+  var allowBrowser = typeof CZ_CLAUDE_ALLOW_BROWSER_KEY !== "undefined" && !!CZ_CLAUDE_ALLOW_BROWSER_KEY;
+
+  if (proxyEnabled) {
+    var proxyHeaders = { "Content-Type": "application/json" };
+    var clientSecret = typeof CZ_PLUS_PROXY_CLIENT_SECRET !== "undefined"
+      ? String(CZ_PLUS_PROXY_CLIENT_SECRET).trim()
+      : "";
+    if (clientSecret) {
+      proxyHeaders["x-cz-plus-secret"] = clientSecret;
+    }
+
+    var proxyResponse = await fetch("/api/plus/generate", {
+      method: "POST",
+      headers: proxyHeaders,
+      body: JSON.stringify(_buildPlusProxyRequest(inputData)),
+    });
+
+    var proxyData = await proxyResponse.json().catch(function() { return {}; });
+    if (!proxyResponse.ok && proxyData && proxyData.ok !== true) {
+      var errMsg = proxyData.detail || proxyData.error || ("Plus proxy error: " + proxyResponse.status);
+      throw new Error(errMsg);
+    }
+    return _parsePlusProxyResponse(proxyData);
+  }
+
+  if (!allowBrowser) {
+    throw new Error("CZ_CLAUDE_API_KEY not configured");
+  }
+
   var apiKey = typeof CZ_CLAUDE_API_KEY !== "undefined" ? CZ_CLAUDE_API_KEY : "";
   if (!apiKey) {
     throw new Error("CZ_CLAUDE_API_KEY not configured");
   }
 
+  var payload = _buildAnthropicPlusPayload(inputData);
   var headers = {
     "Content-Type": "application/json",
     "x-api-key": apiKey,
     "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true",
   };
-
-  // Enable only if Anthropic browser restrictions block localhost testing.
-  if (typeof CZ_CLAUDE_ALLOW_BROWSER_KEY !== "undefined" && CZ_CLAUDE_ALLOW_BROWSER_KEY) {
-    headers["anthropic-dangerous-direct-browser-access"] = "true";
-  }
 
   var response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: headers,
-    body: JSON.stringify({
-      model: typeof CZ_CLAUDE_MODEL !== "undefined"
-        ? CZ_CLAUDE_MODEL
-        : "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      system: CZ_PLUS_SYSTEM_PROMPT,
-      messages: [{
-        role: "user",
-        content: "Generá el informe Mi Plan Plus completo según el schema JSON. "
-          + "Datos de entrada:\n"
-          + JSON.stringify(inputData, null, 2),
-      }],
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
     throw new Error("Anthropic API Error: " + response.status);
   }
 
-  return response.json();
+  var apiResponse = await response.json();
+  return { raw: apiResponse, text: extractAnthropicMessageText(apiResponse) };
 }
 
 function _plusErrorSourceFromErr(err) {
@@ -878,8 +914,9 @@ async function generarInformePlus(opts) {
       st._plusInformeTestError = false;
     }
     var inputData = useTestInput ? getMockPlusInput() : getPlusReportInput();
-    var apiResponse = await _fetchPlusReportProvider(inputData);
-    var rawText = extractAnthropicMessageText(apiResponse);
+    var providerResult = await _fetchPlusReportProvider(inputData);
+    var rawText = providerResult.text
+      || extractAnthropicMessageText(providerResult.raw || {});
     var informe = parsePlusInformeFromLlmText(rawText);
 
     st.plus_informe = informe;

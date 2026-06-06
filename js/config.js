@@ -141,11 +141,13 @@ var CZ_PLUS_PAYMENT_LIVE = false;
 var CZ_PLUS_BCU_CLEARING_LIVE = false;
 var CZ_HANDY_ENDPOINT = "";
 
-// Sprint 14.2 — Claude LLM (key vacía en producción; backend o config.local.js en dev)
+// Sprint 14.2 — Claude LLM (key solo en Vercel env; nunca en el browser en producción)
 var CZ_CLAUDE_API_KEY = "";
 var CZ_CLAUDE_MODEL = "claude-sonnet-4-5";
 var CZ_PLUS_USE_MOCK = false;
-var CZ_CLAUDE_ALLOW_BROWSER_KEY = true;
+var CZ_CLAUDE_ALLOW_BROWSER_KEY = false;
+var CZ_PLUS_PROXY_ENABLED = true;
+var CZ_PLUS_PROXY_CLIENT_SECRET = "";
 
 // Consent event names
 const CZ_CONSENT_EVENTS = Object.freeze({

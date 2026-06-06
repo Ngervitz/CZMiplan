@@ -2747,14 +2747,17 @@ function renderPlusPresentation() {
 
 function _plusClaudeTestConfig() {
   var paymentLive = typeof CZ_PLUS_PAYMENT_LIVE !== "undefined" && !!CZ_PLUS_PAYMENT_LIVE;
+  var proxyEnabled = typeof CZ_PLUS_PROXY_ENABLED !== "undefined" && !!CZ_PLUS_PROXY_ENABLED;
   var allowBrowser = typeof CZ_CLAUDE_ALLOW_BROWSER_KEY !== "undefined" && !!CZ_CLAUDE_ALLOW_BROWSER_KEY;
   var hasKey = typeof CZ_CLAUDE_API_KEY !== "undefined" && String(CZ_CLAUDE_API_KEY).trim() !== "";
+  var canGenerate = !paymentLive && (proxyEnabled || (allowBrowser && hasKey));
   return {
     paymentLive: paymentLive,
+    proxyEnabled: proxyEnabled,
     allowBrowser: allowBrowser,
     hasKey: hasKey,
-    showBlock: !paymentLive && allowBrowser,
-    canGenerate: !paymentLive && allowBrowser && hasKey,
+    showBlock: canGenerate,
+    canGenerate: canGenerate,
   };
 }
 
@@ -2769,7 +2772,7 @@ function _renderPlusClaudeTestBlock() {
     html += '<button type="button" class="btn btn-secondary plus-test-btn" id="btn-plus-test-generar">'
       + "Generar informe de prueba con IA</button>";
   } else {
-    html += '<p class="plus-test-missing-key">Falta configurar la API key local de Claude.</p>';
+    html += '<p class="plus-test-missing-key">Falta configurar el proxy de Claude o la API key local.</p>';
   }
 
   html += "</div>";
