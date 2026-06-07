@@ -36,6 +36,47 @@ function buildAcquisitionCrm(st) {
   return null;
 }
 
+var CZ_FIRST_SEEN_AT_KEY = "cz_first_seen_at";
+
+function getOrInitCrmFirstSeenAt() {
+  try {
+    if (typeof localStorage === "undefined" || !localStorage) {
+      return new Date().toISOString();
+    }
+    var existing = localStorage.getItem(CZ_FIRST_SEEN_AT_KEY);
+    if (existing) return existing;
+    var now = new Date().toISOString();
+    localStorage.setItem(CZ_FIRST_SEEN_AT_KEY, now);
+    return now;
+  } catch (e) {
+    return new Date().toISOString();
+  }
+}
+
+function buildFirstTouchCrm(st) {
+  var acq = buildAcquisitionCrm(st) || {};
+  return {
+    source:        acq.source        || null,
+    intent:        acq.intent        || null,
+    question:      acq.question      || null,
+    utm_source:    acq.utm_source    || null,
+    utm_medium:    acq.utm_medium    || null,
+    utm_campaign:  acq.utm_campaign  || null,
+    utm_content:   acq.utm_content   || null,
+    utm_term:      acq.utm_term      || null,
+    vertical:      "miplan",
+    first_seen_at: getOrInitCrmFirstSeenAt(),
+  };
+}
+
+function buildLeadOutcomeCrm() {
+  return {
+    current:    "none",
+    updated_at: new Date().toISOString(),
+    history:    [],
+  };
+}
+
 function buildSeoIaSurveyCrm(st) {
   st = st || {};
   var s = st.seo_ia_survey;
@@ -209,6 +250,12 @@ function buildCRMData(motor) {
 
     // SEO IA — acquisition attribution (CRM only: source, intent, question, UTMs)
     acquisition: buildAcquisitionCrm(st),
+
+    // Original attribution snapshot — mirrors acquisition; CRM enforces immutability server-side
+    first_touch: buildFirstTouchCrm(st),
+
+    // Lead lifecycle placeholder — initialized only; outcomes populated by CRM later
+    lead_outcome: buildLeadOutcomeCrm(),
 
     // SEO IA — in-app survey block (CRM only: respuestas + score_v2 + clasificación)
     seo_ia_survey: buildSeoIaSurveyCrm(st),

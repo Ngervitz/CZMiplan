@@ -13,6 +13,13 @@
   global.trackEvent = function() {};
   global.window.location = { search: "?source=seo_ia&intent=clearing&question=como-salir-del-clearing&utm_source=google&utm_medium=cpc&utm_campaign=clearing_q1&utm_content=ad1&utm_term=clearing" };
 
+  var _lsStore = {};
+  global.localStorage = {
+    getItem: function(k) { return Object.prototype.hasOwnProperty.call(_lsStore, k) ? _lsStore[k] : null; },
+    setItem: function(k, v) { _lsStore[k] = String(v); },
+    removeItem: function(k) { delete _lsStore[k]; },
+  };
+
   function load(file) {
     vm.runInThisContext(
       fs.readFileSync(path.join(root, file), "utf8").replace(/\bconst /g, "var "),
@@ -71,11 +78,28 @@
   ok("utm_medium", payload.acquisition && payload.acquisition.utm_medium === "cpc");
   ok("utm_campaign", payload.acquisition && payload.acquisition.utm_campaign === "clearing_q1");
 
+  ok("first_touch.source mirrors acquisition", payload.first_touch && payload.first_touch.source === "seo_ia");
+  ok("first_touch.intent mirrors acquisition", payload.first_touch && payload.first_touch.intent === "clearing");
+  ok("first_touch.vertical", payload.first_touch && payload.first_touch.vertical === "miplan");
+  ok("first_touch.first_seen_at set", payload.first_touch && payload.first_touch.first_seen_at);
+
+  var storedFirstSeen = localStorage.getItem("cz_first_seen_at");
+  ok("first_seen_at persisted", storedFirstSeen === payload.first_touch.first_seen_at);
+
+  var payload2 = buildCRMData(motor);
+  ok("first_seen_at reused on reload", payload2.first_touch.first_seen_at === storedFirstSeen);
+
+  ok("lead_outcome.current none", payload.lead_outcome && payload.lead_outcome.current === "none");
+  ok("lead_outcome.history empty", payload.lead_outcome && Array.isArray(payload.lead_outcome.history) && payload.lead_outcome.history.length === 0);
+  ok("lead_outcome.updated_at", payload.lead_outcome && payload.lead_outcome.updated_at);
+
   console.log("");
   console.log("--- buildCRMData() ejemplo (campos SEO IA) ---");
   console.log(JSON.stringify({
     evento: "miplan_virgin_survey_completed",
     acquisition: payload.acquisition,
+    first_touch: payload.first_touch,
+    lead_outcome: payload.lead_outcome,
     survey: {
       completada: payload.survey.completada,
       respuestas: payload.survey.respuestas,
