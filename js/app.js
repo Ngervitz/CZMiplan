@@ -1482,6 +1482,18 @@ function updateSeoIaDiagnosisCtaState() {
   btn.style.opacity = enabled ? "1" : ".45";
 }
 
+function updateSeoIaSurveyNextState() {
+  var btn = document.getElementById("btn-seo-ia-survey-next");
+  if (!btn) return;
+  var st = window.CZState;
+  var ob = st.seo_ia_onboarding;
+  var group = ob && ob.surveyGroup ? ob.surveyGroup : 1;
+  var enabled = typeof seoIaSurveyGroupIsComplete === "function"
+    && seoIaSurveyGroupIsComplete(ob, group);
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? "1" : ".45";
+}
+
 function handleSeoIaSurveyAnswer(qIndex, letter) {
   var st = window.CZState;
   if (typeof ensureSeoIaOnboardingState === "function") ensureSeoIaOnboardingState();
@@ -1492,14 +1504,39 @@ function handleSeoIaSurveyAnswer(qIndex, letter) {
 
   window.guardarLocal();
   window.CredizonaUI.renderAll();
-  updateSeoIaDiagnosisCtaState();
+  if (ob.phase === "survey") {
+    updateSeoIaSurveyNextState();
+  } else if (ob.phase === "legals") {
+    updateSeoIaDiagnosisCtaState();
+  }
+}
+
+function handleSeoIaSurveyNext() {
+  var st = window.CZState;
+  var ob = st.seo_ia_onboarding;
+  if (!ob || ob.phase !== "survey") return;
+
+  var group = ob.surveyGroup || 1;
+  if (typeof seoIaSurveyGroupIsComplete === "function"
+    && !seoIaSurveyGroupIsComplete(ob, group)) {
+    return;
+  }
+
+  if (group >= 5) {
+    ob.phase = "legals";
+  } else {
+    ob.surveyGroup = group + 1;
+  }
+
+  window.guardarLocal();
+  window.CredizonaUI.renderAll();
 }
 
 function handleSeoIaIntroStart() {
   var st = window.CZState;
   if (typeof ensureSeoIaOnboardingState === "function") ensureSeoIaOnboardingState();
   st.seo_ia_onboarding.phase = "survey";
-  st.seo_ia_onboarding.questionIndex = 1;
+  st.seo_ia_onboarding.surveyGroup = 1;
   if (!st.seo_ia_onboarding.started_at) {
     st.seo_ia_onboarding.started_at = new Date().toISOString();
   }
@@ -2181,6 +2218,11 @@ document.addEventListener("DOMContentLoaded", function() {
         var _q = parseInt(_seoOpt.getAttribute("data-seo-q"), 10);
         var _letter = _seoOpt.getAttribute("data-seo-survey-opt");
         if (_q && _letter) handleSeoIaSurveyAnswer(_q, _letter);
+        return;
+      }
+
+      if (e.target.id === "btn-seo-ia-survey-next") {
+        handleSeoIaSurveyNext();
         return;
       }
 

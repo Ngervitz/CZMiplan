@@ -3584,11 +3584,33 @@ function ensureSeoIaOnboardingState() {
   for (i = 1; i <= 10; i++) resp["p" + i] = null;
   st.seo_ia_onboarding = {
     phase: "intro",
-    questionIndex: 1,
+    surveyGroup: 1,
     respuestas: resp,
     started_at: new Date().toISOString(),
   };
   return st.seo_ia_onboarding;
+}
+
+function seoIaNormalizeOnboardingPhase(ob) {
+  if (!ob) return;
+  if (ob.phase === "finish") ob.phase = "legals";
+  if (ob.phase === "survey" && !ob.surveyGroup) ob.surveyGroup = 1;
+}
+
+function seoIaSurveyGroupQuestions(group) {
+  var start = ((group || 1) - 1) * 2 + 1;
+  return [start, start + 1];
+}
+
+function seoIaSurveyGroupIsComplete(ob, group) {
+  if (!ob || !ob.respuestas) return false;
+  var qs = seoIaSurveyGroupQuestions(group);
+  var i;
+  for (i = 0; i < qs.length; i++) {
+    var v = ob.respuestas["p" + qs[i]];
+    if (v !== "A" && v !== "B" && v !== "C" && v !== "D") return false;
+  }
+  return true;
 }
 
 function seoIaSurveyIsComplete(ob) {
@@ -3631,26 +3653,46 @@ function renderSeoIaOnboardingHeader() {
 
 function renderSeoIaIntroBlock() {
   return [
-    '<div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#40d7ff;margin-bottom:16px;">',
-      'DIAGNÓSTICO FINANCIERO GRATIS',
+    '<div style="margin-bottom:28px;">',
+      '<div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#40d7ff;">',
+        '🎯 DIAGNÓSTICO FINANCIERO GRATIS',
+      '</div>',
     '</div>',
-    '<h1 style="font-size:26px;font-weight:900;line-height:1.2;color:#fff;margin:0 0 16px;">',
+
+    '<h1 style="font-size:26px;font-weight:900;line-height:1.2;color:#fff;margin:0 0 28px;">',
       'Descubrí qué te está frenando para acceder a crédito',
     '</h1>',
-    '<div style="font-size:15px;color:rgba(255,255,255,.7);line-height:1.7;margin-bottom:20px;">',
+
+    '<div style="font-size:15px;color:rgba(255,255,255,.7);line-height:1.7;margin-bottom:28px;',
+      'padding:16px 18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;">',
+      '<span style="margin-right:8px;">ℹ️</span>',
       'Mi Plan es una herramienta de diagnóstico orientativo basada en la información que ingresás. ',
       'No es una financiera, un banco ni un reporte oficial de Clearing, Equifax o BCU.',
     '</div>',
-    '<p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,.78);margin:0 0 24px;">',
+
+    '<p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,.78);margin:0 0 28px;">',
       'Respondé unas preguntas simples sobre tu situación financiera actual. En base a tus respuestas, ',
       'Mi Plan analiza tu perfil y te muestra un camino concreto para mejorar tus chances de acceder a financiamiento.',
     '</p>',
-    '<div style="background:rgba(64,215,255,.07);border:1px solid rgba(64,215,255,.22);border-radius:16px;padding:18px 20px;margin-bottom:28px;">',
-      '<div style="font-size:16px;font-weight:800;color:#40d7ff;margin-bottom:10px;">🤝 "Mi Plan" es gratuito.</div>',
+
+    '<div style="background:rgba(91,124,255,.08);border:1px solid rgba(91,124,255,.22);',
+      'border-radius:16px;padding:20px 18px;margin-bottom:28px;">',
+      '<div style="font-size:15px;line-height:1.8;color:rgba(255,255,255,.88);">',
+        '✅ Resultado inmediato<br>',
+        '✅ Sin compromiso<br>',
+        '✅ No implica aprobación de crédito<br>',
+        '✅ Pensado para personas que quieren ordenar su situación antes de volver a pedir un préstamo',
+      '</div>',
+    '</div>',
+
+    '<div style="background:rgba(64,215,255,.07);border:1px solid rgba(64,215,255,.22);border-radius:16px;',
+      'padding:20px 20px;margin-bottom:32px;">',
+      '<div style="font-size:16px;font-weight:800;color:#40d7ff;margin-bottom:12px;">🤝 "Mi Plan" es gratuito.</div>',
       '<div style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;">',
         'Lo creamos para ayudarte a entender tu situación financiera real y que veas un camino de salida. No tiene costo.',
       '</div>',
     '</div>',
+
     '<button type="button" id="btn-seo-ia-intro-start" style="',
       'width:100%;border:none;border-radius:16px;padding:18px 24px;',
       'font-size:17px;font-weight:800;color:#fff;cursor:pointer;',
@@ -3699,11 +3741,50 @@ function renderSeoIaSurveyQuestionCard(qIndex) {
   ].join("");
 }
 
+function renderSeoIaSurveyProgressBar(group) {
+  var g = group || 1;
+  var pct = Math.round((g / 5) * 100);
+  return [
+    '<div id="seo-ia-survey-progress" style="margin-bottom:28px;">',
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">',
+        '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#40d7ff;">',
+          'Bloque ' + g + ' de 5',
+        '</div>',
+        '<div style="font-size:12px;color:#8390b5;">' + pct + '%</div>',
+      '</div>',
+      '<div style="height:8px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden;">',
+        '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#5b7cff 0%,#40d7ff 100%);',
+          'border-radius:999px;box-shadow:0 0 12px rgba(64,215,255,.35);transition:width .25s ease;"></div>',
+      '</div>',
+    '</div>',
+  ].join("");
+}
+
+function renderSeoIaSurveyGroupScreen(group) {
+  var g = group || 1;
+  var qs = seoIaSurveyGroupQuestions(g);
+  var isLast = g === 5;
+  var btnLabel = isLast ? "Ver mis legales" : "Siguiente";
+
+  return [
+    renderSeoIaSurveyProgressBar(g),
+    renderSeoIaSurveyQuestionCard(qs[0]),
+    renderSeoIaSurveyQuestionCard(qs[1]),
+    '<button type="button" id="btn-seo-ia-survey-next" disabled style="',
+      'width:100%;border:none;border-radius:16px;padding:18px 24px;margin-top:8px;',
+      'font-size:17px;font-weight:800;color:#fff;cursor:pointer;',
+      'background:linear-gradient(135deg,#5b7cff 0%,#40d7ff 100%);',
+      'box-shadow:0 4px 24px rgba(64,215,255,.35);line-height:1.3;opacity:.45;',
+    '">' + btnLabel + '</button>',
+  ].join("");
+}
+
 function renderSeoIaSurveyQuestion(qIndex) {
   if (qIndex != null && qIndex >= 1 && qIndex <= 10) {
     return renderSeoIaSurveyQuestionCard(qIndex);
   }
-  return renderSeoIaSurveyAll();
+  var ob = _st().seo_ia_onboarding || {};
+  return renderSeoIaSurveyGroupScreen(ob.surveyGroup || 1);
 }
 
 function renderSeoIaSurveyLegalsAndCta() {
@@ -3731,41 +3812,20 @@ function renderSeoIaSurveyLegalsAndCta() {
   ].join("");
 }
 
-function renderSeoIaSurveyAll() {
-  var cards = [];
-  var i;
-  for (i = 1; i <= 10; i++) {
-    cards.push(renderSeoIaSurveyQuestionCard(i));
-  }
-
-  return [
-    '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#40d7ff;margin-bottom:12px;">',
-      'Encuesta · 10 preguntas',
-    '</div>',
-    '<p style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;margin:0 0 24px;">',
-      'Respondé en el orden que prefieras. Podés hacer scroll para ver todas las preguntas.',
-    '</p>',
-    '<div id="seo-ia-survey-scroll">' + cards.join("") + '</div>',
-    renderSeoIaSurveyLegalsAndCta(),
-  ].join("");
-}
-
-function renderSeoIaFinishBlock() {
-  return renderSeoIaSurveyAll();
-}
-
 function renderSeoIaOnboarding() {
   ensureSeoIaOnboardingState();
   var st = _st();
   var ob = st.seo_ia_onboarding;
   var body = "";
 
-  if (ob.phase === "finish") ob.phase = "survey";
+  seoIaNormalizeOnboardingPhase(ob);
 
   if (ob.phase === "intro") {
     body = renderSeoIaIntroBlock();
   } else if (ob.phase === "survey") {
-    body = renderSeoIaSurveyAll();
+    body = renderSeoIaSurveyGroupScreen(ob.surveyGroup || 1);
+  } else if (ob.phase === "legals") {
+    body = renderSeoIaSurveyLegalsAndCta();
   }
 
   return [
@@ -3873,9 +3933,14 @@ function renderAll() {
     }
     var _seoBar = document.getElementById("sticky-bar");
     if (_seoBar) _seoBar.style.display = "none";
-    if (st.seo_ia_onboarding && st.seo_ia_onboarding.phase === "survey"
-      && typeof updateSeoIaDiagnosisCtaState === "function") {
-      updateSeoIaDiagnosisCtaState();
+    if (st.seo_ia_onboarding) {
+      if (st.seo_ia_onboarding.phase === "survey"
+        && typeof updateSeoIaSurveyNextState === "function") {
+        updateSeoIaSurveyNextState();
+      } else if (st.seo_ia_onboarding.phase === "legals"
+        && typeof updateSeoIaDiagnosisCtaState === "function") {
+        updateSeoIaDiagnosisCtaState();
+      }
     }
     return;
   }

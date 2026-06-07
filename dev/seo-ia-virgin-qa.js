@@ -79,7 +79,10 @@
     var h = renderSeoIaOnboarding();
     return h.indexOf("Descubrí qué te está frenando para acceder a crédito") >= 0
       && h.indexOf("btn-seo-ia-intro-start") >= 0
-      && h.indexOf("Mi Plan") >= 0;
+      && h.indexOf("🎯") >= 0
+      && h.indexOf("🤝") >= 0
+      && h.indexOf("ℹ️") >= 0
+      && h.indexOf("✅") >= 0;
   }));
 
   ok("10 should show onboarding", withSearch("?source=seo_ia", function() {
@@ -94,23 +97,37 @@
     return shouldBypassMiPlanConsentForSeoIa();
   }));
 
-  ok("13 all questions on one screen", withSearch("?source=seo_ia", function() {
-    window.CZState.seo_ia_onboarding = { phase: "survey", questionIndex: 1, respuestas: {} };
-    var h = renderSeoIaSurveyAll();
+  ok("13 two questions per group screen", withSearch("?source=seo_ia", function() {
+    window.CZState.seo_ia_onboarding = { phase: "survey", surveyGroup: 1, respuestas: {} };
+    var h = renderSeoIaSurveyGroupScreen(1);
     return h.indexOf("Pregunta 1 de 10") >= 0
-      && h.indexOf("Pregunta 10 de 10") >= 0
-      && (h.match(/data-seo-q="/g) || []).length >= 40;
+      && h.indexOf("Pregunta 2 de 10") >= 0
+      && h.indexOf("Pregunta 3 de 10") < 0
+      && h.indexOf("btn-seo-ia-survey-next") >= 0
+      && h.indexOf("Siguiente") >= 0;
   }));
 
-  ok("14 legals + CTA on survey scroll", withSearch("?source=seo_ia", function() {
-    var h = renderSeoIaSurveyAll();
+  ok("14 progress bar + last group label", withSearch("?source=seo_ia", function() {
+    var h = renderSeoIaSurveyGroupScreen(5);
+    return h.indexOf("Bloque 5 de 5") >= 0
+      && h.indexOf("seo-ia-survey-progress") >= 0
+      && h.indexOf("Ver mis legales") >= 0;
+  }));
+
+  ok("15 legals phase separate", withSearch("?source=seo_ia", function() {
+    window.CZState.seo_ia_onboarding = { phase: "legals", surveyGroup: 5, respuestas: {} };
+    var h = renderSeoIaOnboarding();
     return h.indexOf("chk-seo-ia-tc") >= 0
       && h.indexOf("btn-seo-ia-diagnosis") >= 0
-      && h.indexOf("Ver mi diagnóstico") >= 0
-      && h.indexOf("seo-ia-survey-scroll") >= 0;
+      && h.indexOf("Ver mi diagnóstico") >= 0;
   }));
 
-  ok("15 events registered", CZ_GTM_EVENTS.indexOf("miplan_virgin_survey_completed") >= 0);
+  ok("16 group complete detection", withSearch("?source=seo_ia", function() {
+    var ob = { respuestas: { p1: "A", p2: "B" } };
+    return seoIaSurveyGroupIsComplete(ob, 1) && !seoIaSurveyGroupIsComplete(ob, 2);
+  }));
+
+  ok("17 events registered", CZ_GTM_EVENTS.indexOf("miplan_virgin_survey_completed") >= 0);
 
   console.log("");
   console.log("PASSED: " + passed + "/" + (passed + failed));
