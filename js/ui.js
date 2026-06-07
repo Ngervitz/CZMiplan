@@ -31,25 +31,7 @@ function renderMiPlanConsentScreen() {
     + '</div>'
     + '</div>'
 
-    // Checkbox 1 — T&C
-    + '<label style="display:flex;align-items:flex-start;gap:14px;cursor:pointer;margin-bottom:18px;'
-    + 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px 18px;">'
-    + '<input type="checkbox" id="chk-miplan-tc" style="width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">'
-    + '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.55;">'
-    + 'Leí y acepto los '
-    + '<a href="/tyc.html" target="_blank" rel="noopener" style="color:#a78bfa;text-decoration:underline;">Términos y Condiciones de Mi Plan</a>'
-    + '</span>'
-    + '</label>'
-
-    // Checkbox 2 — Privacy
-    + '<label style="display:flex;align-items:flex-start;gap:14px;cursor:pointer;margin-bottom:24px;'
-    + 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px 18px;">'
-    + '<input type="checkbox" id="chk-miplan-privacy" style="width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">'
-    + '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.55;">'
-    + 'Leí y acepto la '
-    + '<a href="/privacidad.html" target="_blank" rel="noopener" style="color:#a78bfa;text-decoration:underline;">Política de Privacidad de Mi Plan</a>'
-    + '</span>'
-    + '</label>'
+    + renderMiPlanLegalCheckboxes({ idTc: "chk-miplan-tc", idPrivacy: "chk-miplan-privacy" })
 
     // Disclaimer
     + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:24px;'
@@ -63,6 +45,29 @@ function renderMiPlanConsentScreen() {
     + 'style="width:100%;height:64px;font-size:19px;opacity:.45;transition:opacity .2s;" '
     + 'onclick="this.disabled&&event.preventDefault();">Ver mi diagnóstico</button>'
     + '</div>';
+}
+
+function renderMiPlanLegalCheckboxes(opts) {
+  opts = opts || {};
+  var idTc = opts.idTc || "chk-miplan-tc";
+  var idPp = opts.idPrivacy || "chk-miplan-privacy";
+  return ''
+    + '<label style="display:flex;align-items:flex-start;gap:14px;cursor:pointer;margin-bottom:18px;'
+    + 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px 18px;">'
+    + '<input type="checkbox" id="' + idTc + '" style="width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">'
+    + '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.55;">'
+    + 'Leí y acepto los '
+    + '<a href="/tyc.html" target="_blank" rel="noopener" style="color:#a78bfa;text-decoration:underline;">Términos y Condiciones de Mi Plan</a>'
+    + '</span>'
+    + '</label>'
+    + '<label style="display:flex;align-items:flex-start;gap:14px;cursor:pointer;margin-bottom:24px;'
+    + 'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px 18px;">'
+    + '<input type="checkbox" id="' + idPp + '" style="width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">'
+    + '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.55;">'
+    + 'Leí y acepto la '
+    + '<a href="/privacidad.html" target="_blank" rel="noopener" style="color:#a78bfa;text-decoration:underline;">Política de Privacidad de Mi Plan</a>'
+    + '</span>'
+    + '</label>';
 }
 
 // =============================================================================
@@ -3569,6 +3574,216 @@ function renderDiagnosisScreen() {
 }
 
 // =============================================================================
+// SEO IA — virgin onboarding (source=seo_ia, no result params)
+// =============================================================================
+function ensureSeoIaOnboardingState() {
+  var st = _st();
+  if (st.seo_ia_onboarding) return st.seo_ia_onboarding;
+  var resp = {};
+  var i;
+  for (i = 1; i <= 10; i++) resp["p" + i] = null;
+  st.seo_ia_onboarding = {
+    phase: "intro",
+    questionIndex: 1,
+    respuestas: resp,
+    started_at: new Date().toISOString(),
+  };
+  return st.seo_ia_onboarding;
+}
+
+function seoIaSurveyIsComplete(ob) {
+  if (!ob || !ob.respuestas) return false;
+  var i;
+  for (i = 1; i <= 10; i++) {
+    var v = ob.respuestas["p" + i];
+    if (v !== "A" && v !== "B" && v !== "C" && v !== "D") return false;
+  }
+  return true;
+}
+
+function shouldShowSeoIaOnboarding() {
+  var st = _st();
+  if (st && st.diag && st.step === 3) return false;
+  return typeof isSeoIaEntry === "function"
+    && isSeoIaEntry()
+    && typeof hasResultParams === "function"
+    && !hasResultParams();
+}
+
+function shouldShowSeoIaVirginLanding() {
+  return shouldShowSeoIaOnboarding();
+}
+
+function shouldBypassMiPlanConsentForSeoIa() {
+  return typeof shouldShowSeoIaOnboarding === "function" && shouldShowSeoIaOnboarding();
+}
+
+function renderSeoIaOnboardingHeader() {
+  return [
+    '<div style="text-align:center;margin-bottom:28px;">',
+      '<div style="font-size:13px;font-weight:700;letter-spacing:.12em;color:#5b7cff;text-transform:uppercase;margin-bottom:8px;">',
+        'Credizona · Mi Plan',
+      '</div>',
+      '<div style="font-size:12px;color:#8390b5;">Diagnóstico financiero orientativo</div>',
+    '</div>',
+  ].join("");
+}
+
+function renderSeoIaIntroBlock() {
+  return [
+    '<div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#40d7ff;margin-bottom:16px;">',
+      'DIAGNÓSTICO FINANCIERO GRATIS',
+    '</div>',
+    '<h1 style="font-size:26px;font-weight:900;line-height:1.2;color:#fff;margin:0 0 16px;">',
+      'Descubrí qué te está frenando para acceder a crédito',
+    '</h1>',
+    '<div style="font-size:15px;color:rgba(255,255,255,.7);line-height:1.7;margin-bottom:20px;">',
+      'Mi Plan es una herramienta de diagnóstico orientativo basada en la información que ingresás. ',
+      'No es una financiera, un banco ni un reporte oficial de Clearing, Equifax o BCU.',
+    '</div>',
+    '<p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,.78);margin:0 0 24px;">',
+      'Respondé unas preguntas simples sobre tu situación financiera actual. En base a tus respuestas, ',
+      'Mi Plan analiza tu perfil y te muestra un camino concreto para mejorar tus chances de acceder a financiamiento.',
+    '</p>',
+    '<div style="background:rgba(64,215,255,.07);border:1px solid rgba(64,215,255,.22);border-radius:16px;padding:18px 20px;margin-bottom:28px;">',
+      '<div style="font-size:16px;font-weight:800;color:#40d7ff;margin-bottom:10px;">🤝 "Mi Plan" es gratuito.</div>',
+      '<div style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;">',
+        'Lo creamos para ayudarte a entender tu situación financiera real y que veas un camino de salida. No tiene costo.',
+      '</div>',
+    '</div>',
+    '<button type="button" id="btn-seo-ia-intro-start" style="',
+      'width:100%;border:none;border-radius:16px;padding:18px 24px;',
+      'font-size:17px;font-weight:800;color:#fff;cursor:pointer;',
+      'background:linear-gradient(135deg,#5b7cff 0%,#40d7ff 100%);',
+      'box-shadow:0 4px 24px rgba(64,215,255,.35);line-height:1.3;',
+    '">Comenzar diagnóstico</button>',
+  ].join("");
+}
+
+function renderSeoIaSurveyQuestionCard(qIndex) {
+  var questions = typeof SEO_IA_QUESTIONS !== "undefined" ? SEO_IA_QUESTIONS : [];
+  var q = questions[qIndex - 1];
+  if (!q) return "";
+
+  var st = _st();
+  var ob = st.seo_ia_onboarding || {};
+  var selected = ob.respuestas ? ob.respuestas["p" + qIndex] : null;
+  var letters = ["A", "B", "C", "D"];
+  var optsHtml = letters.map(function(letter) {
+    var isSel = selected === letter;
+    return [
+      '<button type="button" data-seo-survey-opt="' + letter + '" data-seo-q="' + qIndex + '" style="',
+        'display:block;width:100%;text-align:left;border-radius:14px;padding:16px 18px;margin-bottom:10px;cursor:pointer;',
+        'border:1px solid ' + (isSel ? 'rgba(64,215,255,.55)' : 'rgba(255,255,255,.09)') + ';',
+        'background:' + (isSel ? 'rgba(64,215,255,.12)' : 'rgba(255,255,255,.04)') + ';',
+        'color:rgba(255,255,255,.9);font-size:15px;line-height:1.5;',
+      '">',
+        '<span style="display:inline-block;font-weight:800;color:#40d7ff;margin-right:10px;">' + letter + '.</span>',
+        q.options[letter],
+      '</button>',
+    ].join("");
+  }).join("");
+
+  return [
+    '<div class="seo-ia-q-card" data-seo-q-card="' + qIndex + '" style="',
+      'background:rgba(91,124,255,.06);border:1px solid rgba(91,124,255,.18);',
+      'border-radius:16px;padding:20px 18px;margin-bottom:20px;',
+    '">',
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#40d7ff;margin-bottom:8px;">',
+        'Pregunta ' + qIndex + ' de 10',
+      '</div>',
+      '<div style="font-size:13px;color:#8390b5;margin-bottom:8px;">' + q.theme + '</div>',
+      '<h2 style="font-size:20px;font-weight:800;line-height:1.35;color:#fff;margin:0 0 18px;">' + q.text + '</h2>',
+      '<div class="seo-ia-survey-options">' + optsHtml + '</div>',
+    '</div>',
+  ].join("");
+}
+
+function renderSeoIaSurveyQuestion(qIndex) {
+  if (qIndex != null && qIndex >= 1 && qIndex <= 10) {
+    return renderSeoIaSurveyQuestionCard(qIndex);
+  }
+  return renderSeoIaSurveyAll();
+}
+
+function renderSeoIaSurveyLegalsAndCta() {
+  return [
+    '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);">',
+      '<h2 style="font-size:20px;font-weight:800;line-height:1.35;color:#fff;margin:0 0 12px;">',
+        'Último paso antes de tu diagnóstico',
+      '</h2>',
+      '<p style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;margin:0 0 24px;">',
+        'Aceptá los términos para ver tu resultado orientativo.',
+      '</p>',
+      renderMiPlanLegalCheckboxes({ idTc: "chk-seo-ia-tc", idPrivacy: "chk-seo-ia-privacy" }),
+      '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:24px;',
+        'padding:14px 16px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;">',
+        'El diagnóstico, los scores y las proyecciones son orientativos. ',
+        'No garantizan aprobación de crédito ni modifican registros externos.',
+      '</div>',
+      '<button type="button" id="btn-seo-ia-diagnosis" disabled style="',
+        'width:100%;border:none;border-radius:16px;padding:18px 24px;',
+        'font-size:17px;font-weight:800;color:#fff;cursor:pointer;',
+        'background:linear-gradient(135deg,#5b7cff 0%,#40d7ff 100%);',
+        'box-shadow:0 4px 24px rgba(64,215,255,.35);line-height:1.3;opacity:.45;',
+      '">Ver mi diagnóstico</button>',
+    '</div>',
+  ].join("");
+}
+
+function renderSeoIaSurveyAll() {
+  var cards = [];
+  var i;
+  for (i = 1; i <= 10; i++) {
+    cards.push(renderSeoIaSurveyQuestionCard(i));
+  }
+
+  return [
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#40d7ff;margin-bottom:12px;">',
+      'Encuesta · 10 preguntas',
+    '</div>',
+    '<p style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;margin:0 0 24px;">',
+      'Respondé en el orden que prefieras. Podés hacer scroll para ver todas las preguntas.',
+    '</p>',
+    '<div id="seo-ia-survey-scroll">' + cards.join("") + '</div>',
+    renderSeoIaSurveyLegalsAndCta(),
+  ].join("");
+}
+
+function renderSeoIaFinishBlock() {
+  return renderSeoIaSurveyAll();
+}
+
+function renderSeoIaOnboarding() {
+  ensureSeoIaOnboardingState();
+  var st = _st();
+  var ob = st.seo_ia_onboarding;
+  var body = "";
+
+  if (ob.phase === "finish") ob.phase = "survey";
+
+  if (ob.phase === "intro") {
+    body = renderSeoIaIntroBlock();
+  } else if (ob.phase === "survey") {
+    body = renderSeoIaSurveyAll();
+  }
+
+  return [
+    '<div id="cz-seo-ia-onboarding" style="',
+      'min-height:60vh;padding:16px 8px calc(80px + env(safe-area-inset-bottom));',
+      'max-width:420px;margin:0 auto;',
+    '">',
+    renderSeoIaOnboardingHeader(),
+    body,
+    '</div>',
+  ].join("");
+}
+
+function renderSeoIaVirginLanding() {
+  return renderSeoIaOnboarding();
+}
+
+// =============================================================================
 // BRIDGE SCREEN — step 0, no behavioral data from any source
 // Shown when czuid was present but CRM returned null AND localStorage is empty.
 // Does NOT show financial cards, scores, or any diagnostic data.
@@ -3629,9 +3844,10 @@ function renderAll() {
   updateHeader();
 
   // Sprint 10 — Mi Plan in-app consent gate.
-  // Intercepts ALL render paths until the user has accepted the current legal versions.
-  // This fires BEFORE any step routing, ensuring no diagnosis/dashboard content is visible.
-  if (typeof shouldShowMiPlanConsent === "function" && shouldShowMiPlanConsent()) {
+  // SEO IA onboarding integrates legals inline — skip separate gate for that path.
+  if (typeof shouldShowMiPlanConsent === "function"
+    && shouldShowMiPlanConsent()
+    && !(typeof shouldBypassMiPlanConsentForSeoIa === "function" && shouldBypassMiPlanConsentForSeoIa())) {
     main.innerHTML = '<div class="fade">' + renderMiPlanConsentScreen() + '</div>';
     // Fire tracking event only once per consent screen view in this session
     if (!st._consentScreenTracked) {
@@ -3639,6 +3855,27 @@ function renderAll() {
       trackEvent(CZ_EVENT_NAMES.MIPLAN_CONSENT_SCREEN_VIEWED, {
         entry_channel: (typeof detectEntryChannel === "function") ? detectEntryChannel() : "direct",
       });
+    }
+    return;
+  }
+
+  // SEO IA virgin onboarding — after external consent, before step routing
+  if (typeof shouldShowSeoIaOnboarding === "function" && shouldShowSeoIaOnboarding()) {
+    main.innerHTML = '<div class="fade">' + renderSeoIaOnboarding() + '</div>';
+    if (!st._seoVirginLandingTracked) {
+      st._seoVirginLandingTracked = true;
+      if (typeof trackEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined") {
+        trackEvent(
+          CZ_EVENT_NAMES.MIPLAN_VIRGIN_LANDING_VIEW,
+          typeof getSeoIaTrackingPayload === "function" ? getSeoIaTrackingPayload() : {}
+        );
+      }
+    }
+    var _seoBar = document.getElementById("sticky-bar");
+    if (_seoBar) _seoBar.style.display = "none";
+    if (st.seo_ia_onboarding && st.seo_ia_onboarding.phase === "survey"
+      && typeof updateSeoIaDiagnosisCtaState === "function") {
+      updateSeoIaDiagnosisCtaState();
     }
     return;
   }

@@ -117,6 +117,175 @@ const SEGMENTO = (() => {
 })();
 
 // =============================================================================
+// SEO IA — virgin entry detection (no legal consent side effects)
+// =============================================================================
+function isSeoIaEntry() {
+  var p = new URLSearchParams(window.location.search);
+  return p.get("source") === "seo_ia";
+}
+
+function hasResultParams() {
+  var p = new URLSearchParams(window.location.search);
+  var hasIncome = p.has("ingreso");
+  var hasCrmId = p.has("czuid");
+  var hasAnySurvey = false;
+
+  for (var i = 1; i <= 10; i++) {
+    if (p.has("p" + i)) {
+      hasAnySurvey = true;
+      break;
+    }
+  }
+
+  return hasIncome || hasCrmId || hasAnySurvey;
+}
+
+function getSeoIaTrackingPayload() {
+  var p = new URLSearchParams(window.location.search);
+  return {
+    source: p.get("source") || null,
+    intent: p.get("intent") || null,
+    question: p.get("question") || null,
+  };
+}
+
+var SEO_IA_PRESERVED_PARAMS = [
+  "source", "intent", "question",
+  "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+];
+
+function buildSeoSurveyRedirectUrl() {
+  var p = new URLSearchParams(window.location.search);
+  var out = new URLSearchParams();
+  var i;
+  for (i = 0; i < SEO_IA_PRESERVED_PARAMS.length; i++) {
+    var key = SEO_IA_PRESERVED_PARAMS[i];
+    var val = p.get(key);
+    if (val != null && val !== "") out.set(key, val);
+  }
+  var qs = out.toString();
+  if (!qs) return SURVEY_URL;
+  return SURVEY_URL + (SURVEY_URL.indexOf("?") >= 0 ? "&" : "?") + qs;
+}
+
+function getSeoIaAcquisitionPayload() {
+  var p = new URLSearchParams(window.location.search);
+  return {
+    source:       p.get("source")       || null,
+    intent:       p.get("intent")       || null,
+    question:     p.get("question")     || null,
+    utm_source:   p.get("utm_source")   || null,
+    utm_medium:   p.get("utm_medium")   || null,
+    utm_campaign: p.get("utm_campaign") || null,
+    utm_content:  p.get("utm_content")  || null,
+    utm_term:     p.get("utm_term")     || null,
+  };
+}
+
+var SEO_IA_QUESTIONS = [
+  {
+    id: 1, theme: "Organización",
+    text: "¿Tenés claro cuánto dinero entra y sale cada mes?",
+    options: {
+      A: "Sí, lo controlo y lo reviso seguido",
+      B: "Bastante claro, aunque no perfecto",
+      C: "Más o menos, de forma general",
+      D: "No, casi nunca lo llevo",
+    },
+  },
+  {
+    id: 2, theme: "Emergencias",
+    text: "Si hoy tuvieras un gasto imprevisto grande, ¿cómo lo cubrirías?",
+    options: {
+      A: "Con ahorros para emergencias",
+      B: "Con ahorros, ajustando gastos",
+      C: "Con mucha dificultad",
+      D: "Tendría que pedir prestado",
+    },
+  },
+  {
+    id: 3, theme: "Responsabilidad",
+    text: "¿Cómo ves el origen de tu situación financiera actual?",
+    options: {
+      A: "Principalmente por decisiones mías",
+      B: "Más por decisiones mías que por factores externos",
+      C: "Más por factores externos que por mí",
+      D: "Casi totalmente por factores externos",
+    },
+  },
+  {
+    id: 4, theme: "Ingresos extra",
+    text: "Cuando recibís un ingreso extra, ¿qué solés hacer?",
+    options: {
+      A: "Ahorrar o pagar deudas",
+      B: "Ahorrar una parte y gastar otra",
+      C: "Gastarlo en gustos o pendientes",
+      D: "Gastarlo sin planear",
+    },
+  },
+  {
+    id: 5, theme: "Estrés",
+    text: "¿Qué nivel de preocupación te genera hoy tu situación financiera?",
+    options: {
+      A: "Bajo",
+      B: "Moderado",
+      C: "Alto",
+      D: "Muy alto",
+    },
+  },
+  {
+    id: 6, theme: "Préstamos informales",
+    text: "En el último año, ¿pediste dinero a familiares, amigos o prestamistas no formales?",
+    options: {
+      A: "No, nunca",
+      B: "No, pero lo consideraría",
+      C: "Sí, una vez",
+      D: "Sí, varias veces",
+    },
+  },
+  {
+    id: 7, theme: "Deudas",
+    text: "¿Tenés claro cuánto tiempo te llevaría salir de tus deudas pagando lo mínimo?",
+    options: {
+      A: "Sí, lo tengo claro",
+      B: "Más o menos",
+      C: "Muy por arriba",
+      D: "No tengo idea",
+    },
+  },
+  {
+    id: 8, theme: "Acción post rechazo",
+    text: "Después de un rechazo o una dificultad financiera, ¿hiciste algo para solucionarlo?",
+    options: {
+      A: "Sí, tomé acciones concretas",
+      B: "Averigüé, pero no avancé mucho",
+      C: "Pensé en hacerlo, pero no lo hice",
+      D: "No hice nada",
+    },
+  },
+  {
+    id: 9, theme: "Ayuda",
+    text: "Si Credizona te ofreciera ayuda gratuita para ordenar tus finanzas, ¿la aceptarías?",
+    options: {
+      A: "Sí, sin problema",
+      B: "Depende del tema",
+      C: "Solo algo puntual",
+      D: "No, prefiero solo",
+    },
+  },
+  {
+    id: 10, theme: "Constancia",
+    text: "¿Qué tan constante sos con hábitos financieros positivos por más de 3 meses?",
+    options: {
+      A: "Bastante constante",
+      B: "A veces lo logro",
+      C: "Me cuesta mucho",
+      D: "Casi nunca",
+    },
+  },
+];
+
+// =============================================================================
 // Legal consent constants
 // =============================================================================
 const LEGAL_VERSION_TC             = "TC_v2.0_202605";

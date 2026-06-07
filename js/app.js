@@ -49,6 +49,10 @@ window.CZState = {
   consent:                   null,
   _consentScreenTracked:     false,
 
+  // SEO IA — in-app virgin onboarding (survey + integrated legals)
+  seo_ia_onboarding:         null,
+  seo_ia_survey:             null,
+
   // Sprint 10.1 — user feedback suggestions (Mi Plan tab)
   feedback_suggestions:      [],
   _lastFeedbackFingerprint:  null,
@@ -959,6 +963,8 @@ window.guardarLocal = function(extra) {
       gastos_missing_confirmed: !!st.gastos_missing_confirmed,
       // Sprint 10 — persist Mi Plan in-app consent record
       consent:                  st.consent || null,
+      seo_ia_onboarding:        st.seo_ia_onboarding || null,
+      seo_ia_survey:            st.seo_ia_survey || null,
       // Sprint 10.1 — persist feedback suggestions
       feedback_suggestions:     st.feedback_suggestions || [],
       first_assessment_at:      st.first_assessment_at || null,
@@ -1379,6 +1385,8 @@ async function init() {
     st.gastos_missing_confirmed = !!dataToUse.gastos_missing_confirmed;
     // Sprint 10 — restore Mi Plan in-app consent record
     if (dataToUse.consent) st.consent = dataToUse.consent;
+    if (dataToUse.seo_ia_onboarding) st.seo_ia_onboarding = dataToUse.seo_ia_onboarding;
+    if (dataToUse.seo_ia_survey) st.seo_ia_survey = dataToUse.seo_ia_survey;
     // Sprint 10.1 — restore feedback suggestions
     if (dataToUse.feedback_suggestions) st.feedback_suggestions = dataToUse.feedback_suggestions;
     if (dataToUse.first_assessment_at) st.first_assessment_at = dataToUse.first_assessment_at;
@@ -1452,6 +1460,145 @@ function handleMiPlanConsentAccepted() {
   }
 
   window.guardarLocal();
+  window.CredizonaUI.renderAll();
+}
+
+// =============================================================================
+// SEO IA — in-app onboarding completion (survey → motor, no external redirect)
+// =============================================================================
+function updateSeoIaDiagnosisCtaState() {
+  var btn = document.getElementById("btn-seo-ia-diagnosis");
+  if (!btn) return;
+  var st = window.CZState;
+  var ob = st.seo_ia_onboarding;
+  var tc = document.getElementById("chk-seo-ia-tc");
+  var pp = document.getElementById("chk-seo-ia-privacy");
+  var surveyOk = typeof seoIaSurveyIsComplete === "function"
+    ? seoIaSurveyIsComplete(ob)
+    : false;
+  var legalsOk = !!(tc && tc.checked && pp && pp.checked);
+  var enabled = surveyOk && legalsOk;
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? "1" : ".45";
+}
+
+function handleSeoIaSurveyAnswer(qIndex, letter) {
+  var st = window.CZState;
+  if (typeof ensureSeoIaOnboardingState === "function") ensureSeoIaOnboardingState();
+  var ob = st.seo_ia_onboarding;
+  if (!ob || !ob.respuestas) return;
+
+  ob.respuestas["p" + qIndex] = letter;
+
+  window.guardarLocal();
+  window.CredizonaUI.renderAll();
+  updateSeoIaDiagnosisCtaState();
+}
+
+function handleSeoIaIntroStart() {
+  var st = window.CZState;
+  if (typeof ensureSeoIaOnboardingState === "function") ensureSeoIaOnboardingState();
+  st.seo_ia_onboarding.phase = "survey";
+  st.seo_ia_onboarding.questionIndex = 1;
+  if (!st.seo_ia_onboarding.started_at) {
+    st.seo_ia_onboarding.started_at = new Date().toISOString();
+  }
+
+  if (typeof trackEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined") {
+    trackEvent(
+      CZ_EVENT_NAMES.MIPLAN_VIRGIN_START,
+      typeof getSeoIaTrackingPayload === "function" ? getSeoIaTrackingPayload() : {}
+    );
+  }
+
+  window.guardarLocal();
+  window.CredizonaUI.renderAll();
+}
+
+function completeSeoIaOnboarding() {
+  var st = window.CZState;
+  var ob = st.seo_ia_onboarding;
+  if (!ob || !ob.respuestas) return;
+
+  var tc = document.getElementById("chk-seo-ia-tc");
+  var pp = document.getElementById("chk-seo-ia-privacy");
+  if (!(tc && tc.checked && pp && pp.checked)) return;
+  if (typeof seoIaSurveyIsComplete === "function" && !seoIaSurveyIsComplete(ob)) return;
+
+  var i;
+  for (i = 1; i <= 10; i++) {
+    PRE.respuestas["p" + i] = ob.respuestas["p" + i];
+  }
+
+  st.consent = (typeof buildMiPlanConsentRecord === "function")
+    ? buildMiPlanConsentRecord()
+    : null;
+  if (st.consent) st.consent.consent_source = "seo_ia_onboarding";
+
+  var seoMeta = (typeof calcularEncuestaSeoIa === "function")
+    ? calcularEncuestaSeoIa(ob.respuestas)
+    : {};
+  var now = new Date().toISOString();
+  st.seo_ia_survey = Object.assign({}, seoMeta, {
+    respuestas: ob.respuestas,
+    acquisition: typeof getSeoIaAcquisitionPayload === "function"
+      ? getSeoIaAcquisitionPayload()
+      : null,
+    started_at: ob.started_at || now,
+    completed_at: now,
+  });
+  ob.phase = "done";
+
+  if (typeof trackEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined") {
+    trackEvent(
+      CZ_EVENT_NAMES.MIPLAN_VIRGIN_SURVEY_COMPLETED,
+      typeof getSeoIaTrackingPayload === "function" ? getSeoIaTrackingPayload() : {}
+    );
+    trackEvent(CZ_EVENT_NAMES.SURVEY_COMPLETED, { source: "seo_ia_onboarding" });
+    if (st.consent) {
+      trackEvent(CZ_EVENT_NAMES.MIPLAN_CONSENT_ACCEPTED, {
+        entry_channel:  st.consent.entry_channel,
+        consent_source: st.consent.consent_source,
+      });
+    }
+  }
+
+  st.diag = null;
+  st.snap = null;
+  st.deudas = [];
+  st.gastos = {};
+  st.custom_expenses = [];
+  st.saldoIni = 0;
+  st.gastos_missing_confirmed = true;
+
+  if (typeof calcularMotor === "function") {
+    st.diag = calcularMotor();
+  }
+
+  st.snap = {
+    fecha_inicio:  now,
+    score_reset:   st.diag ? st.diag.scoreReset : null,
+    nivel:         st.diag ? st.diag.nivelR : null,
+    plan_id:       st.diag ? st.diag.planId : null,
+    saldo_inicial: 0,
+  };
+  st.step = 3;
+  st.tab = "plan";
+  st.first_assessment_at = now;
+  st.temporal.dashboard_generated_at = now;
+  st.temporal.survey_completed_at = now;
+  st._diagSource = "seo_ia_onboarding";
+  st.miplan_started = true;
+  setRecoveryState("dashboard_generated");
+
+  window.guardarLocal();
+
+  // CRM — full buildCRMData() payload (respuestas, score_v2, acquisition, motor diag)
+  if (typeof enviarCRM === "function" && st.diag) {
+    enviarCRM("miplan_virgin_survey_completed", st.diag);
+    enviarCRM("reset_plan_generated", st.diag);
+  }
+
   window.CredizonaUI.renderAll();
 }
 
@@ -2020,6 +2167,30 @@ document.addEventListener("DOMContentLoaded", function() {
         trackEvent(CZ_EVENT_NAMES.SURVEY_STARTED, { source: "bridge_screen" });
         window.guardarLocal();
         window.location.href = SURVEY_URL;
+        return;
+      }
+
+      // SEO IA onboarding — intro, survey options, legals, diagnosis CTA
+      if (e.target.id === "btn-seo-ia-intro-start") {
+        handleSeoIaIntroStart();
+        return;
+      }
+
+      var _seoOpt = e.target.closest("[data-seo-survey-opt]");
+      if (_seoOpt) {
+        var _q = parseInt(_seoOpt.getAttribute("data-seo-q"), 10);
+        var _letter = _seoOpt.getAttribute("data-seo-survey-opt");
+        if (_q && _letter) handleSeoIaSurveyAnswer(_q, _letter);
+        return;
+      }
+
+      if (e.target.id === "btn-seo-ia-diagnosis") {
+        completeSeoIaOnboarding();
+        return;
+      }
+
+      if (e.target.id === "chk-seo-ia-tc" || e.target.id === "chk-seo-ia-privacy") {
+        updateSeoIaDiagnosisCtaState();
         return;
       }
 

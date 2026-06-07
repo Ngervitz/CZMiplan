@@ -3,6 +3,57 @@
 // Depende de: config.js, events.js, creditors.js, algorithms.js
 // =============================================================================
 
+function buildSurveyRespuestasCrm(st) {
+  st = st || {};
+  var raw = (st.seo_ia_survey && st.seo_ia_survey.respuestas)
+    || (typeof PRE !== "undefined" && PRE.respuestas)
+    || null;
+  if (!raw) return null;
+
+  var out = {};
+  var hasAny = false;
+  var i;
+  for (i = 1; i <= 10; i++) {
+    var key = "p" + i;
+    var val = raw[key] != null ? raw[key] : null;
+    out[key] = val;
+    if (val != null && val !== "") hasAny = true;
+  }
+  return hasAny ? out : null;
+}
+
+function buildAcquisitionCrm(st) {
+  st = st || {};
+  var fromState = st.seo_ia_survey && st.seo_ia_survey.acquisition;
+  var fromUrl = (typeof getSeoIaAcquisitionPayload === "function")
+    ? getSeoIaAcquisitionPayload()
+    : null;
+
+  if (fromState && fromState.source) {
+    return Object.assign({}, fromUrl || {}, fromState);
+  }
+  if (fromUrl && fromUrl.source) return fromUrl;
+  return null;
+}
+
+function buildSeoIaSurveyCrm(st) {
+  st = st || {};
+  var s = st.seo_ia_survey;
+  if (!s || !s.completed_at) return null;
+
+  return {
+    respuestas:           buildSurveyRespuestasCrm(st),
+    score_v2:             s.score_v2 != null ? s.score_v2 : null,
+    baseline_nivel:       s.baseline_nivel || null,
+    nivel_final:          s.nivel_final || null,
+    flags_riesgo:         s.flags_riesgo || [],
+    b_plus:               !!s.b_plus,
+    version_cuestionario: s.version_cuestionario || null,
+    started_at:           s.started_at || null,
+    completed_at:         s.completed_at || null,
+  };
+}
+
 function buildCRMData(motor) {
   var fin = (motor && motor.fin) || {};
   var iv2 = (motor && motor.interpretacion_v2) || null;
@@ -25,7 +76,12 @@ function buildCRMData(motor) {
       segmento:          SEGMENTO,
     },
     survey: {
-      completada:        TIENE_ENCUESTA,
+      completada: (function() {
+        var resp = buildSurveyRespuestasCrm(st);
+        if (typeof surveyIsActive === "function" && resp) return surveyIsActive(resp);
+        return typeof TIENE_ENCUESTA !== "undefined" ? TIENE_ENCUESTA : false;
+      })(),
+      respuestas:        buildSurveyRespuestasCrm(st),
       score:             enc ? enc.score : null,
       nivel:             enc ? enc.nivel : null,
       b_plus:            enc ? enc.bPlus : null,
@@ -150,6 +206,12 @@ function buildCRMData(motor) {
     feedback_suggestions: (window.CZState && window.CZState.feedback_suggestions)
       ? window.CZState.feedback_suggestions
       : [],
+
+    // SEO IA — acquisition attribution (CRM only: source, intent, question, UTMs)
+    acquisition: buildAcquisitionCrm(st),
+
+    // SEO IA — in-app survey block (CRM only: respuestas + score_v2 + clasificación)
+    seo_ia_survey: buildSeoIaSurveyCrm(st),
   };
 }
 

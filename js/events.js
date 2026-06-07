@@ -38,6 +38,9 @@ var CZ_GTM_EVENTS = [
   "plus_error",
   "plus_purchased",
   "retry_cta_clicked",
+  "miplan_virgin_landing_view",
+  "miplan_virgin_start",
+  "miplan_virgin_survey_completed",
 ];
 
 var CZ_INTERNAL_EVENTS = [
@@ -76,6 +79,7 @@ var CZ_CRM_ONLY_EVENTS = [
   "plus_report_email_requested",
   "plus_feedback_submitted",
   "retry_cta_shown",
+  "miplan_virgin_survey_completed",
 ];
 
 // =============================================================================
@@ -93,6 +97,8 @@ var CZ_GTM_SAFE_FIELDS = [
   "entry_channel",
   "consent_source",
   "source",
+  "intent",
+  "question",
   "cta_source",
   "currency",
   "has_consent_params",
@@ -191,6 +197,9 @@ var CZ_EVENT_NAMES = Object.freeze({
   MIPLAN_CONSENT_SCREEN_VIEWED:    "miplan_consent_screen_viewed",
   MIPLAN_SUGGESTION_SUBMITTED:     "miplan_suggestion_submitted",
   MIPLAN_SESSION_STARTED:          "miplan_session_started",
+  MIPLAN_VIRGIN_LANDING_VIEW:      "miplan_virgin_landing_view",
+  MIPLAN_VIRGIN_START:             "miplan_virgin_start",
+  MIPLAN_VIRGIN_SURVEY_COMPLETED:  "miplan_virgin_survey_completed",
   GASTOS_MISSING_WARNING_SHOWN:    "gastos_missing_warning_shown",
   GASTOS_MISSING_CONFIRMED:        "gastos_missing_confirmed",
   HIDDEN_FACTOR_CTA_SHOWN:         "hidden_factor_cta_shown",
