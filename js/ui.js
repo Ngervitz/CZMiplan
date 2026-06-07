@@ -3659,7 +3659,8 @@ function renderSeoIaIntroBlock() {
       '</div>',
     '</div>',
 
-    '<h1 style="font-size:26px;font-weight:900;line-height:1.2;color:#fff;margin:0 0 28px;">',
+    '<h1 class="seo-ia-h1" style="font-size:26px;font-weight:900;line-height:1.2;letter-spacing:normal;',
+      'word-break:normal;overflow-wrap:break-word;color:#fff;margin:0 0 28px;">',
       'Descubrí qué te está frenando para acceder a crédito',
     '</h1>',
 
