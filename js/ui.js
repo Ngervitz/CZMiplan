@@ -263,6 +263,18 @@ function _profilePrefillEmail(st) {
   return "";
 }
 
+function _profileFieldInput(type, id, attrs) {
+  attrs = attrs || {};
+  var extraStyle = attrs.style || "";
+  var autocomplete = attrs.autocomplete ? (' autocomplete="' + attrs.autocomplete + '"') : "";
+  var placeholder = attrs.placeholder ? (' placeholder="' + attrs.placeholder + '"') : "";
+  var value = attrs.value != null ? (' value="' + attrs.value + '"') : "";
+  return '<input type="' + type + '" id="' + id + '" class="profile-field-input"'
+    + autocomplete + placeholder + value
+    + (extraStyle ? (' style="' + extraStyle + '"') : "")
+    + "/>";
+}
+
 function renderIngreso() {
   var st = _st();
   var incomeVal = st.declared_ingreso != null ? st.declared_ingreso : "";
@@ -285,13 +297,21 @@ function renderIngreso() {
 
     + '<div style="margin-top:20px;">'
     + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:8px;">¿Cómo te llamás?</label>'
-    + '<input type="text" id="inp-profile-nombre" autocomplete="name" style="width:100%;box-sizing:border-box;" placeholder="Ej: Nicolás" value="' + (typeof _plusEsc === "function" ? _plusEsc(nameVal || "") : (nameVal || "")) + '"/>'
+    + _profileFieldInput("text", "inp-profile-nombre", {
+        autocomplete: "name",
+        placeholder: "Ej: Nicolás",
+        value: typeof _plusEsc === "function" ? _plusEsc(nameVal || "") : (nameVal || ""),
+      })
     + _profileFieldError("profile-nombre-error")
     + '</div>'
 
     + '<div style="margin-top:18px;">'
     + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:8px;">¿A qué email te enviamos tu diagnóstico?</label>'
-    + '<input type="email" id="inp-profile-email" autocomplete="email" style="width:100%;box-sizing:border-box;" placeholder="Ej: tu@email.com" value="' + (typeof _plusEsc === "function" ? _plusEsc(emailVal || "") : (emailVal || "")) + '"/>'
+    + _profileFieldInput("email", "inp-profile-email", {
+        autocomplete: "email",
+        placeholder: "Ej: tu@email.com",
+        value: typeof _plusEsc === "function" ? _plusEsc(emailVal || "") : (emailVal || ""),
+      })
     + '<div style="margin-top:8px;font-size:13px;color:#8390b5;line-height:1.55;">Te enviaremos una copia de tu diagnóstico y futuras actualizaciones.</div>'
     + _profileFieldError("profile-email-error")
     + '</div>'
@@ -300,7 +320,11 @@ function renderIngreso() {
     + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:8px;">¿Cuál es tu ingreso líquido mensual?</label>'
     + '<div style="position:relative;max-width:100%;">'
     + '<span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
-    + '<input type="number" id="inp-ingreso-mensual" style="padding-left:36px;width:100%;box-sizing:border-box;" placeholder="Ej: 65.000" value="' + incomeVal + '"/>'
+    + _profileFieldInput("number", "inp-ingreso-mensual", {
+        placeholder: "Ej: 65.000",
+        value: incomeVal,
+        style: "padding-left:36px;",
+      })
     + '</div>'
     + _profileFieldError("profile-ingreso-error")
     + '</div>'

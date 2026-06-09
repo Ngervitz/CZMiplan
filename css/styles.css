@@ -135,10 +135,15 @@ h1{font-size:74px;line-height:.93;letter-spacing:-4px;margin-bottom:28px;}
 /* FORM */
 .field{margin-bottom:18px;}
 label{display:block;margin-bottom:8px;color:#8390b5;text-transform:uppercase;letter-spacing:.08em;font-size:13px;font-weight:800;}
-input[type=number],input[type=text],input[type=date],select{
+input[type=number],input[type=text],input[type=email],input[type=date],select,.profile-field-input{
   width:100%;height:66px;border-radius:16px;border:1px solid rgba(255,255,255,.1);
   background:#0a1026;color:white;padding:0 18px;font-size:19px;outline:none;
   transition:border .2s;
+  -webkit-appearance:none;
+  appearance:none;
+  box-sizing:border-box;
+  line-height:normal;
+  min-height:66px;
 }
 input:focus,select:focus{border-color:#40d7ff;}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2340d7ff' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;padding-right:40px;}
