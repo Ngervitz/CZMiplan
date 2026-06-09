@@ -1019,6 +1019,15 @@ function buildPlusPdfHtml(informe) {
   var logoSrc = _plusPdfLogoSrc();
   var footerText = "Generado por Credizona Mi Plan Plus. Este informe se basa en la información "
     + "disponible al momento de la consulta y no constituye asesoramiento financiero ni legal.";
+  var coverFirstName = "";
+  if (typeof getProfileFirstName === "function") {
+    coverFirstName = getProfileFirstName(window.CZState || {});
+  } else if (typeof PRE !== "undefined" && PRE.nombre) {
+    coverFirstName = String(PRE.nombre).trim().split(/\s+/)[0];
+  }
+  var coverSub = coverFirstName
+    ? ("Informe personalizado para " + _plusPdfEsc(coverFirstName))
+    : "Informe Financiero Personalizado";
 
   var body = "";
 
@@ -1027,7 +1036,7 @@ function buildPlusPdfHtml(informe) {
       ? '<img src="' + logoSrc + '" alt="Credizona" class="cover-logo"/>'
       : '<div class="cover-logo-fallback">Credizona</div>')
     + "<h1>Credizona Mi Plan Plus</h1>"
-    + "<p class=\"cover-sub\">Informe Financiero Personalizado</p>"
+    + "<p class=\"cover-sub\">" + coverSub + "</p>"
     + "<p class=\"cover-date\">Fecha: " + _plusPdfEsc(_plusPdfDateFormatted()) + "</p>"
     + "</div>";
 

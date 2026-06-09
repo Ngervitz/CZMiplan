@@ -60,7 +60,17 @@ const SITUACION_LABELS = {
   responsable_inscripto: "Responsable inscripto",
   informal:              "Trabajo informal",
   desempleado:           "Sin ingreso fijo",
+  jubilado:              "Jubilado / pensionista",
 };
+
+var BASIC_PROFILE_LABORAL_OPTIONS = [
+  { v: "relacion_dependencia", l: "Empleado en relación de dependencia" },
+  { v: "monotributista",       l: "Independiente / cuentapropista" },
+  { v: "jubilado",             l: "Jubilado / pensionista" },
+  { v: "desempleado",          l: "Sin ingresos fijos" },
+];
+
+var PROFILE_LABORAL_VALUES = BASIC_PROFILE_LABORAL_OPTIONS.map(function(o) { return o.v; });
 
 // --- Helpers de formato ---
 function fmt(n) {
@@ -94,6 +104,33 @@ function parseUrlIngresoValue() {
   if (!hasUrlIngresoParam()) return 0;
   var n = parseFloat(new URLSearchParams(window.location.search).get("ingreso"));
   return isNaN(n) ? 0 : n;
+}
+
+function hasUrlNombreParam() {
+  var n = new URLSearchParams(window.location.search).get("nombre");
+  return n != null && String(n).trim() !== "";
+}
+
+function hasUrlEmailParam() {
+  var raw = new URLSearchParams(window.location.search).get("email");
+  return sanitizeUrlEmail(raw) != null;
+}
+
+function hasUrlLaboralParam() {
+  var l = new URLSearchParams(window.location.search).get("laboral");
+  return l != null && String(l).trim() !== "";
+}
+
+function isDemoPreloadedName(name) {
+  return String(name || "").trim() === "Martin Rodriguez"
+    && typeof hasUrlNombreParam === "function"
+    && !hasUrlNombreParam();
+}
+
+function isDemoPreloadedEmail(email) {
+  return String(email || "").trim().toLowerCase() === "martin@email.com"
+    && typeof hasUrlEmailParam === "function"
+    && !hasUrlEmailParam();
 }
 
 function getPreLoaded() {

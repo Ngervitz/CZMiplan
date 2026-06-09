@@ -83,11 +83,11 @@ function updateSticky() {
   var bar  = document.getElementById("sticky-bar");
   if (!lbl || !stEl || !cta) return;
 
-  // step 0: income collection (SEO virgin / missing income)
+  // step 0: basic profile + income (SEO virgin / missing profile)
   if (typeof needsIncomeStep === "function" && needsIncomeStep(st)) {
     if (bar) { bar.style.display = ""; bar.classList.remove("dashboard"); }
-    lbl.textContent  = "Tu ingreso mensual";
-    stEl.textContent = "Necesitamos tu ingreso liquido para calcular tu margen.";
+    lbl.textContent  = "Tu perfil básico";
+    stEl.textContent = "Completá tus datos de contacto e ingreso para continuar.";
     cta.textContent  = "Continuar";
     cta.className    = "sticky-btn";
     return;
@@ -174,7 +174,7 @@ function renderStepPills(cur, total, customLabels) {
   // Flow: Ingreso (seg 2/3) or Situacion inicial (seg 1) → Deudas → Gastos
   var labels = customLabels || (SEGMENTO === 1
     ? ["Situacion inicial", "Deudas", "Gastos"]
-    : ["Ingreso", "Deudas", "Gastos"]);
+    : ["Perfil", "Deudas", "Gastos"]);
   var t = total || labels.length;
   var html = '<div class="step-pills">';
   labels.slice(0, t).forEach(function(l, i) {
@@ -239,20 +239,92 @@ function renderDiagInicial() {
 }
 
 // =============================================================================
-// STEP 0 — INGRESO (required when not supplied via URL / restore)
+// STEP 0 — BASIC PROFILE + INCOME (required when not supplied via URL / restore)
 // =============================================================================
+function _profileFieldError(id) {
+  return '<div id="' + id + '" style="display:none;margin-top:8px;font-size:13px;color:#ff4e72;line-height:1.5;"></div>';
+}
+
+function _profilePrefillName(st) {
+  if (st.declared_nombre) return st.declared_nombre;
+  if (typeof PRE !== "undefined" && PRE.nombre
+      && !(typeof isDemoPreloadedName === "function" && isDemoPreloadedName(PRE.nombre))) {
+    return PRE.nombre;
+  }
+  return "";
+}
+
+function _profilePrefillEmail(st) {
+  if (st.user_email) return st.user_email;
+  if (typeof PRE !== "undefined" && PRE.email
+      && !(typeof isDemoPreloadedEmail === "function" && isDemoPreloadedEmail(PRE.email))) {
+    return PRE.email;
+  }
+  return "";
+}
+
 function renderIngreso() {
   var st = _st();
-  var val = st.declared_ingreso != null ? st.declared_ingreso : "";
-  var html = renderStepPills(0, 3, ["Ingreso", "Deudas", "Gastos"]);
+  var incomeVal = st.declared_ingreso != null ? st.declared_ingreso : "";
+  var nameVal = _profilePrefillName(st);
+  var emailVal = _profilePrefillEmail(st);
+  var laboralSel = st.declared_laboral || (typeof PRE !== "undefined" ? PRE.laboral : "") || "";
+  var laboralOpts = typeof BASIC_PROFILE_LABORAL_OPTIONS !== "undefined"
+    ? BASIC_PROFILE_LABORAL_OPTIONS
+    : [
+        { v: "relacion_dependencia", l: "Empleado en relación de dependencia" },
+        { v: "monotributista", l: "Independiente / cuentapropista" },
+        { v: "jubilado", l: "Jubilado / pensionista" },
+        { v: "desempleado", l: "Sin ingresos fijos" },
+      ];
+
+  var html = renderStepPills(0, 3, ["Perfil", "Deudas", "Gastos"]);
   html += '<div class="card">'
-    + '<div class="section-title">¿Cuál es tu ingreso líquido mensual?</div>'
-    + '<div class="section-text">Lo usamos para calcular tu margen mensual y el diagnóstico completo.</div>'
-    + '<div style="position:relative;max-width:100%;margin-top:16px;">'
-    + '<span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
-    + '<input type="number" id="inp-ingreso-mensual" style="padding-left:36px;width:100%;box-sizing:border-box;" placeholder="Ej: 65.000" value="' + val + '"/>'
+    + '<div class="section-title">Contanos un poco sobre vos</div>'
+    + '<div class="section-text">Con estos datos preparamos tu diagnóstico y te enviamos una copia por email.</div>'
+
+    + '<div style="margin-top:20px;">'
+    + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:8px;">¿Cómo te llamás?</label>'
+    + '<input type="text" id="inp-profile-nombre" autocomplete="name" style="width:100%;box-sizing:border-box;" placeholder="Ej: Nicolás" value="' + (typeof _plusEsc === "function" ? _plusEsc(nameVal || "") : (nameVal || "")) + '"/>'
+    + _profileFieldError("profile-nombre-error")
     + '</div>'
-    + '<button type="button" class="btn btn-primary" style="height:68px;font-size:20px;margin-top:20px;width:100%;" id="btn-continuar-ingreso">Continuar</button>'
+
+    + '<div style="margin-top:18px;">'
+    + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:8px;">¿A qué email te enviamos tu diagnóstico?</label>'
+    + '<input type="email" id="inp-profile-email" autocomplete="email" style="width:100%;box-sizing:border-box;" placeholder="Ej: tu@email.com" value="' + (typeof _plusEsc === "function" ? _plusEsc(emailVal || "") : (emailVal || "")) + '"/>'
+    + '<div style="margin-top:8px;font-size:13px;color:#8390b5;line-height:1.55;">Te enviaremos una copia de tu diagnóstico y futuras actualizaciones.</div>'
+    + _profileFieldError("profile-email-error")
+    + '</div>'
+
+    + '<div style="margin-top:18px;">'
+    + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:8px;">¿Cuál es tu ingreso líquido mensual?</label>'
+    + '<div style="position:relative;max-width:100%;">'
+    + '<span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
+    + '<input type="number" id="inp-ingreso-mensual" style="padding-left:36px;width:100%;box-sizing:border-box;" placeholder="Ej: 65.000" value="' + incomeVal + '"/>'
+    + '</div>'
+    + _profileFieldError("profile-ingreso-error")
+    + '</div>'
+
+    + '<div style="margin-top:18px;">'
+    + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:10px;">¿Cuál es tu situación laboral?</label>'
+    + '<div style="display:flex;flex-direction:column;gap:8px;">'
+    + laboralOpts.map(function(o) {
+        var active = laboralSel === o.v;
+        return '<label style="display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-radius:12px;border:1.5px solid '
+          + (active ? "#40d7ff" : "rgba(255,255,255,.1)") + ';background:'
+          + (active ? "rgba(64,215,255,.08)" : "transparent") + ';cursor:pointer;width:100%;">'
+          + '<input type="radio" name="profile-laboral" value="' + o.v + '"'
+          + (active ? " checked" : "")
+          + ' style="margin-top:3px;accent-color:#40d7ff;"/>'
+          + '<span style="font-size:15px;font-weight:' + (active ? "800" : "600") + ';color:'
+          + (active ? "#40d7ff" : "rgba(255,255,255,.78)") + ';line-height:1.45;">' + o.l + "</span>"
+          + "</label>";
+      }).join("")
+    + '</div>'
+    + _profileFieldError("profile-laboral-error")
+    + '</div>'
+
+    + '<button type="button" class="btn btn-primary" style="height:68px;font-size:20px;margin-top:24px;width:100%;" id="btn-continuar-ingreso">Continuar</button>'
     + '</div>';
   return html;
 }
@@ -441,7 +513,7 @@ function renderGastos() {
 
   var html = SEGMENTO === 1
     ? renderStepPills(2, 3)
-    : renderStepPills(2, 3, ["Ingreso", "Deudas", "Gastos"]);
+    : renderStepPills(2, 3, ["Perfil", "Deudas", "Gastos"]);
 
   html += '<div style="font-size:15px;color:#8390b5;line-height:1.6;margin-bottom:20px;padding:0 4px;">'
     + 'El banco ya tiene informacion sobre vos. Este diagnostico te ayuda a entenderla.'
@@ -509,7 +581,7 @@ function renderGastos() {
 function renderDeudas() {
   var html = SEGMENTO === 1
     ? renderStepPills(1, 3)
-    : renderStepPills(1, 3, ["Ingreso", "Deudas", "Gastos"]);
+    : renderStepPills(1, 3, ["Perfil", "Deudas", "Gastos"]);
   var st     = _st();
   var deudas = st.deudas || [];
   var editing = st.editing_debt_index;
@@ -1915,7 +1987,15 @@ function renderTabPlan() {
       + '</div>'
     : '';
 
+  var _profileFirstName = (typeof getProfileFirstName === "function") ? getProfileFirstName(st) : "";
+  var _greetingHtml = _profileFirstName
+    ? '<div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.95);margin-bottom:18px;">Hola '
+      + (typeof _plusEsc === "function" ? _plusEsc(_profileFirstName) : _profileFirstName)
+      + "</div>"
+    : "";
+
   return '<div class="fade">'
+    + _greetingHtml
     + _gastosMissingCard
     + renderFinancialRealityWarning(diag)
     + _dashIaSectionOpen(true, "situacion")

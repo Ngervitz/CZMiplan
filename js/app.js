@@ -42,8 +42,11 @@ window.CZState = {
   // Sprint 9 — incomplete data flags
   gastos_missing_confirmed:  false,
   financial_income_complete:   false,
+  financial_profile_complete:  false,
   income_source:               null,
   declared_ingreso:            null,
+  declared_nombre:             null,
+  declared_laboral:            null,
   financial_debts_complete:  false,
   financial_expenses_complete: false,
   no_debts_declared:         false,
@@ -980,8 +983,11 @@ window.guardarLocal = function(extra) {
       // Sprint 9 — persist incomplete-data flag across sessions
       gastos_missing_confirmed: !!st.gastos_missing_confirmed,
       financial_income_complete: !!st.financial_income_complete,
+      financial_profile_complete: !!st.financial_profile_complete,
       income_source: st.income_source || null,
       declared_ingreso: st.declared_ingreso != null ? st.declared_ingreso : null,
+      declared_nombre: st.declared_nombre || null,
+      declared_laboral: st.declared_laboral || null,
       financial_debts_complete: !!st.financial_debts_complete,
       financial_expenses_complete: !!st.financial_expenses_complete,
       no_debts_declared: !!st.no_debts_declared,
@@ -1084,18 +1090,11 @@ function next() {
   var st = window.CZState;
 
   if (typeof needsIncomeStep === "function" && needsIncomeStep(st)) {
-    var incomeInput = document.getElementById("inp-ingreso-mensual");
-    var incomeVal = parseFloat(incomeInput && incomeInput.value);
-    if (!incomeVal || incomeVal <= 0 || isNaN(incomeVal)) {
-      if (typeof showToast === "function") {
-        showToast("Ingresá tu ingreso líquido mensual para continuar.");
-      }
-      return;
-    }
-    if (typeof PRE !== "undefined") PRE.ingreso = incomeVal;
-    st.declared_ingreso = incomeVal;
-    st.financial_income_complete = true;
-    st.income_source = "user_input";
+    var profileData = typeof collectBasicProfileForm === "function"
+      ? collectBasicProfileForm()
+      : null;
+    if (!profileData) return;
+    applyBasicProfileSubmission(st, profileData);
     st.step = resolveNextRequiredFinancialStep(st);
     if (typeof trackEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined") {
       trackEvent(CZ_EVENT_NAMES.INGRESO_REAL_DECLARADO, { source: "user_input" });
@@ -1136,7 +1135,7 @@ function next() {
 
   // step 2 (gastos) → step 3 (dashboard)
   if (st.step === 2) {
-    if (!hasCompletedIncomeInputs(st)) {
+    if (!hasCompletedBasicProfileInputs(st)) {
       st.step = resolveNextRequiredFinancialStep(st);
       window.CredizonaUI.renderAll();
       return;
@@ -1268,8 +1267,11 @@ function resetear() {
     // Sprint 9 — incomplete data flags
     gastos_missing_confirmed:  false,
     financial_income_complete: false,
+    financial_profile_complete: false,
     income_source:             null,
     declared_ingreso:          null,
+    declared_nombre:           null,
+    declared_laboral:          null,
     financial_debts_complete:  false,
     financial_expenses_complete: false,
     no_debts_declared:         false,
@@ -1440,6 +1442,17 @@ function syncPreIngresoFromState(st) {
   }
 }
 
+function syncPreProfileFromState(st) {
+  st = st || window.CZState || {};
+  if (typeof PRE === "undefined") return;
+  syncPreIngresoFromState(st);
+  if (st.declared_nombre) PRE.nombre = st.declared_nombre;
+  if (st.declared_laboral) PRE.laboral = st.declared_laboral;
+  if (typeof sanitizeUrlEmail === "function" && sanitizeUrlEmail(st.user_email)) {
+    PRE.email = sanitizeUrlEmail(st.user_email);
+  }
+}
+
 function applyUrlIngresoSource(st) {
   st = st || window.CZState || {};
   if (typeof hasUrlIngresoParam !== "function" || !hasUrlIngresoParam()) return;
@@ -1451,6 +1464,162 @@ function applyUrlIngresoSource(st) {
   st.declared_ingreso = ing;
   st.income_source = "url_param";
   st.financial_income_complete = true;
+}
+
+function applyUrlProfileSources(st) {
+  st = st || window.CZState || {};
+  if (typeof PRE === "undefined") return;
+  if (typeof hasUrlNombreParam === "function" && hasUrlNombreParam() && PRE.nombre) {
+    st.declared_nombre = PRE.nombre;
+  }
+  if (typeof hasUrlEmailParam === "function" && hasUrlEmailParam()) {
+    var urlEmail = sanitizeUrlEmail(new URLSearchParams(window.location.search).get("email"));
+    if (urlEmail) {
+      st.user_email = urlEmail;
+      PRE.email = urlEmail;
+    }
+  }
+  if (typeof hasUrlLaboralParam === "function" && hasUrlLaboralParam() && PRE.laboral) {
+    st.declared_laboral = PRE.laboral;
+  }
+  if (hasCompletedBasicProfileInputs(st)) {
+    st.financial_profile_complete = true;
+  }
+}
+
+function hasValidDeclaredName(st) {
+  st = st || window.CZState || {};
+  syncPreProfileFromState(st);
+  if (st.declared_nombre && String(st.declared_nombre).trim()) return true;
+  if (typeof hasUrlNombreParam === "function" && hasUrlNombreParam()
+      && PRE.nombre && String(PRE.nombre).trim()
+      && !(typeof isDemoPreloadedName === "function" && isDemoPreloadedName(PRE.nombre))) {
+    return true;
+  }
+  return false;
+}
+
+function hasValidDeclaredEmail(st) {
+  st = st || window.CZState || {};
+  syncPreProfileFromState(st);
+  var email = typeof sanitizeUrlEmail === "function"
+    ? (sanitizeUrlEmail(st.user_email) || sanitizeUrlEmail(PRE.email))
+    : null;
+  if (!email) return false;
+  if (typeof isDemoPreloadedEmail === "function"
+      && isDemoPreloadedEmail(PRE.email)
+      && !st.user_email
+      && !(typeof hasUrlEmailParam === "function" && hasUrlEmailParam())) {
+    return false;
+  }
+  return true;
+}
+
+function hasValidDeclaredLaboral(st) {
+  st = st || window.CZState || {};
+  syncPreProfileFromState(st);
+  var lab = st.declared_laboral || PRE.laboral;
+  if (!lab) return false;
+  if (typeof PROFILE_LABORAL_VALUES !== "undefined") {
+    return PROFILE_LABORAL_VALUES.indexOf(lab) >= 0;
+  }
+  return !!lab;
+}
+
+function hasCompletedBasicProfileInputs(st) {
+  st = st || window.CZState || {};
+  if (st.financial_profile_complete) {
+    return hasCompletedIncomeInputs(st)
+      && hasValidDeclaredName(st)
+      && hasValidDeclaredEmail(st)
+      && hasValidDeclaredLaboral(st);
+  }
+  if (st.temporal && st.temporal.dashboard_generated_at && st.diag && hasCompletedIncomeInputs(st)) {
+    return true;
+  }
+  return hasCompletedIncomeInputs(st)
+    && hasValidDeclaredName(st)
+    && hasValidDeclaredEmail(st)
+    && hasValidDeclaredLaboral(st);
+}
+
+function clearBasicProfileFieldErrors() {
+  ["profile-nombre-error", "profile-email-error", "profile-laboral-error", "profile-ingreso-error"].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.textContent = "";
+      el.style.display = "none";
+    }
+  });
+}
+
+function showBasicProfileFieldError(id, msg) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function collectBasicProfileForm() {
+  clearBasicProfileFieldErrors();
+  var nameEl = document.getElementById("inp-profile-nombre");
+  var emailEl = document.getElementById("inp-profile-email");
+  var incomeEl = document.getElementById("inp-ingreso-mensual");
+  var laboralEl = document.querySelector('input[name="profile-laboral"]:checked');
+  var name = (nameEl && nameEl.value || "").trim();
+  var emailRaw = (emailEl && emailEl.value || "").trim();
+  var email = typeof sanitizeUrlEmail === "function" ? sanitizeUrlEmail(emailRaw) : null;
+  var incomeVal = parseFloat(incomeEl && incomeEl.value);
+  var valid = true;
+
+  if (!name) {
+    showBasicProfileFieldError("profile-nombre-error", "Ingresá tu nombre para continuar.");
+    valid = false;
+  }
+  if (!email) {
+    showBasicProfileFieldError("profile-email-error", "Ingresá un email válido");
+    valid = false;
+  }
+  if (!laboralEl) {
+    showBasicProfileFieldError("profile-laboral-error", "Seleccioná tu situación laboral.");
+    valid = false;
+  }
+  if (!incomeVal || incomeVal <= 0 || isNaN(incomeVal)) {
+    showBasicProfileFieldError("profile-ingreso-error", "Ingresá tu ingreso líquido mensual.");
+    valid = false;
+  }
+  if (!valid) return null;
+  return {
+    name: name,
+    email: email,
+    incomeVal: incomeVal,
+    laboral: laboralEl.value,
+  };
+}
+
+function applyBasicProfileSubmission(st, data) {
+  if (typeof PRE !== "undefined") {
+    PRE.nombre = data.name;
+    PRE.email = data.email;
+    PRE.laboral = data.laboral;
+    PRE.ingreso = data.incomeVal;
+  }
+  st.declared_nombre = data.name;
+  st.declared_laboral = data.laboral;
+  st.user_email = data.email;
+  st.declared_ingreso = data.incomeVal;
+  st.financial_income_complete = true;
+  st.financial_profile_complete = true;
+  st.income_source = "user_input";
+}
+
+function getProfileFirstName(st) {
+  st = st || window.CZState || {};
+  syncPreProfileFromState(st);
+  var name = (st.declared_nombre || (typeof PRE !== "undefined" ? PRE.nombre : "") || "").trim();
+  if (!name) return "";
+  if (typeof isDemoPreloadedName === "function" && isDemoPreloadedName(name)) return "";
+  return name.split(/\s+/)[0];
 }
 
 function hasCompletedIncomeInputs(st) {
@@ -1481,7 +1650,7 @@ function hasIncomePresent() {
 
 function needsIncomeStep(st) {
   st = st || window.CZState || {};
-  return !!st.miplan_started && !hasCompletedIncomeInputs(st);
+  return !!st.miplan_started && !hasCompletedBasicProfileInputs(st);
 }
 
 function hasCompletedDebtInputs(st) {
@@ -1521,14 +1690,14 @@ function hasCompletedExpenseInputs(st) {
 
 function hasCompletedFinancialInputs(st) {
   st = st || window.CZState || {};
-  return hasIncomePresent()
+  return hasCompletedBasicProfileInputs(st)
     && hasCompletedDebtInputs(st)
     && hasCompletedExpenseInputs(st);
 }
 
 function resolveNextRequiredFinancialStep(st) {
   st = st || window.CZState || {};
-  if (!hasCompletedIncomeInputs(st)) return 0;
+  if (!hasCompletedBasicProfileInputs(st)) return 0;
   if (!hasCompletedDebtInputs(st)) return 1;
   if (!hasCompletedExpenseInputs(st)) return 2;
   return 3;
@@ -1589,16 +1758,23 @@ async function init() {
     st.saldoIni = 0;
     st.gastos_missing_confirmed = false;
     st.financial_income_complete = false;
+    st.financial_profile_complete = false;
     st.income_source = null;
     st.declared_ingreso = null;
+    st.declared_nombre = null;
+    st.declared_laboral = null;
     st.financial_debts_complete = false;
     st.financial_expenses_complete = false;
     st.no_debts_declared = false;
     st._showGastosWarning = false;
     applyUrlIngresoSource(st);
+    applyUrlProfileSources(st);
     if (!hasCompletedIncomeInputs(st) && typeof PRE !== "undefined") {
       PRE.ingreso = 0;
     }
+    if (!hasUrlNombreParam()) PRE.nombre = "";
+    if (!hasUrlEmailParam()) PRE.email = "";
+    if (!hasUrlLaboralParam()) PRE.laboral = "";
     st.step = resolveNextRequiredFinancialStep(st);
     st.tab = "plan";
     st.miplan_started = true;
@@ -1650,10 +1826,17 @@ async function init() {
     // Sprint 9 — restore incomplete-data flag
     st.gastos_missing_confirmed = !!dataToUse.gastos_missing_confirmed;
     st.declared_ingreso = dataToUse.declared_ingreso != null ? dataToUse.declared_ingreso : null;
+    st.declared_nombre = dataToUse.declared_nombre || null;
+    st.declared_laboral = dataToUse.declared_laboral || null;
     st.income_source = dataToUse.income_source || null;
     st.financial_income_complete = dataToUse.financial_income_complete != null
       ? !!dataToUse.financial_income_complete
       : false;
+    st.financial_profile_complete = dataToUse.financial_profile_complete != null
+      ? !!dataToUse.financial_profile_complete
+      : false;
+    if (st.declared_nombre) PRE.nombre = st.declared_nombre;
+    if (st.declared_laboral) PRE.laboral = st.declared_laboral;
     if (st.declared_ingreso != null && parseFloat(st.declared_ingreso) > 0) {
       PRE.ingreso = parseFloat(st.declared_ingreso);
       if (!st.income_source) {
@@ -1662,6 +1845,8 @@ async function init() {
       }
     }
     applyUrlIngresoSource(st);
+    applyUrlProfileSources(st);
+    syncPreProfileFromState(st);
     st.financial_debts_complete = dataToUse.financial_debts_complete != null
       ? !!dataToUse.financial_debts_complete
       : hasCompletedDebtInputs(st);
@@ -2023,8 +2208,11 @@ function completeSeoIaOnboarding() {
   st.saldoIni = 0;
   st.gastos_missing_confirmed = false;
   st.financial_income_complete = false;
+  st.financial_profile_complete = false;
   st.income_source = null;
   st.declared_ingreso = null;
+  st.declared_nombre = null;
+  st.declared_laboral = null;
   st.financial_debts_complete = false;
   st.financial_expenses_complete = false;
   st.no_debts_declared = false;
@@ -2035,6 +2223,12 @@ function completeSeoIaOnboarding() {
   } else if (typeof PRE !== "undefined") {
     PRE.ingreso = 0;
   }
+  if (typeof PRE !== "undefined") {
+    if (typeof hasUrlNombreParam === "function" && !hasUrlNombreParam()) PRE.nombre = "";
+    if (typeof hasUrlEmailParam === "function" && !hasUrlEmailParam()) PRE.email = "";
+    if (typeof hasUrlLaboralParam === "function" && !hasUrlLaboralParam()) PRE.laboral = "";
+  }
+  applyUrlProfileSources(st);
 
   var preliminaryDiag = null;
   if (typeof calcularMotor === "function") {
