@@ -1631,6 +1631,7 @@ function hasCompletedIncomeInputs(st) {
 
   if (st.financial_income_complete) {
     return st.income_source === "user_input"
+      || st.income_source === "user_update"
       || st.income_source === "url_param"
       || st.income_source === "crm_restore"
       || st.income_source === "localStorage_restore"
@@ -3475,11 +3476,15 @@ document.addEventListener("DOMContentLoaded", function() {
       }
 
       // Agregar ingreso extra
+      if (e.target.id === "btn-guardar-ingreso-actualizado") {
+        guardarIngresoActualizado();
+        return;
+      }
+
       if (e.target.id === "btn-agregar-ing-extra") {
+        if (!st.herr.ingresos) st.herr.ingresos = { formal: getCanonicalIngreso(), extras: [], total: 0 };
         if (!st.herr.ingresos.extras) st.herr.ingresos.extras = [];
         st.herr.ingresos.extras.push({ tipo: "", monto: 0 });
-
-        window.guardarLocal();
         window.CredizonaUI.renderTab();
         return;
       }
@@ -3663,28 +3668,141 @@ function showToast(msg, ms) {
 // =============================================================================
 // HELPERS LOCALES
 // =============================================================================
+function getCanonicalIngreso() {
+  if (typeof PRE !== "undefined" && PRE.ingreso != null) {
+    return parseFloat(PRE.ingreso) || 0;
+  }
+  return 0;
+}
+
+function syncIngresosFromDom(st) {
+  st = st || window.CZState;
+  if (!st.herr.ingresos) {
+    st.herr.ingresos = { formal: getCanonicalIngreso(), extras: [], total: 0 };
+  }
+
+  var formalEl = document.getElementById("ing-formal");
+  if (formalEl) {
+    st.herr.ingresos.formal = parseFloat(formalEl.value) || 0;
+  } else if (!st.herr.ingresos.formal) {
+    st.herr.ingresos.formal = getCanonicalIngreso();
+  }
+
+  var extra = (st.herr.ingresos.extras || []).reduce(function(s, e) {
+    return s + (parseFloat(e.monto) || 0);
+  }, 0);
+  st.herr.ingresos.total = (parseFloat(st.herr.ingresos.formal) || 0) + extra;
+  return st.herr.ingresos.total;
+}
+
+function updateIngresoSaveButtonState() {
+  var btn = document.getElementById("btn-guardar-ingreso-actualizado");
+  if (!btn) return;
+
+  var st = window.CZState;
+  var total = syncIngresosFromDom(st);
+  var canonical = getCanonicalIngreso();
+  var valid = isFinite(total) && total > 0;
+  var changed = Math.abs(total - canonical) >= 0.01;
+  var enabled = valid && changed;
+
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? "1" : "0.45";
+  btn.style.cursor = enabled ? "pointer" : "not-allowed";
+}
+
+function refreshIngresoPreviewUI() {
+  var st = window.CZState;
+  if (!st || !st.herr || !st.herr.ingresos) return;
+
+  var total = syncIngresosFromDom(st);
+  var totalEl = document.getElementById("ingreso-total-valor");
+  var wrapEl = document.getElementById("ingreso-total-wrap");
+  if (totalEl) {
+    totalEl.textContent = typeof fmt === "function" ? fmt(total) : String(total);
+  }
+  if (wrapEl) {
+    wrapEl.style.display = total > 0 ? "flex" : "none";
+  }
+
+  var flujoEl = document.getElementById("ingreso-flujo-preview-valor");
+  if (flujoEl) {
+    var gastos = typeof getTotalMonthlyExpenses === "function"
+      ? getTotalMonthlyExpenses()
+      : Object.values(st.gastos || {}).reduce(function(s, v) {
+          return s + (parseFloat(v) || 0);
+        }, 0);
+    var pagos = st.diag && st.diag.fin ? (st.diag.fin.totalPago || 0) : 0;
+    var flujoR = total - gastos - pagos;
+    flujoEl.textContent = typeof fmt === "function" ? fmt(Math.abs(flujoR)) : String(Math.abs(flujoR));
+    flujoEl.style.color = flujoR >= 0 ? "#34ffaf" : "#ff4e72";
+  }
+
+  updateIngresoSaveButtonState();
+}
+
+function guardarIngresoActualizado() {
+  var st = window.CZState;
+  if (!st || st.step !== 3) return false;
+  if (!st.herr.ingresos) {
+    st.herr.ingresos = { formal: getCanonicalIngreso(), extras: [], total: 0 };
+  }
+
+  var total = syncIngresosFromDom(st);
+  if (!isFinite(total) || total <= 0) return false;
+
+  var prevIncome = getCanonicalIngreso();
+  if (Math.abs(total - prevIncome) < 0.01) return false;
+
+  st.herr.ingresos.total = total;
+  if (typeof PRE !== "undefined") PRE.ingreso = total;
+  st.declared_ingreso = total;
+  st.income_source = "user_update";
+  st.financial_income_complete = true;
+
+  recalcDiagYGuardar();
+
+  if (st.snap && st.diag) {
+    st.snap.score_reset = st.diag.scoreReset;
+    st.snap.nivel = st.diag.nivelR;
+    st.snap.plan_id = st.diag.planId;
+    window.guardarLocal();
+  }
+
+  if (typeof trackCRMEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined") {
+    trackCRMEvent(CZ_EVENT_NAMES.INCOME_UPDATED, {
+      previous_income: prevIncome,
+      new_income: total,
+      delta_income: total - prevIncome,
+      income_source: "user_update",
+      timestamp: new Date().toISOString(),
+      plan_id: st.diag ? st.diag.planId : null,
+      score_reset: st.diag ? st.diag.scoreReset : null,
+    });
+  }
+
+  if (typeof showToast === "function") {
+    showToast("Ingreso actualizado", 2500);
+  }
+
+  if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
+    window.CredizonaUI.renderAll();
+  }
+  return true;
+}
+
+window.updateIngresoSaveButtonState = updateIngresoSaveButtonState;
+window.guardarIngresoActualizado = guardarIngresoActualizado;
+
 function recalcularIngresosLocal() {
   var st = window.CZState;
 
   if (!st.herr.ingresos) {
-    st.herr.ingresos = { formal: 0, extras: [], total: 0 };
+    st.herr.ingresos = { formal: getCanonicalIngreso(), extras: [], total: 0 };
   }
 
-  var formal = st.herr.ingresos.formal || PRE.ingreso;
-  var extra  = (st.herr.ingresos.extras || []).reduce(function(s, e) {
-    return s + (parseFloat(e.monto) || 0);
-  }, 0);
-
-  st.herr.ingresos.total = formal + extra;
-
-  // CRM_ONLY — backend handles this
-  trackCRMEvent(CZ_EVENT_NAMES.INGRESO_REAL_DECLARADO, {
-    ingreso_formal: formal,
-    ingreso_extra:  extra,
-    total_real:     st.herr.ingresos.total,
-  });
-
-  window.guardarLocal();
+  syncIngresosFromDom(st);
+  refreshIngresoPreviewUI();
 }
 
 function actualizarSimuladorFlujo() {

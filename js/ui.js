@@ -3524,6 +3524,9 @@ function renderHerramientasPlan1() {
   var c1 = ing.total > 0;
   var c2 = Object.keys(gc).length > 0;
   var gCV = EXPENSE_CATS.filter(function(c) { return parseFloat(gastos[c.k]) > 0; });
+  var canonicalIng = PRE.ingreso || 0;
+  var draftIng = ing.total > 0 ? ing.total : (parseFloat(ing.formal) || canonicalIng);
+  var ingresoSaveDisabled = !(draftIng > 0 && Math.abs(draftIng - canonicalIng) >= 0.01);
 
   var h1 = renderToolCard(1, "Cuanto te entra realmente por mes?",
     "El ingreso registrado en tu solicitud es " + fmt(PRE.ingreso) + ". Suma cualquier otro ingreso que no figure ahi.",
@@ -3542,11 +3545,14 @@ function renderHerramientasPlan1() {
       }).join("")
     + '</div>'
     + '<button class="btn btn-secondary" style="height:56px;font-size:17px;margin-bottom:14px;" id="btn-agregar-ing-extra">+ Agregar otro ingreso</button>'
-    + (ing.total > 0
-        ? '<div style="background:rgba(64,215,255,.1);border:1px solid rgba(64,215,255,.3);border-radius:16px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;">'
-          + '<span style="font-size:18px;font-weight:700;color:rgba(255,255,255,.8);">Total real que te entra</span>'
-          + '<span style="font-size:40px;font-weight:900;color:#40d7ff;letter-spacing:-2px;">' + fmt(ing.total) + '</span></div>'
-        : "")
+    + '<div id="ingreso-total-wrap" style="background:rgba(64,215,255,.1);border:1px solid rgba(64,215,255,.3);border-radius:16px;padding:18px 22px;display:' + (draftIng > 0 ? "flex" : "none") + ';justify-content:space-between;align-items:center;margin-bottom:14px;">'
+      + '<span style="font-size:18px;font-weight:700;color:rgba(255,255,255,.8);">Total real que te entra</span>'
+      + '<span id="ingreso-total-valor" style="font-size:40px;font-weight:900;color:#40d7ff;letter-spacing:-2px;">' + fmt(draftIng) + '</span></div>'
+    + '<button type="button" class="btn btn-primary" id="btn-guardar-ingreso-actualizado"'
+    + (ingresoSaveDisabled ? " disabled" : "")
+    + ' style="width:100%;height:52px;font-size:16px;margin-top:4px;'
+    + (ingresoSaveDisabled ? "opacity:.45;cursor:not-allowed;" : "")
+    + '">Guardar ingreso actualizado</button>'
     + '</div>', c1);
 
   var h2 = renderToolCard(2, "Separa lo que no podes reducir de lo que si podes",
@@ -3571,7 +3577,7 @@ function renderHerramientasPlan1() {
     (c1 && c2)
       ? '<div style="text-align:center;padding:24px;background:' + (flujoR >= 0 ? "rgba(52,255,175,.08)" : "rgba(255,78,114,.08)") + ';border:1px solid ' + (flujoR >= 0 ? "rgba(52,255,175,.25)" : "rgba(255,78,114,.25)") + ';border-radius:16px;margin-top:8px;">'
         + '<div style="font-size:16px;color:#8390b5;margin-bottom:8px;">Te queda libre cada mes</div>'
-        + '<div style="font-size:64px;font-weight:900;color:' + (flujoR >= 0 ? "#34ffaf" : "#ff4e72") + ';line-height:1;letter-spacing:-3px;">' + fmt(Math.abs(flujoR)) + '</div>'
+        + '<div style="font-size:64px;font-weight:900;color:' + (flujoR >= 0 ? "#34ffaf" : "#ff4e72") + ';line-height:1;letter-spacing:-3px;" id="ingreso-flujo-preview-valor">' + fmt(Math.abs(flujoR)) + '</div>'
         + '<div style="font-size:18px;color:' + (flujoR >= 0 ? "#34ffaf" : "#ff4e72") + ';font-weight:700;margin-top:8px;">' + (flujoR >= 0 ? "despues de pagar todo" : "EN DEFICIT") + '</div></div>'
         + (flujoR < 0 ? '<div class="micro-insight micro-danger" style="margin-top:12px;">Cada mes gastar mas de lo que entra acelera el deterioro del perfil.</div>' : "")
       : '<div style="font-size:17px;color:#8390b5;margin-top:8px;">Completa las herramientas 1 y 2 primero para ver este resultado.</div>',
@@ -4339,6 +4345,10 @@ function renderAll() {
         cta_source: "hidden_factor",
       });
     }
+  }
+
+  if (st.step === 3 && typeof window.updateIngresoSaveButtonState === "function") {
+    window.updateIngresoSaveButtonState();
   }
 
   updateSticky();
