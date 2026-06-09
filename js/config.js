@@ -85,6 +85,17 @@ function sanitizeUrlEmail(raw) {
   return e;
 }
 
+function hasUrlIngresoParam() {
+  var p = new URLSearchParams(window.location.search);
+  return p.has("ingreso") && p.get("ingreso") !== "";
+}
+
+function parseUrlIngresoValue() {
+  if (!hasUrlIngresoParam()) return 0;
+  var n = parseFloat(new URLSearchParams(window.location.search).get("ingreso"));
+  return isNaN(n) ? 0 : n;
+}
+
 function getPreLoaded() {
   const p = new URLSearchParams(window.location.search);
   const resp = {};
@@ -98,7 +109,7 @@ function getPreLoaded() {
       ? emailFromUrl
       : (emailParam ? "" : "martin@email.com"),
     telefono: p.get("telefono") || "",
-    ingreso:  parseFloat(p.get("ingreso")) || 65000,
+    ingreso:  parseUrlIngresoValue(),
     laboral:  p.get("laboral")  || "relacion_dependencia",
     monto:    parseFloat(p.get("monto"))   || 0,
     respuestas: resp,

@@ -83,6 +83,16 @@ function updateSticky() {
   var bar  = document.getElementById("sticky-bar");
   if (!lbl || !stEl || !cta) return;
 
+  // step 0: income collection (SEO virgin / missing income)
+  if (typeof needsIncomeStep === "function" && needsIncomeStep(st)) {
+    if (bar) { bar.style.display = ""; bar.classList.remove("dashboard"); }
+    lbl.textContent  = "Tu ingreso mensual";
+    stEl.textContent = "Necesitamos tu ingreso liquido para calcular tu margen.";
+    cta.textContent  = "Continuar";
+    cta.className    = "sticky-btn";
+    return;
+  }
+
   // step 0: SEGMENTO 1 keeps its own sticky; diagnosis/bridge screens have inline CTAs
   if (step === 0 && SEGMENTO === 1) {
     if (bar) { bar.style.display = ""; bar.classList.remove("dashboard"); }
@@ -160,9 +170,11 @@ function updateHeader() {
 // =============================================================================
 // STEP PILLS
 // =============================================================================
-function renderStepPills(cur, total) {
-  // New flow: Situacion inicial → Deudas → Gastos → Diagnostico completo
-  var labels = SEGMENTO === 1 ? ["Situacion inicial", "Deudas", "Gastos"] : ["Deudas", "Gastos"];
+function renderStepPills(cur, total, customLabels) {
+  // Flow: Ingreso (seg 2/3) or Situacion inicial (seg 1) → Deudas → Gastos
+  var labels = customLabels || (SEGMENTO === 1
+    ? ["Situacion inicial", "Deudas", "Gastos"]
+    : ["Ingreso", "Deudas", "Gastos"]);
   var t = total || labels.length;
   var html = '<div class="step-pills">';
   labels.slice(0, t).forEach(function(l, i) {
@@ -224,6 +236,25 @@ function renderDiagInicial() {
     + [["1","Deudas","Identificamos donde esta hoy la mayor presion financiera."],["2","Gastos","Completamos el contexto real de tu flujo."],["3","Diagnostico","Interpretacion completa de tu situacion financiera actual."]]
       .map(function(x) { return '<div class="step"><div class="step-num">' + x[0] + '</div><div class="step-title">' + x[1] + '</div><div class="step-text">' + x[2] + '</div></div>'; }).join("")
     + '</div></div></div>';
+}
+
+// =============================================================================
+// STEP 0 — INGRESO (required when not supplied via URL / restore)
+// =============================================================================
+function renderIngreso() {
+  var st = _st();
+  var val = st.declared_ingreso != null ? st.declared_ingreso : "";
+  var html = renderStepPills(0, 3, ["Ingreso", "Deudas", "Gastos"]);
+  html += '<div class="card">'
+    + '<div class="section-title">¿Cuál es tu ingreso líquido mensual?</div>'
+    + '<div class="section-text">Lo usamos para calcular tu margen mensual y el diagnóstico completo.</div>'
+    + '<div style="position:relative;max-width:100%;margin-top:16px;">'
+    + '<span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
+    + '<input type="number" id="inp-ingreso-mensual" style="padding-left:36px;width:100%;box-sizing:border-box;" placeholder="Ej: 65.000" value="' + val + '"/>'
+    + '</div>'
+    + '<button type="button" class="btn btn-primary" style="height:68px;font-size:20px;margin-top:20px;width:100%;" id="btn-continuar-ingreso">Continuar</button>'
+    + '</div>';
+  return html;
 }
 
 function mostrarEvaluacion() {
@@ -408,8 +439,9 @@ function renderGastos() {
   var custom = _st().custom_expenses || [];
   var icons  = typeof EXPENSE_CAT_ICONS !== "undefined" ? EXPENSE_CAT_ICONS : {};
 
-  // New flow: Gastos is step index 2 for SEGMENTO 1, index 1 for others
-  var html = renderStepPills(SEGMENTO === 1 ? 2 : 1, SEGMENTO === 1 ? 3 : 2);
+  var html = SEGMENTO === 1
+    ? renderStepPills(2, 3)
+    : renderStepPills(2, 3, ["Ingreso", "Deudas", "Gastos"]);
 
   html += '<div style="font-size:15px;color:#8390b5;line-height:1.6;margin-bottom:20px;padding:0 4px;">'
     + 'El banco ya tiene informacion sobre vos. Este diagnostico te ayuda a entenderla.'
@@ -475,8 +507,9 @@ function renderGastos() {
 // STEP 2 — DEUDAS
 // =============================================================================
 function renderDeudas() {
-  // New flow: Deudas is step index 1 for SEGMENTO 1, index 0 for others
-  var html = renderStepPills(SEGMENTO === 1 ? 1 : 0, SEGMENTO === 1 ? 3 : 2);
+  var html = SEGMENTO === 1
+    ? renderStepPills(1, 3)
+    : renderStepPills(1, 3, ["Ingreso", "Deudas", "Gastos"]);
   var st     = _st();
   var deudas = st.deudas || [];
   var editing = st.editing_debt_index;
@@ -4114,16 +4147,20 @@ function renderAll() {
     ensureFinancialStepBeforeDashboard(st);
   }
 
-  if (st.step === 0 && SEGMENTO === 1) {
+  if (typeof needsIncomeStep === "function" && needsIncomeStep(st)) {
+    st.step = 0;
+    html = renderIngreso();
+  } else if (st.step === 0 && SEGMENTO === 1) {
     html = renderDiagInicial();
   } else if (st.step === 0) {
     var hasBehavioral = (typeof hasBehavioralSurveyData === "function")
       ? hasBehavioralSurveyData(st, st.diag)
       : (TIENE_ENCUESTA || (st.diag && st.diag.enc));
     if (st.miplan_started) {
-      // User already entered the flow — correct state and advance to debt entry
-      st.step = 1;
-      html = renderDeudas();
+      st.step = resolveNextRequiredFinancialStep(st);
+      if (st.step === 1) html = renderDeudas();
+      else if (st.step === 2) html = renderGastos();
+      else if (st.step === 3) html = renderDashboard();
     } else if (hasBehavioral) {
       html = renderDiagnosisScreen();
     } else {
