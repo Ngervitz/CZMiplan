@@ -2954,6 +2954,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Mi Plan — retry application CTA (no financial data in redirect URL)
       if (e.target.id === "btn-retry-application") {
+        if (typeof isRetryEligible === "function"
+          && !isRetryEligible(st.diag, st)) {
+          return;
+        }
         var retryUrl = typeof buildRetryApplicationUrl === "function"
           ? buildRetryApplicationUrl()
           : null;
@@ -2961,6 +2965,7 @@ document.addEventListener("DOMContentLoaded", function() {
         var retryState = (window.CredizonaUI && typeof window.CredizonaUI.getRetryCtaState === "function")
           ? window.CredizonaUI.getRetryCtaState(st.diag, st)
           : "locked";
+        if (retryState !== "unlocked") return;
         trackEvent(CZ_EVENT_NAMES.RETRY_CTA_CLICKED, { source: "miplan_tab" });
         if (typeof trackCRMEvent === "function") {
           trackCRMEvent(CZ_EVENT_NAMES.RETRY_CTA_CLICKED, {
@@ -3403,6 +3408,19 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       if (e.target.id === "btn-conocer-plus-tab") {
         switchTab("plus");
+        return;
+      }
+      if (e.target.id === "btn-retry-fallback-plus") {
+        switchTab("plus");
+        return;
+      }
+      if (e.target.id === "btn-retry-fallback-deuda") {
+        var mideudaCard = document.getElementById("mideuda-partner-card");
+        if (mideudaCard) {
+          mideudaCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          switchTab("deudas");
+        }
         return;
       }
 

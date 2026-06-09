@@ -1,5 +1,5 @@
 /**
- * dev/synthetic-motor-test.js — Sprint synthetic motor QA (30 profiles)
+ * dev/synthetic-motor-test.js — Sprint synthetic motor QA (31 profiles)
  *
  * Does NOT modify calcularMotor(), CZState persistence, CRM, GTM, or UI.
  * Uses save/restore adapter around global PRE + window.CZState (see runProfile).
@@ -413,6 +413,29 @@
         recommended_tools_first: "mideuda",
       },
     },
+    {
+      id: 31,
+      description: "Extreme debt stock with implausible monthly payment (sanity guard)",
+      ingreso: 45000,
+      deudas: [{
+        acreedor: "BROU",
+        saldo: 22222222,
+        pago: 2,
+        situacion_ui: "pagando_normal",
+        tipo: "prestamo",
+        debt_confidence: "high",
+      }],
+      gastos: {},
+      encuesta: "mostly_ab",
+      expected: "2-4",
+      sanityGuardExpectations: {
+        missing_payment_information: true,
+        confidence_level: "low",
+        horizon_label: "No estimable sin estabilización previa",
+        retry_blocked: true,
+        mideuda: true,
+      },
+    },
   ];
 
   // Partner letter regression A-G (motor + placeholder UI logic)
@@ -742,6 +765,44 @@
     });
   }
 
+  function checkSanityGuardExpectations(diag, iv2, expected, label) {
+    var errors = [];
+    expected = expected || {};
+    diag = diag || {};
+    iv2 = iv2 || {};
+
+    if (expected.missing_payment_information && !diag.missing_payment_information) {
+      errors.push(label + ": missing_payment_information expected true");
+    }
+    if (expected.confidence_level && iv2.confidence_level !== expected.confidence_level) {
+      errors.push(label + ": confidence_level expected " + expected.confidence_level
+        + " got " + iv2.confidence_level);
+    }
+    if (expected.horizon_label) {
+      var hLabel = diag.horizonte ? diag.horizonte.label : null;
+      if (hLabel !== expected.horizon_label) {
+        errors.push(label + ": horizon label expected \"" + expected.horizon_label + "\" got \"" + hLabel + "\"");
+      }
+    }
+    if (expected.planId_min != null && parseInt(diag.planId, 10) < expected.planId_min) {
+      errors.push(label + ": planId expected >=" + expected.planId_min + " got " + diag.planId);
+    }
+    if (expected.mideuda) {
+      var tools = diag.recommended_tools || [];
+      if (tools.indexOf("mideuda") < 0) {
+        errors.push(label + ": recommended_tools expected to include mideuda");
+      }
+    }
+    if (expected.retry_blocked && typeof isRetryEligible === "function") {
+      window.CZState.snap = { plan_id: 2, fecha_inicio: new Date().toISOString() };
+      if (isRetryEligible(diag, window.CZState)) {
+        errors.push(label + ": retry eligibility expected blocked");
+      }
+      window.CZState.snap = null;
+    }
+    return errors;
+  }
+
   function isCausaCoherentWithPlan(iv2, planId) {
     if (!iv2 || !iv2.narrativa_jerarquizada || !iv2.narrativa_jerarquizada.length) {
       return { ok: false, reason: "missing narrativa_jerarquizada[0]" };
@@ -836,6 +897,10 @@
 
       if (profile.partnerExpected) {
         errors = errors.concat(checkPartnerExpected(diag, profile.partnerExpected, "Profile " + profile.id));
+      }
+
+      if (profile.sanityGuardExpectations) {
+        errors = errors.concat(checkSanityGuardExpectations(diag, iv2, profile.sanityGuardExpectations, "Profile " + profile.id));
       }
 
       return {

@@ -1561,10 +1561,36 @@ function renderBloqueadores(diag) {
 function _retryHorizonAddonHtml(diag, st) {
   diag = diag || {};
   st = st || (typeof window !== "undefined" ? window.CZState : null) || _st();
-  var h = diag.horizonte || {};
-  var isPositiveHorizon = h.banda === "inmediato" || h.banda === "corto";
-  if (!isPositiveHorizon || getRetryCtaState(diag, st) !== "unlocked") return "";
-  return renderRetryCtaHorizonAddon(diag, st);
+  if (typeof isRetryEligible === "function" && isRetryEligible(diag, st)) {
+    return renderRetryCtaHorizonAddon(diag, st);
+  }
+  return renderRetryBlockedFallbackCta(diag, st);
+}
+
+function renderRetryBlockedFallbackCta(diag, st) {
+  st = st || _st();
+  diag = diag || _diag();
+  var deudas = st.deudas || [];
+
+  if (deudas.length > 0) {
+    return '<div style="margin-top:16px;">'
+      + '<div style="font-size:14px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:12px;">'
+      + 'Antes de volver a solicitar, conviene ordenar y confirmar tu deuda actual.'
+      + '</div>'
+      + '<button type="button" class="btn btn-primary" id="btn-retry-fallback-deuda" '
+      + 'style="width:100%;height:52px;font-size:16px;background:#5b7cff;box-shadow:0 15px 50px rgba(91,124,255,.22);">'
+      + 'Ordenar mi deuda antes de volver a solicitar</button>'
+      + '</div>';
+  }
+
+  return '<div style="margin-top:16px;">'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:12px;">'
+    + 'Antes de volver a solicitar, conviene confirmar tu situación real con datos verificados.'
+    + '</div>'
+    + '<button type="button" class="btn btn-primary" id="btn-retry-fallback-plus" '
+    + 'style="width:100%;height:52px;font-size:16px;">'
+    + 'Confirmar mi situación antes de volver a solicitar</button>'
+    + '</div>';
 }
 
 function renderHorizonteRecalificacion(diag, st) {
@@ -1900,25 +1926,13 @@ function getRetryCtaState(diag, st) {
   st = st || {};
   var diagPlan = parseInt(diag.planId, 10);
 
-  if (!st.snap && (isNaN(diagPlan) || diagPlan > 2)) return "hidden";
+  if (!st.snap && (isNaN(diagPlan) || diagPlan >= 4)) return "hidden";
 
-  var fin = diag.fin || {};
-  var iv2 = diag.interpretacion_v2 || {};
-  var h = diag.horizonte || {};
-  var flujo = fin.flujoLibre != null ? fin.flujoLibre : 0;
-  var ratio = fin.ratio != null ? fin.ratio : 0;
-  var isPositiveHorizon = h.banda === "inmediato" || h.banda === "corto";
+  if (typeof isRetryEligible === "function") {
+    return isRetryEligible(diag, st) ? "unlocked" : "locked";
+  }
 
-  var unlocked = !isNaN(diagPlan)
-    && diagPlan <= 2
-    && flujo > 0
-    && iv2.confidence_level !== "low"
-    && diag.financial_reality_warning !== true
-    && diag.missing_payment_information !== true
-    && ratio <= 0.35
-    && isPositiveHorizon;
-
-  return unlocked ? "unlocked" : "locked";
+  return "locked";
 }
 
 function _retryCtaUnlockedCopy(diag, st) {
@@ -4349,6 +4363,7 @@ window.CredizonaUI = {
   updateCustomExpenseClassificationUI: updateCustomExpenseClassificationUI,
   getRetryCtaState: getRetryCtaState,
   renderRetryCta: renderRetryCta,
+  isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
 };
 
 window.renderAll = renderAll;

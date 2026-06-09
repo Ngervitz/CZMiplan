@@ -333,6 +333,88 @@ function calcularHorizonte(fin, ing) {
 }
 
 // =============================================================================
+// DEBT SANITY GUARD — implausible payment vs debt stock (pre-plan / pre-retry)
+// Known limitation: may false-positive on genuine minimum-payment / mora cases
+// (e.g. income 45k, debt 200k, payment 400). Goal: block obviously invalid retry paths.
+// =============================================================================
+function evaluarDebtSanityGuard(fin, ingreso) {
+  fin = fin || {};
+  ingreso = ingreso != null ? ingreso : 0;
+  var totalDeuda = fin.totalDeuda != null ? fin.totalDeuda : 0;
+  var totalPago = fin.totalPago != null ? fin.totalPago : 0;
+  if (ingreso <= 0 || totalDeuda <= 0) return { triggered: false };
+  // Require a declared payment > 0: empty/no_declarado pago is a separate signal (Partner K).
+  if (totalDeuda > ingreso * 3 && totalPago > 0 && totalPago <= ingreso * 0.01) {
+    return { triggered: true };
+  }
+  return { triggered: false };
+}
+
+function buildHorizonteEstabilizacionRequerida() {
+  return {
+    meses: null,
+    banda: "no_estimable",
+    label: "No estimable sin estabilización previa",
+    requires_stabilization: true,
+  };
+}
+
+function isHorizonPositiveForRetry(diag) {
+  var h = (diag && diag.horizonte) || {};
+  if (h.requires_stabilization || h.banda === "no_estimable") return false;
+  return h.banda === "inmediato" || h.banda === "corto";
+}
+
+function isRetryHorizonBlocked(diag) {
+  var h = (diag && diag.horizonte) || {};
+  if (h.requires_stabilization || h.banda === "no_estimable") return true;
+  var iv2 = (diag && diag.interpretacion_v2) || {};
+  if (iv2.recuperabilidad_class === "requiere_estabilizacion"
+      || iv2.recuperabilidad_class === "no_accionable") {
+    return true;
+  }
+  return !isHorizonPositiveForRetry(diag);
+}
+
+function isRetryEligible(diag, st) {
+  diag = diag || {};
+  st = st || {};
+  var fin = diag.fin || {};
+  var iv2 = diag.interpretacion_v2 || {};
+  var diagPlan = parseInt(diag.planId, 10);
+  var flujo = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  var ratio = fin.ratio != null ? fin.ratio : 0;
+  var ingreso = (typeof PRE !== "undefined" && PRE.ingreso) || 0;
+  var dti = fin.dti_ratio != null ? fin.dti_ratio : 0;
+  var scoreReset = diag.scoreReset != null ? diag.scoreReset : 30;
+  var scoreFin = fin.scoreFinanciero != null ? fin.scoreFinanciero : 30;
+
+  if (isNaN(diagPlan) || diagPlan >= 4) return false;
+  if (diag.nivelR === "C") return false;
+  if (iv2.severity_level === "critico" || iv2.severity_level === "alto") return false;
+  if (typeof SEVERITY_CRITICO_SCORE_RESET_MAX !== "undefined"
+      && scoreReset <= SEVERITY_CRITICO_SCORE_RESET_MAX) {
+    return false;
+  }
+  if (typeof SEVERITY_CRITICO_SCORE_FIN_MAX !== "undefined"
+      && scoreFin <= SEVERITY_CRITICO_SCORE_FIN_MAX) {
+    return false;
+  }
+  if (isRetryHorizonBlocked(diag)) return false;
+  if (iv2.confidence_level === "low") return false;
+  if (diag.financial_reality_warning === true) return false;
+  if (diag.missing_payment_information === true || iv2.missing_payment_information === true) {
+    return false;
+  }
+  if (flujo <= 0) return false;
+  if (ratio > 0.35) return false;
+  if (ingreso > 0 && dti >= 1) return false;
+  if (evaluarDebtSanityGuard(fin, ingreso).triggered) return false;
+  if (!isHorizonPositiveForRetry(diag)) return false;
+  return true;
+}
+
+// =============================================================================
 // FINANCIAL REALITY WARNING — additive presentation layer
 // Uses fin.totalPago and PRE.ingreso from calcularFinanciero(); does not alter
 // scoring, plan assignment, guardrails, DTI, horizonte, or interpretation.
@@ -677,6 +759,14 @@ function calcularMotor() {
   var frWarning = evaluarFinancialRealityWarning(fin, PRE.ingreso);
   result.financial_reality_warning      = frWarning.financial_reality_warning;
   result.financial_reality_warning_type = frWarning.financial_reality_warning_type;
+
+  var debtSanity = evaluarDebtSanityGuard(fin, PRE.ingreso);
+  if (debtSanity.triggered && result.interpretacion_v2) {
+    result.interpretacion_v2.missing_payment_information = true;
+    result.interpretacion_v2.confidence_level = "low";
+    result.horizonte = buildHorizonteEstabilizacionRequerida();
+  }
+
   result.missing_payment_information    = !!(result.interpretacion_v2
     && result.interpretacion_v2.missing_payment_information);
 
@@ -767,6 +857,8 @@ function calcularPartnerSignals(deudas, fin) {
   });
   var deuda_fuera_sistema = deudas.some(isDeudaFueraSistema);
   var flag_deuda_sin_pagos = deudas.some(isDeudaSinPagosExplicita);
+  var ingreso = (typeof PRE !== "undefined" && PRE.ingreso) || 0;
+  var flag_deuda_sanity_extreme = evaluarDebtSanityGuard(fin, ingreso).triggered;
 
   return {
     mora_activa: mora_activa,
@@ -775,6 +867,7 @@ function calcularPartnerSignals(deudas, fin) {
     flag_deuda_cara: flag_deuda_cara,
     deuda_fuera_sistema: deuda_fuera_sistema,
     flag_deuda_sin_pagos: flag_deuda_sin_pagos,
+    flag_deuda_sanity_extreme: flag_deuda_sanity_extreme,
   };
 }
 
@@ -786,7 +879,8 @@ function calcularRecommendedTools(signals) {
       || signals.deuda_vencida
       || signals.flag_demasiadas_deudas
       || signals.flag_deuda_cara
-      || signals.flag_deuda_sin_pagos)
+      || signals.flag_deuda_sin_pagos
+      || signals.flag_deuda_sanity_extreme)
     && !signals.deuda_fuera_sistema
   ) {
     tools.push("mideuda");
