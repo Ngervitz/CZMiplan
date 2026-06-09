@@ -71,6 +71,7 @@ window.CZState = {
   mideuda_cta_shown:         false,
   mideuda_cta_clicked:       false,
   _mideudaCtaShownTracked:   false,
+  _profileExtremeDebtCrmKey: null,
   _mideudaFeedbackMsg:       null,
 
   // Sprint 10.1 — user feedback suggestions (Mi Plan tab)
@@ -137,6 +138,49 @@ function _maybeCelebratePositiveFlow(st, prevFlujo) {
 // =============================================================================
 // Sprint 12.2 — debt edit / delete / paid helpers
 // =============================================================================
+function buildProfileExtremeDebtCrmKey(diag) {
+  if (!diag) return null;
+  var fin = diag.fin || {};
+  return [
+    diag.planId,
+    diag.scoreReset,
+    Math.round(fin.totalDeuda || 0),
+    Math.round((typeof PRE !== "undefined" && PRE.ingreso) || 0),
+    diag.flag_deuda_sanity_extreme ? "1" : "0",
+  ].join("|");
+}
+
+function buildProfileExtremeDebtCrmPayload(diag) {
+  var fin = diag && diag.fin ? diag.fin : {};
+  var iv2 = diag && diag.interpretacion_v2 ? diag.interpretacion_v2 : {};
+  return {
+    flag_deuda_sanity_extreme: true,
+    plan_id: diag ? diag.planId : null,
+    score_reset: diag ? diag.scoreReset : null,
+    income: (typeof PRE !== "undefined" && PRE.ingreso) || null,
+    total_debt: fin.totalDeuda != null ? fin.totalDeuda : null,
+    confidence_level: iv2.confidence_level || null,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function maybeTrackProfileExtremeDebt(st) {
+  if (typeof trackCRMEvent !== "function") return;
+  st = st || window.CZState;
+  if (!st || !st.diag) return;
+
+  if (st.diag.flag_deuda_sanity_extreme !== true) {
+    st._profileExtremeDebtCrmKey = null;
+    return;
+  }
+
+  var key = buildProfileExtremeDebtCrmKey(st.diag);
+  if (!key || st._profileExtremeDebtCrmKey === key) return;
+
+  trackCRMEvent("profile_extreme_debt", buildProfileExtremeDebtCrmPayload(st.diag));
+  st._profileExtremeDebtCrmKey = key;
+}
+
 function recalcDiagYGuardar() {
   var st = window.CZState;
   var prevFlujo = null;
@@ -146,6 +190,7 @@ function recalcDiagYGuardar() {
   if (typeof calcularMotor === "function") {
     st.diag = calcularMotor();
     st._diagSource = "live_calc";
+    maybeTrackProfileExtremeDebt(st);
   }
   window.guardarLocal();
   _maybeCelebratePositiveFlow(st, prevFlujo);
@@ -1002,6 +1047,7 @@ window.guardarLocal = function(extra) {
       mideuda_interest_registered: !!st.mideuda_interest_registered,
       mideuda_cta_shown:        !!st.mideuda_cta_shown,
       mideuda_cta_clicked:      !!st.mideuda_cta_clicked,
+      _profileExtremeDebtCrmKey: st._profileExtremeDebtCrmKey || null,
       // Sprint 10.1 — persist feedback suggestions
       feedback_suggestions:     st.feedback_suggestions || [],
       first_assessment_at:      st.first_assessment_at || null,
@@ -1159,6 +1205,7 @@ function next() {
 
     st.diag = calcularMotor();
     st._diagSource = "live_calc";
+    maybeTrackProfileExtremeDebt(st);
 
     st.saldoIni = st.deudas.reduce(function(s, d) {
       return s + (parseFloat(d.monto) || 0);
@@ -1868,6 +1915,9 @@ async function init() {
     }
     if (dataToUse.mideuda_cta_shown != null) st.mideuda_cta_shown = !!dataToUse.mideuda_cta_shown;
     if (dataToUse.mideuda_cta_clicked != null) st.mideuda_cta_clicked = !!dataToUse.mideuda_cta_clicked;
+    if (dataToUse._profileExtremeDebtCrmKey != null) {
+      st._profileExtremeDebtCrmKey = dataToUse._profileExtremeDebtCrmKey;
+    }
     // Sprint 10.1 — restore feedback suggestions
     if (dataToUse.feedback_suggestions) st.feedback_suggestions = dataToUse.feedback_suggestions;
     if (dataToUse.first_assessment_at) st.first_assessment_at = dataToUse.first_assessment_at;
@@ -2920,7 +2970,8 @@ document.addEventListener("DOMContentLoaded", function() {
       }
 
       // Sprint 12.5 — editar gastos desde dashboard
-      if (e.target.id === "btn-editar-gastos-dashboard") {
+      if (e.target.id === "btn-editar-gastos-dashboard"
+        || e.target.id === "btn-retry-fallback-gastos") {
         goToEditGastosFromDashboard();
         return;
       }

@@ -1179,7 +1179,13 @@ function _dashIaSectionClose() {
 }
 
 // Sprint 12.5 — volver a gastos desde dashboard (solo UX; recálculo vía next() existente)
-function renderDashboardEditGastosCta() {
+function renderDashboardEditGastosCta(diag, st) {
+  diag = diag || _diag();
+  st = st || _st();
+  var hierarchy = resolveDashboardCtaHierarchy(diag, st);
+  if (hierarchy.primary === "complete_expenses") return "";
+  if (hierarchy.primary === "mideuda" && hierarchy.secondary === "complete_expenses") return "";
+
   return '<div style="margin-bottom:20px;max-width:100%;">'
     + '<p style="font-size:13px;color:#8390b5;line-height:1.55;margin-bottom:12px;">'
     + "Podés actualizar tus gastos y recalcular el diagnóstico cuando quieras."
@@ -1558,6 +1564,119 @@ function renderBloqueadores(diag) {
     + '</div>';
 }
 
+function _hasMideudaRecommended(diag) {
+  return !!(diag && diag.recommended_tools && diag.recommended_tools.indexOf("mideuda") >= 0);
+}
+
+function _expensesMissing(st) {
+  return !!(st && st.gastos_missing_confirmed);
+}
+
+function _isExtremeDebtProfile(diag, st) {
+  diag = diag || {};
+  st = st || {};
+  if (diag.flag_deuda_sanity_extreme === true) return true;
+  return diag.missing_payment_information === true
+    && _hasMideudaRecommended(diag)
+    && (st.deudas || []).length > 0;
+}
+
+function resolveDashboardCtaHierarchy(diag, st) {
+  diag = diag || {};
+  st = st || {};
+  var deudas = st.deudas || [];
+  var expensesMissing = _expensesMissing(st);
+  var retryEligible = typeof isRetryEligible === "function" && isRetryEligible(diag, st);
+
+  if (_isExtremeDebtProfile(diag, st)) {
+    return {
+      tier: "P1",
+      primary: "mideuda",
+      secondary: expensesMissing ? "complete_expenses" : null,
+      tertiary: "plus",
+    };
+  }
+
+  if (!retryEligible && deudas.length > 0 && !expensesMissing) {
+    return {
+      tier: "P2",
+      primary: _hasMideudaRecommended(diag) ? "mideuda" : null,
+      secondary: "plus",
+      tertiary: null,
+    };
+  }
+
+  if (expensesMissing) {
+    return {
+      tier: "P3",
+      primary: "complete_expenses",
+      secondary: "plus",
+      tertiary: null,
+    };
+  }
+
+  if (!retryEligible && deudas.length === 0) {
+    return {
+      tier: "P4",
+      primary: "plus",
+      secondary: null,
+      tertiary: null,
+    };
+  }
+
+  return {
+    tier: null,
+    primary: null,
+    secondary: null,
+    tertiary: null,
+  };
+}
+
+function _horizonPlusPromoHtml(diag, st) {
+  var hierarchy = resolveDashboardCtaHierarchy(diag, st);
+  if (hierarchy.primary === "mideuda") {
+    return '<div style="margin-top:12px;font-size:12px;color:#8390b5;line-height:1.55;">'
+      + 'También podés contrastar tu situación con '
+      + '<button type="button" id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#8390b5;font-size:inherit;font-weight:600;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
+      + '</div>';
+  }
+  return '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
+    + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button type="button" id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
+    + '</div>';
+}
+
+function _renderCompleteExpensesCtaHtml(opts) {
+  opts = opts || {};
+  var isPrimary = opts.primary !== false;
+  var btnClass = isPrimary ? "btn btn-primary" : "btn btn-secondary";
+  var btnId = opts.id || "btn-retry-fallback-gastos";
+  var marginTop = opts.marginTop != null ? opts.marginTop : (isPrimary ? "16px" : "10px");
+  var subcopy = opts.subcopy
+    ? '<div style="font-size:14px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:12px;">' + opts.subcopy + '</div>'
+    : "";
+  return '<div style="margin-top:' + marginTop + ';">'
+    + subcopy
+    + '<button type="button" class="' + btnClass + '" id="' + btnId + '" '
+    + 'style="width:100%;height:52px;font-size:16px;box-sizing:border-box;">'
+    + 'Completar gastos para mejorar el diagnóstico</button>'
+    + '</div>';
+}
+
+function _renderMideudaFallbackCtaHtml(hierarchy) {
+  var html = '<div style="margin-top:16px;">'
+    + '<div style="font-size:14px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:12px;">'
+    + 'Antes de volver a solicitar, conviene confirmar y ordenar tu deuda actual.'
+    + '</div>'
+    + '<button type="button" class="btn btn-primary" id="btn-retry-fallback-deuda" '
+    + 'style="width:100%;height:52px;font-size:16px;background:#5b7cff;box-shadow:0 15px 50px rgba(91,124,255,.22);">'
+    + 'Ordenar mi deuda con MiDeuda</button>'
+    + '</div>';
+  if (hierarchy && hierarchy.secondary === "complete_expenses") {
+    html += _renderCompleteExpensesCtaHtml({ primary: false, marginTop: "10px" });
+  }
+  return html;
+}
+
 function _retryHorizonAddonHtml(diag, st) {
   diag = diag || {};
   st = st || (typeof window !== "undefined" ? window.CZState : null) || _st();
@@ -1570,7 +1689,30 @@ function _retryHorizonAddonHtml(diag, st) {
 function renderRetryBlockedFallbackCta(diag, st) {
   st = st || _st();
   diag = diag || _diag();
+  var hierarchy = resolveDashboardCtaHierarchy(diag, st);
   var deudas = st.deudas || [];
+
+  if (hierarchy.primary === "mideuda") {
+    return _renderMideudaFallbackCtaHtml(hierarchy);
+  }
+
+  if (hierarchy.primary === "complete_expenses") {
+    return _renderCompleteExpensesCtaHtml({
+      primary: true,
+      subcopy: "Completá tus gastos para obtener una evaluación más precisa antes de volver a solicitar.",
+    });
+  }
+
+  if (hierarchy.primary === "plus") {
+    return '<div style="margin-top:16px;">'
+      + '<div style="font-size:14px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:12px;">'
+      + 'Antes de volver a solicitar, conviene confirmar tu situación real con datos verificados.'
+      + '</div>'
+      + '<button type="button" class="btn btn-primary" id="btn-retry-fallback-plus" '
+      + 'style="width:100%;height:52px;font-size:16px;">'
+      + 'Confirmar mi situación antes de volver a solicitar</button>'
+      + '</div>';
+  }
 
   if (deudas.length > 0) {
     return '<div style="margin-top:16px;">'
@@ -1629,9 +1771,7 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable sin estabilización previa</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Cuando el perfil está en estabilización crítica, primero hay que ordenar la situación y confirmar el saldo actualizado. Recién después se puede estimar un horizonte de recalificación.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Este diagnóstico se basa exclusivamente en la información que declaraste.</div>'
-      + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
-      + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
-      + '</div>'
+      + _horizonPlusPromoHtml(diag, st)
       + _retryHorizonAddonHtml(diag, st)
       + '</div>';
   }
@@ -1658,9 +1798,7 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable con flujo mensual negativo</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-      + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
-      + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
-      + '</div>'
+      + _horizonPlusPromoHtml(diag, st)
       + _retryHorizonAddonHtml(diag, st)
       + '</div>';
   }
@@ -1676,9 +1814,7 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:13px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:10px;">El total de deuda que declaraste supera tu ingreso mensual. Aunque no tengas pagos activos registrados, este nivel de deuda puede influir en una futura evaluación.</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Como este diagnóstico parte de una solicitud rechazada, conviene revisar si esta deuda tiene pagos, refinanciaciones o información adicional que todavía no fue incorporada.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-      + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
-      + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
-      + '</div>'
+      + _horizonPlusPromoHtml(diag, st)
       + _retryHorizonAddonHtml(diag, st)
       + '</div>';
   }
@@ -1696,9 +1832,8 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Hay señales positivas en la información que registraste, pero todavía faltan datos para estimar con confianza si estás en condiciones de presentar una nueva solicitud.</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Completá la información pendiente para obtener una evaluación más precisa.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-      + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
-      + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
-      + '</div>'
+      + _horizonPlusPromoHtml(diag, st)
+      + _retryHorizonAddonHtml(diag, st)
       + '</div>';
   }
 
@@ -1710,9 +1845,7 @@ function renderHorizonteRecalificacion(diag, st) {
     + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + horizonLabel + '</div>'
     + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Basado en la información declarada, sin nuevas deudas y siguiendo el plan. El historial del sistema financiero puede incluir elementos que esta simulación no alcanza a ver.</div>'
     + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-    + '<div style="padding:12px 14px;background:rgba(91,124,255,.07);border:1px solid rgba(91,124,255,.18);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
-    + '<strong style="color:#a0b0ff;">Para confirmar este calculo</strong>, es necesario revisar lo que el banco ya tiene registrado sobre vos. Eso es lo que incluye <button id="btn-conocer-plus-tab" style="background:none;border:none;padding:0;cursor:pointer;color:#a0b0ff;font-size:inherit;font-weight:700;text-decoration:underline;text-underline-offset:2px;">Mi Plan Plus</button>.'
-    + '</div>'
+    + _horizonPlusPromoHtml(diag, st)
     + _retryHorizonAddonHtml(diag, st)
     + '</div>';
 }
@@ -2207,7 +2340,7 @@ function renderTabPlan() {
 
     + _dashIaSectionOpen(false, "numeros")
     + _dashIaLabel("Tus números", "numeros")
-    + renderDashboardEditGastosCta()
+    + renderDashboardEditGastosCta(diag, st)
 
     // Sprint 12.1 — confianza del diagnóstico (DTI / stock de deuda)
     + renderConfianzaDiagnostico(diag)
@@ -4373,6 +4506,7 @@ window.CredizonaUI = {
   updateCustomExpenseClassificationUI: updateCustomExpenseClassificationUI,
   getRetryCtaState: getRetryCtaState,
   renderRetryCta: renderRetryCta,
+  resolveDashboardCtaHierarchy: resolveDashboardCtaHierarchy,
   isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
 };
 

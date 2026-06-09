@@ -434,6 +434,7 @@
         horizon_label: "No estimable sin estabilización previa",
         retry_blocked: true,
         mideuda: true,
+        flag_deuda_sanity_extreme: true,
       },
     },
   ];
@@ -792,6 +793,9 @@
       if (tools.indexOf("mideuda") < 0) {
         errors.push(label + ": recommended_tools expected to include mideuda");
       }
+    }
+    if (expected.flag_deuda_sanity_extreme && !diag.flag_deuda_sanity_extreme) {
+      errors.push(label + ": flag_deuda_sanity_extreme expected true");
     }
     if (expected.retry_blocked && typeof isRetryEligible === "function") {
       window.CZState.snap = { plan_id: 2, fecha_inicio: new Date().toISOString() };

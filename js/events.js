@@ -89,6 +89,7 @@ var CZ_CRM_ONLY_EVENTS = [
   "retry_cta_shown",
   "miplan_virgin_survey_completed",
   "no_debts_declared",
+  "profile_extreme_debt",
 ];
 
 // =============================================================================

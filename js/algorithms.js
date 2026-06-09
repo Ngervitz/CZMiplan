@@ -781,6 +781,7 @@ function calcularMotor() {
   result.flag_deuda_cara         = partnerSignals.flag_deuda_cara;
   result.deuda_fuera_sistema     = partnerSignals.deuda_fuera_sistema;
   result.flag_deuda_sin_pagos    = partnerSignals.flag_deuda_sin_pagos;
+  result.flag_deuda_sanity_extreme = partnerSignals.flag_deuda_sanity_extreme;
 
   return result;
 }
