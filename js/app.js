@@ -41,6 +41,9 @@ window.CZState = {
 
   // Sprint 9 — incomplete data flags
   gastos_missing_confirmed:  false,
+  financial_debts_complete:  false,
+  financial_expenses_complete: false,
+  no_debts_declared:         false,
   _showGastosWarning:        false,
   _hfCtaShown:               false,
   _gastosWarningTracked:     false,
@@ -52,6 +55,17 @@ window.CZState = {
   // SEO IA — in-app virgin onboarding (survey + integrated legals)
   seo_ia_onboarding:         null,
   seo_ia_survey:             null,
+
+  // Partner — MiDeuda placeholder
+  mideuda_lead_status:       "not_shown",
+  mideuda_optin:             false,
+  mideuda_optin_timestamp:   null,
+  mideuda_optin_legal_text:  null,
+  mideuda_interest_registered: false,
+  mideuda_cta_shown:         false,
+  mideuda_cta_clicked:       false,
+  _mideudaCtaShownTracked:   false,
+  _mideudaFeedbackMsg:       null,
 
   // Sprint 10.1 — user feedback suggestions (Mi Plan tab)
   feedback_suggestions:      [],
@@ -620,6 +634,7 @@ function finalizeDebtEdit(saveIdx) {
 
   var wasNewAdd = !!st._deuda_is_new_add;
   var changed = countDebtFieldsChanged(st._deuda_edit_snapshot, d);
+  if (wasNewAdd) clearNoDebtsDeclaredState(st);
   st.editing_debt_index = null;
   st._deuda_edit_snapshot = null;
   st._deuda_delete_confirm_index = null;
@@ -961,10 +976,20 @@ window.guardarLocal = function(extra) {
       herr:                    st.herr,
       // Sprint 9 — persist incomplete-data flag across sessions
       gastos_missing_confirmed: !!st.gastos_missing_confirmed,
+      financial_debts_complete: !!st.financial_debts_complete,
+      financial_expenses_complete: !!st.financial_expenses_complete,
+      no_debts_declared: !!st.no_debts_declared,
       // Sprint 10 — persist Mi Plan in-app consent record
       consent:                  st.consent || null,
       seo_ia_onboarding:        st.seo_ia_onboarding || null,
       seo_ia_survey:            st.seo_ia_survey || null,
+      mideuda_lead_status:      st.mideuda_lead_status || "not_shown",
+      mideuda_optin:            !!st.mideuda_optin,
+      mideuda_optin_timestamp:  st.mideuda_optin_timestamp || null,
+      mideuda_optin_legal_text: st.mideuda_optin_legal_text || null,
+      mideuda_interest_registered: !!st.mideuda_interest_registered,
+      mideuda_cta_shown:        !!st.mideuda_cta_shown,
+      mideuda_cta_clicked:      !!st.mideuda_cta_clicked,
       // Sprint 10.1 — persist feedback suggestions
       feedback_suggestions:     st.feedback_suggestions || [],
       first_assessment_at:      st.first_assessment_at || null,
@@ -985,6 +1010,70 @@ function cargarLocal() {
 // =============================================================================
 // NAVEGACION
 // =============================================================================
+function clearNoDebtsDeclaredState(st) {
+  st = st || window.CZState;
+  if (!st || !st.no_debts_declared) return;
+  st.no_debts_declared = false;
+  st.financial_debts_complete = false;
+}
+
+function buildNoDebtsDeclaredCrmPayload(st) {
+  st = st || window.CZState || {};
+  var payload = {};
+  var acq = (typeof buildAcquisitionCrm === "function") ? buildAcquisitionCrm(st) : null;
+
+  if (acq) {
+    payload.acquisition = acq;
+    if (acq.source != null && acq.source !== "") payload.source = acq.source;
+    if (acq.intent != null && acq.intent !== "") payload.intent = acq.intent;
+  }
+
+  var diagRef = st.diag || st._preliminary_diag || null;
+  if (diagRef) {
+    if (diagRef.planId != null) payload.plan_id = diagRef.planId;
+    if (diagRef.scoreReset != null) payload.score_reset = diagRef.scoreReset;
+  }
+
+  if (typeof PRE !== "undefined" && PRE.ingreso != null) {
+    var income = parseFloat(PRE.ingreso);
+    if (!isNaN(income) && income > 0) payload.income = income;
+  }
+
+  return payload;
+}
+
+function handleNoDebtsDeclared() {
+  var st = window.CZState;
+  if (!st || st.step !== 1) return;
+  if (st.deudas && st.deudas.length > 0) return;
+  if (st._noDebtsDeclaredHandlerBusy) return;
+
+  st._noDebtsDeclaredHandlerBusy = true;
+  var isNewDeclaration = !st.no_debts_declared;
+
+  st.deudas = [];
+  st.no_debts_declared = true;
+  st.financial_debts_complete = true;
+  st.editing_debt_index = null;
+  st._deuda_is_new_add = false;
+  st._deuda_edit_snapshot = null;
+  st._deuda_validation_error = null;
+  st._deuda_delete_confirm_index = null;
+
+  setRecoveryState("debt_refinement_completed");
+  setRecoveryState("expense_refinement_started");
+  trackEvent(CZ_EVENT_NAMES.DEBT_REFINEMENT_COMPLETED);
+
+  if (isNewDeclaration && typeof trackCRMEvent === "function") {
+    trackCRMEvent("no_debts_declared", buildNoDebtsDeclaredCrmPayload(st));
+  }
+
+  st.step = 2;
+  window.guardarLocal();
+  window.CredizonaUI.renderAll();
+  st._noDebtsDeclaredHandlerBusy = false;
+}
+
 function next() {
   var st = window.CZState;
 
@@ -999,6 +1088,10 @@ function next() {
 
   // step 1 (deudas) → step 2 (gastos)
   if (st.step === 1) {
+    if (st.no_debts_declared && st.deudas.length === 0) {
+      handleNoDebtsDeclared();
+      return;
+    }
     if (st.deudas.length === 0) {
       trackEvent(CZ_EVENT_NAMES.INPUT_VALIDATION_FAILED, { step: 1, field: "deudas" });
       showToast("Agrega al menos una deuda para que podamos analizar tu perfil.");
@@ -1007,6 +1100,7 @@ function next() {
     setRecoveryState("debt_refinement_completed");
     setRecoveryState("expense_refinement_started");
     trackEvent(CZ_EVENT_NAMES.DEBT_REFINEMENT_COMPLETED);
+    st.financial_debts_complete = true;
     st.step = 2;
     window.CredizonaUI.renderAll();
     return;
@@ -1051,6 +1145,8 @@ function next() {
     trackEvent(CZ_EVENT_NAMES.DASHBOARD_GENERATED, {
       has_gastos: !st.gastos_missing_confirmed,
     });
+
+    st.financial_expenses_complete = true;
 
     var isFirstDiagnosis = !st.first_assessment_at;
     if (isFirstDiagnosis) {
@@ -1134,6 +1230,9 @@ function resetear() {
 
     // Sprint 9 — incomplete data flags
     gastos_missing_confirmed:  false,
+    financial_debts_complete:  false,
+    financial_expenses_complete: false,
+    no_debts_declared:         false,
     _showGastosWarning:        false,
     _hfCtaShown:               false,
     _gastosWarningTracked:     false,
@@ -1279,6 +1378,81 @@ function _hasCompleteSurveyParams() {
     });
 }
 
+// =============================================================================
+// FINANCIAL INPUT COMPLETENESS — survey complete ≠ financial profile complete
+// Verifies state completeness only (not user identity).
+// =============================================================================
+function getTotalMonthlyExpensesSafe(st) {
+  st = st || window.CZState || {};
+  if (typeof getTotalMonthlyExpenses === "function") {
+    return getTotalMonthlyExpenses();
+  }
+  return Object.keys(st.gastos || {}).reduce(function(sum, key) {
+    return sum + (parseFloat(st.gastos[key]) || 0);
+  }, 0);
+}
+
+function hasIncomePresent() {
+  return typeof PRE !== "undefined" && (parseFloat(PRE.ingreso) || 0) > 0;
+}
+
+function hasCompletedDebtInputs(st) {
+  st = st || window.CZState || {};
+  if (st.no_debts_declared) return true;
+  if (st.financial_debts_complete) return true;
+  if (!st.deudas || st.deudas.length === 0) return false;
+  var recovery = st.user_recovery_state;
+  if (recovery === "debt_refinement_completed"
+      || recovery === "expense_refinement_started"
+      || recovery === "expense_refinement_completed"
+      || recovery === "dashboard_generated") {
+    return true;
+  }
+  if (st.snap && st.temporal && st.temporal.dashboard_generated_at) {
+    return true;
+  }
+  return false;
+}
+
+function hasCompletedExpenseInputs(st) {
+  st = st || window.CZState || {};
+  if (!hasCompletedDebtInputs(st)) return false;
+  if (st.financial_expenses_complete) return true;
+  if (getTotalMonthlyExpensesSafe(st) > 0) return true;
+  if (st.gastos_missing_confirmed) {
+    var recovery = st.user_recovery_state;
+    if (recovery === "expense_refinement_completed" || recovery === "dashboard_generated") {
+      return true;
+    }
+    if (st.temporal && st.temporal.dashboard_generated_at && st.snap) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasCompletedFinancialInputs(st) {
+  st = st || window.CZState || {};
+  return hasIncomePresent()
+    && hasCompletedDebtInputs(st)
+    && hasCompletedExpenseInputs(st);
+}
+
+function resolveNextRequiredFinancialStep(st) {
+  st = st || window.CZState || {};
+  if (!hasCompletedDebtInputs(st)) return 1;
+  if (!hasCompletedExpenseInputs(st)) return 2;
+  return 3;
+}
+
+function ensureFinancialStepBeforeDashboard(st) {
+  st = st || window.CZState;
+  if (!st || st.step !== 3) return false;
+  if (hasCompletedFinancialInputs(st)) return false;
+  st.step = resolveNextRequiredFinancialStep(st);
+  return true;
+}
+
 async function init() {
   trackMiplanSessionStartedOnce();
 
@@ -1324,29 +1498,25 @@ async function init() {
     st.gastos = {};
     st.custom_expenses = [];
     st.saldoIni = 0;
-    st.step = 3;
+    st.gastos_missing_confirmed = false;
+    st.financial_debts_complete = false;
+    st.financial_expenses_complete = false;
+    st.no_debts_declared = false;
+    st._showGastosWarning = false;
+    st.step = TIENE_ENCUESTA ? 1 : 0;
     st.tab = "plan";
-    st.gastos_missing_confirmed = true;
+    st.miplan_started = true;
 
     if (typeof calcularMotor === "function") {
-      st.diag = calcularMotor();
+      st._preliminary_diag = calcularMotor();
     }
 
-    st.snap = {
-      fecha_inicio:  now,
-      score_reset:   st.diag ? st.diag.scoreReset : null,
-      nivel:         st.diag ? st.diag.nivelR : null,
-      plan_id:       st.diag ? st.diag.planId : null,
-      saldo_inicial: 0,
-    };
-    st.first_assessment_at = now;
-    st.temporal.dashboard_generated_at = now;
-    setRecoveryState("dashboard_generated");
+    st.temporal.survey_completed_at = now;
+    setRecoveryState("survey_completed");
 
   // Restore saved state (including new infrastructure fields)
   } else if (dataToUse) {
     st._diagSource = st._crmHydrated ? "crm" : "localStorage";
-    st.step               = 3;
     st.gastos             = typeof migrateGastosKeys === "function"
       ? migrateGastosKeys(dataToUse.gastos || {})
       : (dataToUse.gastos || {});
@@ -1383,13 +1553,38 @@ async function init() {
     if (dataToUse.herr) st.herr = dataToUse.herr;
     // Sprint 9 — restore incomplete-data flag
     st.gastos_missing_confirmed = !!dataToUse.gastos_missing_confirmed;
+    st.financial_debts_complete = dataToUse.financial_debts_complete != null
+      ? !!dataToUse.financial_debts_complete
+      : hasCompletedDebtInputs(st);
+    st.financial_expenses_complete = dataToUse.financial_expenses_complete != null
+      ? !!dataToUse.financial_expenses_complete
+      : hasCompletedExpenseInputs(st);
+    st.no_debts_declared = !!dataToUse.no_debts_declared;
     // Sprint 10 — restore Mi Plan in-app consent record
     if (dataToUse.consent) st.consent = dataToUse.consent;
     if (dataToUse.seo_ia_onboarding) st.seo_ia_onboarding = dataToUse.seo_ia_onboarding;
     if (dataToUse.seo_ia_survey) st.seo_ia_survey = dataToUse.seo_ia_survey;
+    if (dataToUse.mideuda_lead_status) st.mideuda_lead_status = dataToUse.mideuda_lead_status;
+    if (dataToUse.mideuda_optin != null) st.mideuda_optin = !!dataToUse.mideuda_optin;
+    if (dataToUse.mideuda_optin_timestamp) st.mideuda_optin_timestamp = dataToUse.mideuda_optin_timestamp;
+    if (dataToUse.mideuda_optin_legal_text) st.mideuda_optin_legal_text = dataToUse.mideuda_optin_legal_text;
+    if (dataToUse.mideuda_interest_registered != null) {
+      st.mideuda_interest_registered = !!dataToUse.mideuda_interest_registered;
+    }
+    if (dataToUse.mideuda_cta_shown != null) st.mideuda_cta_shown = !!dataToUse.mideuda_cta_shown;
+    if (dataToUse.mideuda_cta_clicked != null) st.mideuda_cta_clicked = !!dataToUse.mideuda_cta_clicked;
     // Sprint 10.1 — restore feedback suggestions
     if (dataToUse.feedback_suggestions) st.feedback_suggestions = dataToUse.feedback_suggestions;
     if (dataToUse.first_assessment_at) st.first_assessment_at = dataToUse.first_assessment_at;
+
+    if (hasCompletedFinancialInputs(st)) {
+      st.step = 3;
+    } else {
+      st.step = resolveNextRequiredFinancialStep(st);
+      if (st.step !== 3) {
+        st.temporal.dashboard_generated_at = null;
+      }
+    }
   } else {
     st._diagSource = "url_pending";
   }
@@ -1431,6 +1626,7 @@ async function init() {
 
   handlePlusPaymentReturn();
   preloadUserEmailFromUrl();
+  ensureFinancialStepBeforeDashboard(st);
 
   if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
     window.CredizonaUI.renderAll();
@@ -1444,10 +1640,8 @@ async function init() {
 // SPRINT 10 — Mi Plan in-app consent acceptance handler
 // =============================================================================
 function handleMiPlanConsentAccepted() {
-  var st    = window.CZState;
-  var crmContactId = (window.CZIdentity && window.CZIdentity.crm_contact_id) || null;
+  var st = window.CZState;
 
-  // Build and persist the consent record
   st.consent = (typeof buildMiPlanConsentRecord === "function")
     ? buildMiPlanConsentRecord()
     : null;
@@ -1480,6 +1674,115 @@ function updateSeoIaDiagnosisCtaState() {
   var enabled = surveyOk && legalsOk;
   btn.disabled = !enabled;
   btn.style.opacity = enabled ? "1" : ".45";
+}
+
+// =============================================================================
+// Partner — MiDeuda placeholder handlers
+// =============================================================================
+function updateMideudaCtaState() {
+  var btn = document.getElementById("btn-mideuda-continue");
+  if (!btn) return;
+  var chk = document.getElementById("chk-mideuda-optin");
+  var enabled = !!(chk && chk.checked);
+  btn.disabled = !enabled;
+  btn.style.opacity = enabled ? "1" : ".45";
+}
+
+function handleMideudaContinue() {
+  var st = window.CZState;
+  var diag = st.diag;
+  var chk = document.getElementById("chk-mideuda-optin");
+  if (!chk || !chk.checked) return;
+  if (!diag || !diag.recommended_tools || diag.recommended_tools.indexOf("mideuda") < 0) return;
+
+  var now = new Date().toISOString();
+  var legalText = typeof MIDEUDA_OPTIN_LEGAL_TEXT !== "undefined"
+    ? MIDEUDA_OPTIN_LEGAL_TEXT
+    : chk.parentElement ? chk.parentElement.textContent.trim() : "";
+
+  st.mideuda_optin = true;
+  st.mideuda_optin_timestamp = now;
+  st.mideuda_optin_legal_text = legalText;
+  st.mideuda_cta_clicked = true;
+  st.mideuda_lead_status = "optin";
+
+  var gtmPayload = typeof buildMideudaGtmPayload === "function"
+    ? buildMideudaGtmPayload(diag, { mideuda_lead_status: "optin" })
+    : { tool: "mideuda", source: "credizona_miplan" };
+
+  if (typeof trackEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined") {
+    trackEvent(CZ_EVENT_NAMES.MIDEUDA_CTA_CLICKED, gtmPayload);
+  }
+
+  if (typeof MIDEUDA_INTEGRATION_ENABLED !== "undefined" && MIDEUDA_INTEGRATION_ENABLED) {
+    var redirectUrl = typeof buildMideudaRedirectUrl === "function"
+      ? buildMideudaRedirectUrl(PRE, diag)
+      : null;
+    if (redirectUrl) {
+      st.mideuda_lead_status = "interest_registered";
+      if (typeof trackEvent === "function") {
+        trackEvent(
+          CZ_EVENT_NAMES.MIDEUDA_REDIRECT_STARTED,
+          typeof buildMideudaGtmPayload === "function"
+            ? buildMideudaGtmPayload(diag, { mideuda_lead_status: "interest_registered" })
+            : gtmPayload
+        );
+      }
+      window.guardarLocal();
+      window.location.href = redirectUrl;
+      return;
+    }
+    st.mideuda_lead_status = "error";
+    if (typeof trackEvent === "function") {
+      trackEvent(
+        CZ_EVENT_NAMES.MIDEUDA_ERROR,
+        typeof buildMideudaGtmPayload === "function"
+          ? buildMideudaGtmPayload(diag, { mideuda_lead_status: "error" })
+          : gtmPayload
+      );
+    }
+  }
+
+  st.mideuda_interest_registered = true;
+  st.mideuda_lead_status = "interest_registered";
+  st._mideudaFeedbackMsg = "Listo. Registramos tu interés. Cuando la integración esté disponible, vas a poder continuar el proceso con MiDeuda.";
+
+  if (typeof trackEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined") {
+    trackEvent(
+      CZ_EVENT_NAMES.MIDEUDA_INTEREST_REGISTERED,
+      typeof buildMideudaGtmPayload === "function"
+        ? buildMideudaGtmPayload(diag, { mideuda_lead_status: "interest_registered" })
+        : gtmPayload
+    );
+  }
+  if (typeof trackCRMEvent === "function") {
+    trackCRMEvent(
+      "mideuda_interest_registered",
+      typeof buildMideudaGtmPayload === "function"
+        ? buildMideudaGtmPayload(diag, { mideuda_lead_status: "interest_registered" })
+        : gtmPayload
+    );
+  }
+  if (typeof enviarCRM === "function" && diag) {
+    enviarCRM("mideuda_interest_registered", diag);
+  }
+
+  window.guardarLocal();
+  window.CredizonaUI.renderAll();
+}
+
+function handleMideudaOptinChecked() {
+  var st = window.CZState;
+  var diag = st.diag;
+  updateMideudaCtaState();
+  if (typeof trackEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined" && diag) {
+    trackEvent(
+      CZ_EVENT_NAMES.MIDEUDA_OPTIN_CHECKED,
+      typeof buildMideudaGtmPayload === "function"
+        ? buildMideudaGtmPayload(diag, { mideuda_lead_status: st.mideuda_lead_status || "shown" })
+        : { tool: "mideuda", source: "credizona_miplan" }
+    );
+  }
 }
 
 function updateSeoIaSurveyNextState() {
@@ -1606,34 +1909,28 @@ function completeSeoIaOnboarding() {
   st.gastos = {};
   st.custom_expenses = [];
   st.saldoIni = 0;
-  st.gastos_missing_confirmed = true;
+  st.gastos_missing_confirmed = false;
+  st.financial_debts_complete = false;
+  st.financial_expenses_complete = false;
+  st.no_debts_declared = false;
+  st._showGastosWarning = false;
 
+  var preliminaryDiag = null;
   if (typeof calcularMotor === "function") {
-    st.diag = calcularMotor();
+    preliminaryDiag = calcularMotor();
   }
 
-  st.snap = {
-    fecha_inicio:  now,
-    score_reset:   st.diag ? st.diag.scoreReset : null,
-    nivel:         st.diag ? st.diag.nivelR : null,
-    plan_id:       st.diag ? st.diag.planId : null,
-    saldo_inicial: 0,
-  };
-  st.step = 3;
+  st.step = 1;
   st.tab = "plan";
-  st.first_assessment_at = now;
-  st.temporal.dashboard_generated_at = now;
+  st.miplan_started = true;
   st.temporal.survey_completed_at = now;
   st._diagSource = "seo_ia_onboarding";
-  st.miplan_started = true;
-  setRecoveryState("dashboard_generated");
+  setRecoveryState("survey_completed");
 
   window.guardarLocal();
 
-  // CRM — full buildCRMData() payload (respuestas, score_v2, acquisition, motor diag)
-  if (typeof enviarCRM === "function" && st.diag) {
-    enviarCRM("miplan_virgin_survey_completed", st.diag);
-    enviarCRM("reset_plan_generated", st.diag);
+  if (typeof enviarCRM === "function" && preliminaryDiag) {
+    enviarCRM("miplan_virgin_survey_completed", preliminaryDiag);
   }
 
   window.CredizonaUI.renderAll();
@@ -2023,6 +2320,11 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
+      if (e.target.id === "chk-mideuda-optin") {
+        handleMideudaOptinChecked();
+        return;
+      }
+
       // Selects de deuda
       var deudaField = e.target.getAttribute("data-deuda-field");
       var deudaIdx   = e.target.getAttribute("data-deuda-idx");
@@ -2233,6 +2535,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
       if (e.target.id === "chk-seo-ia-tc" || e.target.id === "chk-seo-ia-privacy") {
         updateSeoIaDiagnosisCtaState();
+        return;
+      }
+
+      if (e.target.id === "btn-mideuda-continue") {
+        handleMideudaContinue();
         return;
       }
 
@@ -2567,18 +2874,18 @@ document.addEventListener("DOMContentLoaded", function() {
       // Agregar deuda (flujo inicial — step deudas)
       if (e.target.id === "btn-agregar-deuda") {
         if (st.editing_debt_index != null) return;
+        clearNoDebtsDeclaredState(st);
         st.deudas.push(createEmptyDebtObject());
         st.editing_debt_index = st.deudas.length - 1;
         st._deuda_is_new_add = true;
         st._deuda_edit_snapshot = null;
         st._deuda_validation_error = null;
+        window.CredizonaUI.renderAll();
+        return;
+      }
 
-        var cont = document.getElementById("deudas-container");
-        if (cont) {
-          cont.innerHTML = st.deudas.map(window.CredizonaUI.renderDeudaCard).join("");
-        }
-
-        window.CredizonaUI.actualizarMetrics();
+      if (e.target.id === "btn-no-deudas-activas") {
+        handleNoDebtsDeclared();
         return;
       }
 

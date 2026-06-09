@@ -41,6 +41,13 @@ var CZ_GTM_EVENTS = [
   "miplan_virgin_landing_view",
   "miplan_virgin_start",
   "miplan_virgin_survey_completed",
+  "mideuda_cta_shown",
+  "mideuda_optin_checked",
+  "mideuda_cta_clicked",
+  "mideuda_interest_registered",
+  "mideuda_redirect_started",
+  "mideuda_redirect_completed",
+  "mideuda_error",
 ];
 
 var CZ_INTERNAL_EVENTS = [
@@ -80,6 +87,7 @@ var CZ_CRM_ONLY_EVENTS = [
   "plus_feedback_submitted",
   "retry_cta_shown",
   "miplan_virgin_survey_completed",
+  "no_debts_declared",
 ];
 
 // =============================================================================
@@ -106,6 +114,16 @@ var CZ_GTM_SAFE_FIELDS = [
   "error_source",
   "plus_status",
   "state",
+  "tool",
+  "plan_id",
+  "recommended_tools",
+  "mideuda_lead_status",
+  "mora_activa",
+  "deuda_vencida",
+  "flag_demasiadas_deudas",
+  "flag_deuda_cara",
+  "deuda_fuera_sistema",
+  "flag_deuda_sin_pagos",
 ];
 
 // Sprint 11.8 — neutral GTM acquisition buckets (no CRM cohort signals)
@@ -200,6 +218,15 @@ var CZ_EVENT_NAMES = Object.freeze({
   MIPLAN_VIRGIN_LANDING_VIEW:      "miplan_virgin_landing_view",
   MIPLAN_VIRGIN_START:             "miplan_virgin_start",
   MIPLAN_VIRGIN_SURVEY_COMPLETED:  "miplan_virgin_survey_completed",
+
+  // Partner tools — MiDeuda (GTM-safe payloads only)
+  MIDEUDA_CTA_SHOWN:               "mideuda_cta_shown",
+  MIDEUDA_OPTIN_CHECKED:           "mideuda_optin_checked",
+  MIDEUDA_CTA_CLICKED:             "mideuda_cta_clicked",
+  MIDEUDA_INTEREST_REGISTERED:     "mideuda_interest_registered",
+  MIDEUDA_REDIRECT_STARTED:        "mideuda_redirect_started",
+  MIDEUDA_REDIRECT_COMPLETED:      "mideuda_redirect_completed",
+  MIDEUDA_ERROR:                   "mideuda_error",
   GASTOS_MISSING_WARNING_SHOWN:    "gastos_missing_warning_shown",
   GASTOS_MISSING_CONFIRMED:        "gastos_missing_confirmed",
   HIDDEN_FACTOR_CTA_SHOWN:         "hidden_factor_cta_shown",

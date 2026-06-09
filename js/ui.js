@@ -496,8 +496,24 @@ function renderDeudas() {
     + '<div class="metrics" id="metrics-live">' + renderMetricsLive() + '</div>'
     + '<div class="result" id="result-live"><h3 id="result-title">Todavia no analizamos tus deudas</h3>'
     + '<p id="result-text">Completa tus deudas para detectar que acreedor esta generando mas presion financiera.</p></div>'
-    + '</div>'
-    + '<button class="nav-back" id="btn-back-gastos">&#8592; Atras</button>';
+    + '</div>';
+
+  if (deudas.length === 0 && editing == null) {
+    html += '<div class="card no-debts-alt" style="margin-top:16px;border:1px dashed rgba(64,215,255,.22);'
+      + 'background:rgba(64,215,255,.04);">'
+      + '<div style="text-align:center;padding:4px 0 2px;">'
+      + '<div style="font-size:14px;color:rgba(255,255,255,.55);margin-bottom:14px;line-height:1.5;">'
+      + 'Si hoy no tenés deudas activas, podés continuar sin cargar ninguna.'
+      + '</div>'
+      + '<button type="button" class="btn btn-secondary" id="btn-no-deudas-activas" '
+      + 'style="height:56px;font-size:17px;max-width:420px;margin:0 auto;'
+      + 'border-color:rgba(64,215,255,.35);color:#40d7ff;">'
+      + 'No tengo deudas activas &rarr; continuar'
+      + '</button>'
+      + '</div></div>';
+  }
+
+  html += '<button class="nav-back" id="btn-back-gastos">&#8592; Atras</button>';
   return html;
 }
 
@@ -2036,6 +2052,9 @@ function renderTabPlan() {
     // Sprint 12.1 — confianza del diagnóstico (DTI / stock de deuda)
     + renderConfianzaDiagnostico(diag)
 
+    // Partner recommended tools (MiDeuda + future partners)
+    + renderRecommendedToolsSection(diag)
+
     // 10. Analisis financiero detallado (radiografia — bloques 1 a 4)
     + renderRadiografia()
 
@@ -3059,6 +3078,137 @@ function renderTabPlus() {
 }
 
 // =============================================================================
+// PARTNER RECOMMENDED TOOLS — MiDeuda + future partners (Equifax, Sura, etc.)
+// recommended_tools[] drives rendering; no plan-specific hardcoding.
+// Contract today: ["mideuda"]. Future: [{ id, priority }].
+// =============================================================================
+function buildMideudaGtmPayload(diag, extra) {
+  var st = _st();
+  var base = {
+    tool:                   "mideuda",
+    source:                 "credizona_miplan",
+    plan_id:                diag ? diag.planId : null,
+    recommended_tools:      (diag && diag.recommended_tools) ? diag.recommended_tools.slice() : [],
+    mideuda_lead_status:    st.mideuda_lead_status || "not_shown",
+    mora_activa:            diag ? !!diag.mora_activa : false,
+    deuda_vencida:          diag ? !!diag.deuda_vencida : false,
+    flag_demasiadas_deudas: diag ? !!diag.flag_demasiadas_deudas : false,
+    flag_deuda_cara:        diag ? !!diag.flag_deuda_cara : false,
+    deuda_fuera_sistema:    diag ? !!diag.deuda_fuera_sistema : false,
+    flag_deuda_sin_pagos:   diag ? !!diag.flag_deuda_sin_pagos : false,
+  };
+  if (extra) {
+    Object.keys(extra).forEach(function(k) { base[k] = extra[k]; });
+  }
+  return base;
+}
+
+function _trackMideudaShownOnce(diag) {
+  var st = _st();
+  if (!diag || !diag.recommended_tools || diag.recommended_tools.indexOf("mideuda") < 0) return;
+  if (st._mideudaCtaShownTracked) return;
+  st._mideudaCtaShownTracked = true;
+  if (st.mideuda_lead_status === "not_shown") st.mideuda_lead_status = "shown";
+  st.mideuda_cta_shown = true;
+  if (typeof trackEvent === "function" && typeof CZ_EVENT_NAMES !== "undefined") {
+    trackEvent(CZ_EVENT_NAMES.MIDEUDA_CTA_SHOWN, buildMideudaGtmPayload(diag));
+  }
+  if (typeof trackCRMEvent === "function") {
+    trackCRMEvent("mideuda_cta_shown", buildMideudaGtmPayload(diag));
+  }
+  if (typeof window.guardarLocal === "function") window.guardarLocal();
+}
+
+function renderMideudaPartnerCard(diag) {
+  var logoPath = typeof MIDEUDA_LOGO_PATH !== "undefined"
+    ? MIDEUDA_LOGO_PATH
+    : "assets/img/partners/mideuda-logo.svg";
+  var legalText = typeof MIDEUDA_OPTIN_LEGAL_TEXT !== "undefined"
+    ? MIDEUDA_OPTIN_LEGAL_TEXT
+    : "Acepto compartir mis datos con MiDeuda para continuar el proceso de revisión y negociación de mis deudas.";
+  var st = _st();
+  var feedback = st._mideudaFeedbackMsg || "";
+  var optinChecked = !!st.mideuda_optin;
+  var btnDisabled = !optinChecked;
+
+  return [
+    '<div class="partner-tool-card" id="mideuda-partner-card" style="',
+      "background:rgba(255,255,255,.06);border:1px solid rgba(91,124,255,.22);border-radius:14px;",
+      "padding:12px 14px;margin-bottom:10px;box-shadow:0 2px 14px rgba(0,0,0,.18);",
+    '">',
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">',
+        '<div style="display:flex;align-items:center;gap:8px;min-width:0;">',
+          '<img src="' + logoPath + '" alt="MiDeuda" style="height:20px;max-width:72px;object-fit:contain;" ',
+            'onerror="this.style.display=\'none\';var b=this.nextElementSibling;if(b)b.style.display=\'inline-flex\';">',
+          '<span style="display:none;align-items:center;padding:3px 8px;border-radius:999px;',
+            'background:rgba(91,124,255,.18);color:#40d7ff;font-size:11px;font-weight:700;">MiDeuda</span>',
+        '</div>',
+        '<span style="flex-shrink:0;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;',
+          'color:#40d7ff;background:rgba(64,215,255,.14);border:1px solid rgba(64,215,255,.35);',
+          'padding:4px 10px;border-radius:999px;">',
+          'Herramienta externa',
+        '</span>',
+      '</div>',
+      '<div style="font-size:15px;font-weight:800;color:#fff;margin:0 0 4px;line-height:1.35;">',
+        'Negociar tus deudas con MiDeuda',
+      '</div>',
+      '<p style="font-size:13px;color:#b8c2d9;line-height:1.5;margin:0 0 10px;">',
+        'Según tu diagnóstico, antes de volver a pedir crédito puede convenirte revisar opciones ',
+        'para negociar o regularizar deudas formales. MiDeuda es una plataforma externa adherida.',
+      '</p>',
+      '<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin:0 0 10px;">',
+        '<input type="checkbox" id="chk-mideuda-optin"',
+          (optinChecked ? " checked" : ""),
+          ' style="width:16px;height:16px;margin-top:1px;flex-shrink:0;accent-color:#40d7ff;cursor:pointer;">',
+        '<span style="font-size:12px;color:#c5cde0;line-height:1.45;">' + legalText + "</span>",
+      "</label>",
+      [
+        '<button type="button" id="btn-mideuda-continue"',
+        (btnDisabled ? " disabled" : ""),
+        ' style="display:inline-block;max-width:300px;width:auto;border:none;border-radius:12px;',
+        "padding:10px 18px;font-size:14px;font-weight:700;",
+        "color:#fff;cursor:pointer;background:linear-gradient(135deg,#5b7cff 0%,#40d7ff 100%);",
+        "box-shadow:0 2px 12px rgba(91,124,255,.22);opacity:",
+        (btnDisabled ? ".45" : "1"),
+        ';">Continuar en MiDeuda</button>',
+      ].join(""),
+      (feedback
+        ? [
+            '<div id="mideuda-feedback-msg" style="margin-top:10px;padding:10px 12px;border-radius:10px;',
+            "background:rgba(52,255,175,.08);border:1px solid rgba(52,255,175,.2);",
+            'font-size:12px;line-height:1.5;color:#34ffaf;">' + feedback + "</div>",
+          ].join("")
+        : '<div id="mideuda-feedback-msg" style="display:none;margin-top:8px;"></div>'),
+    "</div>",
+  ].join("");
+}
+
+function renderRecommendedToolsSection(diag) {
+  if (!diag || !diag.recommended_tools || !diag.recommended_tools.length) return "";
+
+  _trackMideudaShownOnce(diag);
+
+  var cards = diag.recommended_tools.map(function(toolId) {
+    if (toolId === "mideuda") return renderMideudaPartnerCard(diag);
+    return "";
+  }).join("");
+
+  if (!cards) return "";
+
+  return [
+    '<div class="recommended-tools-wrap" style="margin-top:16px;margin-bottom:4px;">',
+      '<div style="margin-bottom:8px;">',
+        '<div style="font-size:16px;font-weight:800;color:rgba(255,255,255,.88);">Herramientas recomendadas</div>',
+        '<div style="font-size:12px;color:#8390b5;margin-top:2px;line-height:1.35;">',
+          "Sugerencias externas según tu diagnóstico.",
+        "</div>",
+      "</div>",
+      cards,
+    "</div>",
+  ].join("");
+}
+
+// =============================================================================
 // HERRAMIENTAS POR PLAN
 // =============================================================================
 function renderHerramientas() {
@@ -3625,7 +3775,10 @@ function seoIaSurveyIsComplete(ob) {
 
 function shouldShowSeoIaOnboarding() {
   var st = _st();
-  if (st && st.diag && st.step === 3) return false;
+  if (st && st.seo_ia_onboarding && st.seo_ia_onboarding.phase === "done") return false;
+  if (st && typeof hasCompletedFinancialInputs === "function" && hasCompletedFinancialInputs(st)) {
+    return false;
+  }
   return typeof isSeoIaEntry === "function"
     && isSeoIaEntry()
     && typeof hasResultParams === "function"
@@ -3947,6 +4100,10 @@ function renderAll() {
   }
 
   var html = "";
+
+  if (typeof ensureFinancialStepBeforeDashboard === "function") {
+    ensureFinancialStepBeforeDashboard(st);
+  }
 
   if (st.step === 0 && SEGMENTO === 1) {
     html = renderDiagInicial();
