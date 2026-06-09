@@ -1865,6 +1865,15 @@ function renderTabPlan() {
   var fin    = diag.fin;
   var pc     = diag.plan.color;
   var prio   = diag.prio;
+  var behEnc = (typeof getBehavioralEncForDisplay === "function")
+    ? getBehavioralEncForDisplay(st, diag)
+    : (diag && diag.enc ? diag.enc : null);
+  var hasBehav = (typeof hasBehavioralSurveyData === "function")
+    ? hasBehavioralSurveyData(st, diag)
+    : !!TIENE_ENCUESTA;
+  var showBehavCta = (typeof shouldShowBehavioralRefinementCta === "function")
+    ? shouldShowBehavioralRefinementCta(st, diag)
+    : false;
 
   // Sprint 9 — gastos missing warning card (near top of plan tab)
   var _gastosMissingCard = (st.gastos_missing_confirmed)
@@ -2112,11 +2121,11 @@ function renderTabPlan() {
     + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">gastos y deudas · max 30</div></div>'
     + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
     + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Perfil conductual</div>'
-    + '<div style="font-size:52px;font-weight:900;color:' + (TIENE_ENCUESTA ? colorScore(diag.enc.score) : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + (TIENE_ENCUESTA ? diag.enc.score : "—") + '</div>'
-    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">' + (TIENE_ENCUESTA ? "analisis conductual · max 30" : "sin datos adicionales") + '</div></div>'
+    + '<div style="font-size:52px;font-weight:900;color:' + (hasBehav && behEnc ? colorScore(behEnc.score) : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + (hasBehav && behEnc ? behEnc.score : "—") + '</div>'
+    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">' + (hasBehav && behEnc ? "analisis conductual · max 30" : "sin datos adicionales") + '</div></div>'
     + '</div>'
     + '<div style="margin-top:14px;font-size:15px;color:#8390b5;text-align:center;">Revision sugerida en <strong style="color:rgba(255,255,255,.8);">' + diag.plan.reevaluacion + '</strong></div>'
-    + (!TIENE_ENCUESTA
+    + (showBehavCta
         ? '<div style="margin-top:18px;padding:16px 18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;">'
           + '<div style="font-size:14px;font-weight:800;color:rgba(255,255,255,.7);margin-bottom:8px;">Refinar diagnostico financiero</div>'
           + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">El analisis actual se basa en tus ingresos, gastos y deudas. Responder algunas preguntas adicionales puede mejorar la precision del diagnostico.</div>'
@@ -4108,7 +4117,9 @@ function renderAll() {
   if (st.step === 0 && SEGMENTO === 1) {
     html = renderDiagInicial();
   } else if (st.step === 0) {
-    var hasBehavioral = TIENE_ENCUESTA || (st.diag && st.diag.enc);
+    var hasBehavioral = (typeof hasBehavioralSurveyData === "function")
+      ? hasBehavioralSurveyData(st, st.diag)
+      : (TIENE_ENCUESTA || (st.diag && st.diag.enc));
     if (st.miplan_started) {
       // User already entered the flow — correct state and advance to debt entry
       st.step = 1;

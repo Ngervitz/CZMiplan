@@ -1121,6 +1121,10 @@ function next() {
       return;
     }
 
+    if (typeof syncPreRespuestasFromSeoIaSurvey === "function") {
+      syncPreRespuestasFromSeoIaSurvey(st);
+    }
+
     st.diag = calcularMotor();
     st._diagSource = "live_calc";
 
@@ -1626,6 +1630,9 @@ async function init() {
 
   handlePlusPaymentReturn();
   preloadUserEmailFromUrl();
+  if (typeof syncPreRespuestasFromSeoIaSurvey === "function") {
+    syncPreRespuestasFromSeoIaSurvey(st);
+  }
   ensureFinancialStepBeforeDashboard(st);
 
   if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
@@ -2504,6 +2511,14 @@ document.addEventListener("DOMContentLoaded", function() {
       if (e.target.id === "btn-bridge-survey") {
         setRecoveryState("survey_started");
         trackEvent(CZ_EVENT_NAMES.SURVEY_STARTED, { source: "bridge_screen" });
+        window.guardarLocal();
+        window.location.href = SURVEY_URL;
+        return;
+      }
+
+      if (e.target.id === "btn-refinar-diagnostico") {
+        setRecoveryState("survey_started");
+        trackEvent(CZ_EVENT_NAMES.SURVEY_STARTED, { source: "dashboard_refinement_cta" });
         window.guardarLocal();
         window.location.href = SURVEY_URL;
         return;

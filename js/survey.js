@@ -20,6 +20,76 @@ function surveyIsActive(resp) {
   return true;
 }
 
+// SEO IA in-app survey completed (single source of truth: st.seo_ia_survey).
+function hasSeoIaSurveyCompleted(st) {
+  st = st || (typeof window !== "undefined" ? window.CZState : null) || {};
+  return !!(st.seo_ia_survey && st.seo_ia_survey.completed_at);
+}
+
+// Restore PRE.respuestas from persisted seo_ia_survey (PRE is not in localStorage).
+function syncPreRespuestasFromSeoIaSurvey(st) {
+  st = st || (typeof window !== "undefined" ? window.CZState : null) || {};
+  if (typeof PRE === "undefined" || !PRE.respuestas) return false;
+
+  var src = null;
+  if (hasSeoIaSurveyCompleted(st) && st.seo_ia_survey.respuestas) {
+    src = st.seo_ia_survey.respuestas;
+  } else if (
+    st.seo_ia_onboarding
+    && st.seo_ia_onboarding.phase === "done"
+    && st.seo_ia_onboarding.respuestas
+  ) {
+    src = st.seo_ia_onboarding.respuestas;
+  }
+  if (!src) return false;
+
+  var i;
+  for (i = 1; i <= 10; i++) {
+    PRE.respuestas["p" + i] = src["p" + i] != null ? src["p" + i] : null;
+  }
+  return surveyIsActive(PRE.respuestas);
+}
+
+function hasBehavioralSurveyData(st, diag) {
+  if (typeof TIENE_ENCUESTA !== "undefined" && TIENE_ENCUESTA) return true;
+  st = st || (typeof window !== "undefined" ? window.CZState : null) || {};
+  if (hasSeoIaSurveyCompleted(st)) return true;
+  if (typeof syncPreRespuestasFromSeoIaSurvey === "function") {
+    syncPreRespuestasFromSeoIaSurvey(st);
+  }
+  if (typeof PRE !== "undefined" && surveyIsActive(PRE.respuestas)) return true;
+  if (st.seo_ia_survey && st.seo_ia_survey.respuestas && surveyIsActive(st.seo_ia_survey.respuestas)) {
+    return true;
+  }
+  if (diag && diag.enc && typeof PRE !== "undefined" && surveyIsActive(PRE.respuestas)) {
+    return true;
+  }
+  return false;
+}
+
+function getBehavioralEncForDisplay(st, diag) {
+  st = st || (typeof window !== "undefined" ? window.CZState : null) || {};
+  if (typeof syncPreRespuestasFromSeoIaSurvey === "function") {
+    syncPreRespuestasFromSeoIaSurvey(st);
+  }
+  if (!hasBehavioralSurveyData(st, diag)) return null;
+  if (typeof calcularEncuesta !== "function") {
+    return (diag && diag.enc) ? diag.enc : null;
+  }
+  if (typeof PRE !== "undefined" && surveyIsActive(PRE.respuestas)) {
+    return calcularEncuesta(PRE.respuestas);
+  }
+  if (st.seo_ia_survey && st.seo_ia_survey.respuestas && surveyIsActive(st.seo_ia_survey.respuestas)) {
+    return calcularEncuesta(st.seo_ia_survey.respuestas);
+  }
+  return (diag && diag.enc) ? diag.enc : null;
+}
+
+function shouldShowBehavioralRefinementCta(st, diag) {
+  if (hasBehavioralSurveyData(st, diag)) return false;
+  return typeof SURVEY_URL !== "undefined" && !!SURVEY_URL;
+}
+
 function calcularEncuesta(resp) {
   if (!resp || !surveyIsActive(resp)) {
     return {
