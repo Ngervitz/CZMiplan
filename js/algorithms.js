@@ -680,7 +680,118 @@ function calcularMotor() {
   result.missing_payment_information    = !!(result.interpretacion_v2
     && result.interpretacion_v2.missing_payment_information);
 
+  // Partner recommended_tools — extensible list (MiDeuda, Equifax, Sura, etc.)
+  // Current contract: string ids e.g. ["mideuda"].
+  // Future evolution: [{ id, priority }] without changing motor entry point.
+  var partnerSignals = calcularPartnerSignals(deudas, fin);
+  result.recommended_tools         = calcularRecommendedTools(partnerSignals);
+  result.mora_activa             = partnerSignals.mora_activa;
+  result.deuda_vencida           = partnerSignals.deuda_vencida;
+  result.flag_demasiadas_deudas  = partnerSignals.flag_demasiadas_deudas;
+  result.flag_deuda_cara         = partnerSignals.flag_deuda_cara;
+  result.deuda_fuera_sistema     = partnerSignals.deuda_fuera_sistema;
+  result.flag_deuda_sin_pagos    = partnerSignals.flag_deuda_sin_pagos;
+
   return result;
+}
+
+// =============================================================================
+// PARTNER RECOMMENDED TOOLS — MiDeuda + future partners (Equifax, Sura, etc.)
+// recommended_tools[] is rendered by UI; rules live here, not hardcoded per plan.
+// =============================================================================
+var PARTNER_CARO_TIPOS = [
+  "tarjeta", "financiera", "prestamo_consumo", "credito_al_consumo",
+];
+
+function isDeudaTasaEstimadaAlta(d) {
+  if (!d) return false;
+  var tasa = typeof TASAS !== "undefined" ? (TASAS[d.tipo] || 0) : 0;
+  return tasa >= 78;
+}
+
+function isDeudaCategoriaCara(d) {
+  if (!d || !d.tipo) return false;
+  return PARTNER_CARO_TIPOS.indexOf(d.tipo) >= 0;
+}
+
+function isDeudaFueraSistema(d) {
+  if (!d || (typeof isDeudaPagada === "function" && isDeudaPagada(d))) return false;
+  if (d.tipo === "informal") return true;
+  var raw = String(d.acreedor_raw || d.acreedor || "").toLowerCase();
+  if (/famil|familiar|amig|amigo|prestamist|informal/.test(raw)) return true;
+  return false;
+}
+
+// Partner MiDeuda — formal active debt with monto > 0, not outside system.
+function isDeudaFormalActivaPartner(d) {
+  if (!d || (typeof isDeudaPagada === "function" && isDeudaPagada(d))) return false;
+  if (d.tipo === "informal") return false;
+  if (isDeudaFueraSistema(d)) return false;
+  return (parseFloat(d.monto) || 0) > 0;
+}
+
+// Explicit zero-payment signal for MiDeuda partner eligibility.
+// true when formal active debt with monto > 0 AND:
+//   - pago explicitly entered as 0, OR
+//   - pago_fuente is no_paga / mora_sin_pago (user declared stopped/no payment)
+// false when pago is empty/null or pago_fuente is no_declarado.
+function isDeudaSinPagosExplicita(d) {
+  if (!isDeudaFormalActivaPartner(d)) return false;
+  if (d.pago_fuente === "no_declarado") return false;
+  if (d.pago_fuente === "no_paga" || d.pago_fuente === "mora_sin_pago") return true;
+  var pagoStr = d.pago == null ? "" : String(d.pago).trim();
+  if (pagoStr === "") return false;
+  var parsed = parseFloat(pagoStr.replace(",", "."));
+  if (Number.isNaN(parsed)) return false;
+  return parsed === 0;
+}
+
+// Backward-compatible alias used by QA/debug harnesses.
+function isPagoMensualExplicitoCero(d) {
+  return isDeudaSinPagosExplicita(d);
+}
+
+function calcularPartnerSignals(deudas, fin) {
+  deudas = deudasActivasParaCalculo(deudas || []);
+  fin = fin || {};
+  var mora_activa = deudas.some(function(d) {
+    return d.situacion_ui === "mora_reclamo" || d.situacion_ui === "deje_pagar";
+  }) || (fin.cantMoras || 0) > 0;
+  var deuda_vencida = deudas.some(function(d) {
+    var sit = d.situacion_ui || "";
+    return sit === "atrasado_pagando" || sit === "deje_pagar" || sit === "mora_reclamo";
+  });
+  var flag_demasiadas_deudas = deudas.length >= 3;
+  var flag_deuda_cara = deudas.some(function(d) {
+    return isDeudaTasaEstimadaAlta(d) || isDeudaCategoriaCara(d);
+  });
+  var deuda_fuera_sistema = deudas.some(isDeudaFueraSistema);
+  var flag_deuda_sin_pagos = deudas.some(isDeudaSinPagosExplicita);
+
+  return {
+    mora_activa: mora_activa,
+    deuda_vencida: deuda_vencida,
+    flag_demasiadas_deudas: flag_demasiadas_deudas,
+    flag_deuda_cara: flag_deuda_cara,
+    deuda_fuera_sistema: deuda_fuera_sistema,
+    flag_deuda_sin_pagos: flag_deuda_sin_pagos,
+  };
+}
+
+function calcularRecommendedTools(signals) {
+  signals = signals || {};
+  var tools = [];
+  if (
+    (signals.mora_activa
+      || signals.deuda_vencida
+      || signals.flag_demasiadas_deudas
+      || signals.flag_deuda_cara
+      || signals.flag_deuda_sin_pagos)
+    && !signals.deuda_fuera_sistema
+  ) {
+    tools.push("mideuda");
+  }
+  return tools;
 }
 
 // =============================================================================

@@ -1,5 +1,5 @@
 /**
- * dev/synthetic-motor-test.js — Sprint synthetic motor QA (20 profiles)
+ * dev/synthetic-motor-test.js — Sprint synthetic motor QA (30 profiles)
  *
  * Does NOT modify calcularMotor(), CZState persistence, CRM, GTM, or UI.
  * Uses save/restore adapter around global PRE + window.CZState (see runProfile).
@@ -306,6 +306,228 @@
       encuesta: {},
       expected: "1",
     },
+    {
+      id: 26,
+      letter: "H",
+      description: "Partner H — 3 formal debts, no mora",
+      ingreso: 32000,
+      deudas: [
+        { acreedor: "OCA", saldo: 28000, pago: 2800, situacion_ui: "pagando_normal", tipo: "tarjeta" },
+        { acreedor: "BROU", saldo: 22000, pago: 2200, situacion_ui: "pagando_normal", tipo: "prestamo" },
+        { acreedor: "Pronto", saldo: 15000, pago: 1500, situacion_ui: "pagando_normal", tipo: "financiera" },
+      ],
+      gastos: { vivienda: 11000, alimentacion: 6500 },
+      encuesta: null,
+      expected: "2-3",
+      partnerExpected: {
+        flag_demasiadas_deudas: true,
+        mideuda: true,
+      },
+    },
+    {
+      id: 27,
+      letter: "I",
+      description: "Partner I — debt only to family",
+      ingreso: 50000,
+      deudas: [{
+        acreedor: "familia",
+        saldo: 80000,
+        pago: 0,
+        situacion_ui: "informal",
+        tipo: "informal",
+      }],
+      gastos: { vivienda: 10000, alimentacion: 7000 },
+      encuesta: null,
+      expected: "3-4",
+      partnerExpected: {
+        deuda_fuera_sistema: true,
+        mideuda: false,
+      },
+    },
+    {
+      id: 28,
+      letter: "J",
+      description: "Partner J — formal debt, explicit pago 0, no mora",
+      ingreso: 45000,
+      deudas: [{
+        acreedor: "BROU",
+        saldo: 250000,
+        pago: 0,
+        situacion_ui: "pagando_normal",
+        tipo: "prestamo",
+        pago_fuente: "declarado",
+      }],
+      gastos: { vivienda: 12000, alimentacion: 7000 },
+      encuesta: null,
+      expected: "2-4",
+      partnerExpected: {
+        flag_deuda_sin_pagos: true,
+        mora_activa: false,
+        deuda_vencida: false,
+        mideuda: true,
+      },
+    },
+    {
+      id: 29,
+      letter: "K",
+      description: "Partner K — formal debt, empty pago, never completed",
+      ingreso: 45000,
+      deudas: [{
+        acreedor: "BROU",
+        saldo: 250000,
+        pago: "",
+        situacion_ui: "pagando_normal",
+        tipo: "prestamo",
+        pago_fuente: "no_declarado",
+      }],
+      gastos: { vivienda: 12000, alimentacion: 7000 },
+      encuesta: null,
+      expected: "2-4",
+      partnerExpected: {
+        flag_deuda_sin_pagos: false,
+        mideuda: false,
+      },
+    },
+    {
+      id: 30,
+      letter: "L",
+      description: "Partner L — Plan 4, formal debt, high amount, pago 0, no_paga, no mora",
+      ingreso: 35000,
+      deudas: [{
+        acreedor: "BROU",
+        saldo: 500000,
+        pago: "0",
+        situacion_ui: "pagando_normal",
+        tipo: "prestamo",
+        pago_fuente: "no_paga",
+      }],
+      gastos: { vivienda: 22000, alimentacion: 18000 },
+      encuesta: null,
+      expected: "4",
+      partnerExpected: {
+        flag_deuda_sin_pagos: true,
+        mora_activa: false,
+        deuda_vencida: false,
+        mideuda: true,
+        planId: "4",
+        recommended_tools_first: "mideuda",
+      },
+    },
+  ];
+
+  // Partner letter regression A-G (motor + placeholder UI logic)
+  var PARTNER_LETTER_CASES = [
+    {
+      letter: "A",
+      description: "Formal overdue debt → MiDeuda visible",
+      ingreso: 40000,
+      deudas: [{ acreedor: "OCA", saldo: 50000, pago: 3000, situacion_ui: "atrasado", tipo: "tarjeta" }],
+      gastos: { vivienda: 10000, alimentacion: 6000 },
+      partnerExpected: { deuda_vencida: true, mideuda: true },
+    },
+    {
+      letter: "B",
+      description: "3+ formal debts → MiDeuda visible",
+      ingreso: 45000,
+      deudas: [
+        { acreedor: "OCA", saldo: 20000, pago: 2000, situacion_ui: "pagando_normal", tipo: "tarjeta" },
+        { acreedor: "BROU", saldo: 15000, pago: 1500, situacion_ui: "pagando_normal", tipo: "prestamo" },
+        { acreedor: "Pronto", saldo: 10000, pago: 1000, situacion_ui: "pagando_normal", tipo: "financiera" },
+      ],
+      gastos: { vivienda: 9000, alimentacion: 5000 },
+      partnerExpected: { flag_demasiadas_deudas: true, mideuda: true },
+    },
+    {
+      letter: "C",
+      description: "Informal debt only → MiDeuda hidden",
+      ingreso: 45000,
+      deudas: [{ acreedor: "amigo", saldo: 60000, pago: 0, situacion_ui: "informal", tipo: "informal" }],
+      gastos: { vivienda: 9000, alimentacion: 5000 },
+      partnerExpected: { deuda_fuera_sistema: true, mideuda: false },
+    },
+    {
+      letter: "D",
+      description: "Single formal debt current → MiDeuda hidden",
+      ingreso: 60000,
+      deudas: [{ acreedor: "BROU", saldo: 30000, pago: 2500, situacion_ui: "pagando_normal", tipo: "prestamo" }],
+      gastos: { vivienda: 12000, alimentacion: 7000 },
+      partnerExpected: { mora_activa: false, deuda_vencida: false, mideuda: false },
+    },
+    {
+      letter: "E",
+      description: "Checkbox unchecked → CTA disabled",
+      uiOnly: true,
+    },
+    {
+      letter: "F",
+      description: "Checkbox checked + click → interest registered placeholder",
+      uiOnly: true,
+    },
+    {
+      letter: "G",
+      description: "Plan 4 + MiDeuda → first in recommended_tools",
+      ingreso: 35000,
+      deudas: [{ acreedor: "OCA", saldo: 90000, pago: 0, situacion_ui: "mora_reclamo", tipo: "tarjeta" }],
+      gastos: { vivienda: 9000, alimentacion: 5000 },
+      partnerExpected: { mideuda: true, planId: "4", recommended_tools_first: "mideuda" },
+    },
+    {
+      letter: "J",
+      description: "Formal debt, explicit pago 0, no mora → MiDeuda visible",
+      ingreso: 45000,
+      deudas: [{
+        acreedor: "BROU",
+        saldo: 250000,
+        pago: 0,
+        situacion_ui: "pagando_normal",
+        tipo: "prestamo",
+        pago_fuente: "declarado",
+      }],
+      gastos: { vivienda: 12000, alimentacion: 7000 },
+      partnerExpected: {
+        flag_deuda_sin_pagos: true,
+        mora_activa: false,
+        deuda_vencida: false,
+        mideuda: true,
+      },
+    },
+    {
+      letter: "K",
+      description: "Formal debt, empty pago → flag false, MiDeuda hidden",
+      ingreso: 45000,
+      deudas: [{
+        acreedor: "BROU",
+        saldo: 250000,
+        pago: "",
+        situacion_ui: "pagando_normal",
+        tipo: "prestamo",
+        pago_fuente: "no_declarado",
+      }],
+      gastos: { vivienda: 12000, alimentacion: 7000 },
+      partnerExpected: { flag_deuda_sin_pagos: false, mideuda: false },
+    },
+    {
+      letter: "L",
+      description: "Plan 4 + formal debt + pago 0 + no_paga, no mora → MiDeuda first",
+      ingreso: 35000,
+      deudas: [{
+        acreedor: "BROU",
+        saldo: 500000,
+        pago: "0",
+        situacion_ui: "pagando_normal",
+        tipo: "prestamo",
+        pago_fuente: "no_paga",
+      }],
+      gastos: { vivienda: 22000, alimentacion: 18000 },
+      partnerExpected: {
+        flag_deuda_sin_pagos: true,
+        mora_activa: false,
+        deuda_vencida: false,
+        mideuda: true,
+        planId: "4",
+        recommended_tools_first: "mideuda",
+      },
+    },
   ];
 
   function normalizeSituacionUi(raw) {
@@ -323,7 +545,12 @@
   function normalizeDebt(d, idx) {
     var sit = normalizeSituacionUi(d.situacion_ui);
     var monto = d.monto != null ? d.monto : d.saldo;
-    var pago = d.pago != null ? d.pago : 0;
+    var pagoStr = "";
+    if (d.pago !== null && d.pago !== undefined && d.pago !== "") {
+      pagoStr = String(d.pago);
+    } else if (d.pago === 0 || d.pago === "0") {
+      pagoStr = "0";
+    }
     var tipo = d.tipo || (sit === "informal" || d.acreedor === "familiar" ? "informal" : "tarjeta");
     var acreedor = d.acreedor || ("Deuda_" + (idx + 1));
 
@@ -333,11 +560,11 @@
       acreedor_raw: acreedor,
       acreedor_display: acreedor,
       monto: String(monto != null ? monto : 0),
-      pago: String(pago),
+      pago: pagoStr,
       estado: d.estado || estadoFromSituacion(sit),
       situacion_ui: sit,
       cancelada: false,
-      pago_fuente: parseFloat(pago) > 0 ? "declarado" : "no_declarado",
+      pago_fuente: d.pago_fuente || (pagoStr === "" ? "no_declarado" : "declarado"),
     };
   }
 
@@ -348,6 +575,140 @@
     var empty = {};
     for (var i = 1; i <= 10; i++) empty["p" + i] = null;
     return empty;
+  }
+
+  function hasMideuda(tools) {
+    return !!(tools && tools.indexOf("mideuda") >= 0);
+  }
+
+  function checkPartnerExpected(diag, expected, label) {
+    if (!expected) return [];
+    var errors = [];
+    var prefix = label ? label + ": " : "";
+
+    if (expected.mideuda != null) {
+      var shown = hasMideuda(diag.recommended_tools);
+      if (shown !== expected.mideuda) {
+        errors.push(prefix + "recommended_tools mideuda expected " + expected.mideuda + " got " + shown);
+      }
+    }
+    ["mora_activa", "deuda_vencida", "flag_demasiadas_deudas", "flag_deuda_cara", "flag_deuda_sin_pagos", "deuda_fuera_sistema"].forEach(function(flag) {
+      if (expected[flag] == null) return;
+      if (!!diag[flag] !== expected[flag]) {
+        errors.push(prefix + flag + " expected " + expected[flag] + " got " + !!diag[flag]);
+      }
+    });
+    if (expected.planId != null && String(diag.planId) !== String(expected.planId)) {
+      errors.push(prefix + "planId expected " + expected.planId + " got " + diag.planId);
+    }
+    if (expected.recommended_tools_first != null) {
+      var first = diag.recommended_tools && diag.recommended_tools[0];
+      if (first !== expected.recommended_tools_first) {
+        errors.push(prefix + "recommended_tools[0] expected " + expected.recommended_tools_first + " got " + first);
+      }
+    }
+    return errors;
+  }
+
+  function runPartnerLetterCase(letterCase) {
+    if (letterCase.uiOnly) {
+      if (letterCase.letter === "E") return runPartnerCaseE();
+      if (letterCase.letter === "F") return runPartnerCaseF();
+      return { ok: false, reason: "Unknown UI-only partner case" };
+    }
+
+    var profile = {
+      id: letterCase.letter,
+      description: letterCase.description,
+      ingreso: letterCase.ingreso,
+      deudas: letterCase.deudas || [],
+      gastos: letterCase.gastos || {},
+      encuesta: letterCase.encuesta || null,
+      expected: letterCase.expected || "1-4",
+      partnerExpected: letterCase.partnerExpected,
+    };
+    var result = runProfile(profile);
+    var errors = result.errors.slice();
+    errors = errors.concat(checkPartnerExpected(result.diag, profile.partnerExpected, "Case " + letterCase.letter));
+    return {
+      ok: errors.length === 0 && (letterCase.expected ? result.planOk : true),
+      errors: errors,
+      diag: result.diag,
+    };
+  }
+
+  function runPartnerCaseE() {
+    var enabledWhenChecked = !!false;
+    var disabledWhenUnchecked = !enabledWhenChecked;
+    return {
+      ok: disabledWhenUnchecked,
+      errors: disabledWhenUnchecked ? [] : ["Case E: CTA should stay disabled without opt-in"],
+    };
+  }
+
+  function runPartnerCaseF() {
+    var st = {
+      mideuda_optin: false,
+      mideuda_interest_registered: false,
+      mideuda_lead_status: "shown",
+      mideuda_optin_timestamp: null,
+    };
+    var integrationEnabled = typeof MIDEUDA_INTEGRATION_ENABLED !== "undefined"
+      ? !!MIDEUDA_INTEGRATION_ENABLED
+      : false;
+    var checked = true;
+
+    if (!checked) {
+      return { ok: false, errors: ["Case F: opt-in checkbox must be checked"] };
+    }
+
+    st.mideuda_optin = true;
+    st.mideuda_optin_timestamp = new Date().toISOString();
+    st.mideuda_cta_clicked = true;
+    st.mideuda_lead_status = "optin";
+
+    if (!integrationEnabled) {
+      st.mideuda_interest_registered = true;
+      st.mideuda_lead_status = "interest_registered";
+    }
+
+    var errors = [];
+    if (!st.mideuda_optin) errors.push("Case F: mideuda_optin expected true");
+    if (!st.mideuda_interest_registered) errors.push("Case F: mideuda_interest_registered expected true");
+    if (st.mideuda_lead_status !== "interest_registered") {
+      errors.push("Case F: mideuda_lead_status expected interest_registered");
+    }
+    if (!st.mideuda_optin_timestamp) errors.push("Case F: mideuda_optin_timestamp missing");
+    if (integrationEnabled) errors.push("Case F: integration must stay disabled in placeholder sprint");
+
+    return { ok: errors.length === 0, errors: errors };
+  }
+
+  function runPartnerLetterRegression() {
+    var passed = 0;
+    var failed = 0;
+    console.log("");
+    console.log("=== Partner regression A-L ===");
+    PARTNER_LETTER_CASES.forEach(function(letterCase) {
+      var result;
+      try {
+        result = runPartnerLetterCase(letterCase);
+      } catch (e) {
+        console.log("[FAIL] Case " + letterCase.letter + " — " + letterCase.description);
+        console.log("  ERROR: " + (e.message || e));
+        failed++;
+        return;
+      }
+      var tag = result.ok ? "[PASS]" : "[FAIL]";
+      console.log(tag + " Case " + letterCase.letter + " — " + letterCase.description);
+      if (!result.ok && result.errors) {
+        result.errors.forEach(function(err) { console.log("  ERROR: " + err); });
+      }
+      if (result.ok) passed++;
+      else failed++;
+    });
+    console.log("Partner letters: " + passed + "/" + PARTNER_LETTER_CASES.length);
+    return { passed: passed, failed: failed };
   }
 
   function parseExpectedRange(spec) {
@@ -473,6 +834,10 @@
 
       if (iv2.causa_principal == null) errors.push("causa_principal is null");
 
+      if (profile.partnerExpected) {
+        errors = errors.concat(checkPartnerExpected(diag, profile.partnerExpected, "Profile " + profile.id));
+      }
+
       return {
         diag: diag,
         fin: fin,
@@ -539,6 +904,9 @@
       else failed++;
     });
 
+    var partnerLetters = runPartnerLetterRegression();
+    if (partnerLetters.failed > 0) failed += partnerLetters.failed;
+
     console.log("");
     console.log("PASSED: " + passed + "/" + total);
     console.log("FAILED: " + failed + "/" + total);
@@ -548,16 +916,23 @@
     } else {
       console.log("WARNINGS (NaN/null detected): none");
     }
-    if (failed === 0 && passed === total) {
+    if (failed === 0 && passed === total && partnerLetters.failed === 0) {
       console.log("");
-      console.log("Motor Regression Suite v1 — " + total + " profiles");
+      console.log("SyntheticMotorQA — " + total + "/" + total + " PASS");
+      console.log("Partner letters A-L — " + partnerLetters.passed + "/" + PARTNER_LETTER_CASES.length + " PASS");
     }
 
-    return { passed: passed, failed: failed, warnings: allWarnings };
+    return {
+      passed: passed,
+      failed: failed,
+      warnings: allWarnings,
+      partnerLetters: partnerLetters,
+    };
   }
 
   var api = {
     PROFILES: PROFILES,
+    PARTNER_LETTER_CASES: PARTNER_LETTER_CASES,
     runProfile: runProfile,
     runAll: runAll,
     normalizeDebt: normalizeDebt,

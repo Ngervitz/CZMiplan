@@ -318,6 +318,22 @@ var CZ_CLAUDE_ALLOW_BROWSER_KEY = false;
 var CZ_PLUS_PROXY_ENABLED = true;
 var CZ_PLUS_PROXY_CLIENT_SECRET = "123456789987654321";
 
+// Sprint MiDeuda — partner placeholder (CRM + future redirect)
+var MIDEUDA_INTEGRATION_ENABLED = false;
+var MIDEUDA_ONBOARDING_URL = "";
+var MIDEUDA_USE_TOKEN = true;
+var MIDEUDA_OPTIN_LEGAL_TEXT = "Acepto compartir mis datos con MiDeuda para continuar el proceso de revisión y negociación de mis deudas.";
+var MIDEUDA_LOGO_PATH = "assets/img/partners/mideuda-logo.svg";
+
+function buildMideudaRedirectUrl(user, resultado) {
+  if (typeof MIDEUDA_INTEGRATION_ENABLED === "undefined" || !MIDEUDA_INTEGRATION_ENABLED) {
+    return null;
+  }
+  var base = String(MIDEUDA_ONBOARDING_URL || "").trim();
+  if (!base) return null;
+  return base;
+}
+
 // Consent event names
 const CZ_CONSENT_EVENTS = Object.freeze({
   LEGAL_ACCEPTED:    "legal_accepted",

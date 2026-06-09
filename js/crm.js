@@ -77,6 +77,32 @@ function buildLeadOutcomeCrm() {
   };
 }
 
+function buildMideudaCrmBlock(st, motor) {
+  st = st || {};
+  return {
+    mideuda_cta_shown:            !!st.mideuda_cta_shown,
+    mideuda_cta_clicked:          !!st.mideuda_cta_clicked,
+    mideuda_optin:                !!st.mideuda_optin,
+    mideuda_optin_timestamp:      st.mideuda_optin_timestamp || null,
+    mideuda_optin_legal_text:     st.mideuda_optin_legal_text || null,
+    mideuda_interest_registered:  !!st.mideuda_interest_registered,
+    mideuda_lead_status:          st.mideuda_lead_status || "not_shown",
+    mideuda_source:               "credizona_miplan",
+  };
+}
+
+function buildPartnerSignalsCrm(motor) {
+  if (!motor) return null;
+  return {
+    mora_activa:            !!motor.mora_activa,
+    deuda_vencida:          !!motor.deuda_vencida,
+    flag_demasiadas_deudas: !!motor.flag_demasiadas_deudas,
+    flag_deuda_cara:        !!motor.flag_deuda_cara,
+    deuda_fuera_sistema:    !!motor.deuda_fuera_sistema,
+    flag_deuda_sin_pagos:   !!motor.flag_deuda_sin_pagos,
+  };
+}
+
 function buildSeoIaSurveyCrm(st) {
   st = st || {};
   var s = st.seo_ia_survey;
@@ -259,6 +285,13 @@ function buildCRMData(motor) {
 
     // SEO IA — in-app survey block (CRM only: respuestas + score_v2 + clasificación)
     seo_ia_survey: buildSeoIaSurveyCrm(st),
+
+    // Partner recommended tools (MiDeuda + future partners)
+    recommended_tools: (motor && motor.recommended_tools)
+      ? motor.recommended_tools.slice()
+      : [],
+    partner_signals: buildPartnerSignalsCrm(motor),
+    mideuda: buildMideudaCrmBlock(st, motor),
   };
 }
 
