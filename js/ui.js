@@ -2853,18 +2853,22 @@ function renderTabPlan() {
     + '</div>'
     + _dashZoneClose()
 
-    // 6 — Tu situación hoy
+    // 6 — Acciones recomendadas (visible by default)
+    + _dashZoneOpen("acciones-recom", CZ_DASH_ZONE_GAP)
+    + renderHerramientas()
+    + _dashZoneClose()
+
+    // 7 — Tu situación hoy
     + _dashZoneOpen("situacion-hoy", CZ_DASH_ZONE_GAP, "dash-zone-density")
     + _renderTuSituacionHoy(diag, st)
     + _dashZoneClose()
 
-    // 7 — Tus números (collapsed accordion)
+    // 8 — Tus números (collapsed accordion)
     + _dashZoneOpen("numeros", CZ_DASH_ZONE_GAP)
     + _renderNumerosAccordionShell(
         renderDashboardEditGastosCta(diag, st)
         + renderRecommendedToolsSection(diag)
         + renderRadiografia()
-        + renderHerramientas()
         + (function() {
         var sev = _severityFromDiag(diag);
         var flujoNote = "";

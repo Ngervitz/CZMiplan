@@ -99,6 +99,7 @@
   ok("C diagnostico before accion in DOM", zoneIndex(tabComplete, "diagnostico") < zoneIndex(tabComplete, "accion"));
   ok("C accion before frenando in order props", zoneIndex(tabComplete, "accion") < zoneIndex(tabComplete, "frenando"));
   ok("C plus before situacion-hoy", zoneIndex(tabComplete, "plus") < zoneIndex(tabComplete, "situacion-hoy"));
+  ok("C acciones-recom before situacion-hoy", zoneIndex(tabComplete, "acciones-recom") < zoneIndex(tabComplete, "situacion-hoy"));
   ok("C confianza before sugerencias", zoneIndex(tabComplete, "confianza") < zoneIndex(tabComplete, "sugerencias"));
 
   // D — Sticky CTA unchanged (step 3 hides bar)
