@@ -2217,6 +2217,25 @@ function _lineaDiaEvaluacion(st) {
 }
 
 function _renderTuSituacionHoy(diag, st) {
+  st = st || _st();
+  diag = diag || _diag();
+
+  if (isIncompleteFinancialProfile(diag, st)) {
+    return '<div class="plan-card" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);">'
+      + '<div style="font-size:20px;font-weight:800;margin-bottom:14px;line-height:1.3;">📌 Tu situación hoy</div>'
+      + '<div style="font-size:14px;color:#8390b5;margin-bottom:16px;line-height:1.5;">' + _lineaDiaEvaluacion(st) + "</div>"
+      + '<p style="font-size:16px;color:rgba(255,255,255,.92);line-height:1.65;margin:0 0 12px;">'
+      + "Todavía no tenemos información suficiente para evaluar con precisión tu situación financiera."
+      + "</p>"
+      + '<p style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;margin:0 0 16px;">'
+      + "Antes de estimar posibilidades de mejora o recuperación, necesitamos completar el panorama de gastos y obligaciones mensuales."
+      + "</p>"
+      + '<div style="padding:14px 16px;background:rgba(255,196,0,.08);border:1px solid rgba(255,196,0,.2);border-radius:12px;font-size:15px;color:#ffd447;font-weight:700;line-height:1.65;">'
+      + "Próximo paso recomendado: completar tus gastos mensuales."
+      + "</div>"
+      + "</div>";
+  }
+
   var fin         = (diag && diag.fin) ? diag.fin : {};
   var flujoLibre  = fin.flujoLibre != null ? fin.flujoLibre : 0;
   var ratioPagos  = fin.ratio != null ? fin.ratio : 0;
@@ -4759,6 +4778,8 @@ window.CredizonaUI = {
   _renderProfileScoreLabelHtml: _renderProfileScoreLabelHtml,
   renderNarrativaInterpretacion: renderNarrativaInterpretacion,
   isIncompleteFinancialProfile: isIncompleteFinancialProfile,
+  _renderTuSituacionHoy: _renderTuSituacionHoy,
+  renderConfianzaDiagnostico: renderConfianzaDiagnostico,
   isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
 };
 

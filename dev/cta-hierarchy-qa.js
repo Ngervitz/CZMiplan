@@ -86,6 +86,9 @@
   ok("A no retry CTA", htmlA.indexOf("btn-retry-application") < 0);
   ok("A no unlocked retry copy", htmlA.indexOf("Solicitar préstamo nuevamente") < 0
     && htmlA.indexOf("condiciones de revisar una nueva solicitud") < 0);
+  var htmlAn = renderNarrativaInterpretacion(diagA, stA);
+  ok("C extreme debt: no expenses CTA in diagnosis", htmlAn.indexOf("btn-retry-fallback-gastos") < 0);
+  ok("C extreme debt: secondary expenses in horizon only", htmlA.indexOf("btn-retry-fallback-gastos") >= 0);
 
   // B — Profile 31, expenses complete
   var diagB = runProfile31(false);
@@ -133,7 +136,16 @@
   var htmlD = renderRetryBlockedFallbackCta(diagD, window.CZState);
   ok("D P3 complete_expenses primary", hD.tier === "P3" && hD.primary === "complete_expenses");
   ok("D no MiDeuda fallback", htmlD.indexOf("MiDeuda") < 0);
-  ok("D gastos CTA present", htmlD.indexOf("btn-retry-fallback-gastos") >= 0);
+  var htmlDn = renderNarrativaInterpretacion(diagD, window.CZState);
+  var htmlTabD = renderTabPlan();
+  ok("D incomplete narrativa title", htmlDn.indexOf("Información insuficiente para completar el diagnóstico") >= 0);
+  ok("D early gastos CTA in tab plan", htmlTabD.indexOf("btn-retry-fallback-gastos") >= 0);
+  ok("D warning before early CTA", htmlTabD.indexOf("no incluye tus gastos mensuales") >= 0
+    && htmlTabD.indexOf("no incluye tus gastos mensuales") < htmlTabD.indexOf("btn-retry-fallback-gastos"));
+  ok("D no duplicate CTA in narrativa", htmlDn.indexOf("btn-retry-fallback-gastos") < 0);
+  ok("B no duplicate in horizon fallback", htmlD.indexOf("btn-retry-fallback-gastos") < 0);
+  ok("D gastos footnote in diagnosis", htmlDn.indexOf("gastos mensuales") >= 0);
+  ok("D no debt-ordering in tab", htmlTabD.indexOf("panorama completo de deudas") < 0);
 
   // E — Healthy retry unchanged
   boot();
@@ -155,6 +167,28 @@
   ok("E retry state unlocked", getRetryCtaState(diagE, window.CZState) === "unlocked");
   var htmlE = renderHorizonteRecalificacion(diagE, window.CZState);
   ok("E retry button present", htmlE.indexOf("btn-retry-application") >= 0);
+  ok("E no expenses CTA in diagnosis", renderNarrativaInterpretacion(diagE, window.CZState).indexOf("btn-retry-fallback-gastos") < 0);
+
+  // D (Plus priority) — no debt, retry blocked
+  PRE.ingreso = 50000;
+  window.CZState = {
+    gastos: {},
+    gastos_missing_confirmed: false,
+    deudas: [],
+    snap: { plan_id: 1 },
+    diag: null,
+  };
+  var diagPlus = calcularMotor();
+  window.CZState.diag = diagPlus;
+  var hPlus = resolveDashboardCtaHierarchy(diagPlus, window.CZState);
+  ok("D plus priority tier", hPlus.primary === "plus");
+  ok("D no expenses in diagnosis", renderNarrativaInterpretacion(diagPlus, window.CZState).indexOf("btn-retry-fallback-gastos") < 0);
+
+  // F — same button id / handler contract
+  ok("F gastos button id preserved", htmlTabD.indexOf('id="btn-retry-fallback-gastos"') >= 0);
+
+  // G — hierarchy resolver unchanged for P3
+  ok("G hierarchy P3 unchanged", hD.tier === "P3" && hD.primary === "complete_expenses");
 
   // F — Low confidence + positive horizon, retry blocked → fallback present
   var diagF = {
