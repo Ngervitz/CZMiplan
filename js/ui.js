@@ -1608,12 +1608,16 @@ function renderDtiStockBlockerCard() {
 function renderConfianzaDiagnostico(diag) {
   var fin  = (diag && diag.fin) ? diag.fin : {};
   var iv2  = (diag && diag.interpretacion_v2) || {};
+  var st   = _st();
   var conf = fin.confianza_diagnostico;
   if (conf == null) return "";
 
   var nivelLabel;
   var explicacion;
-  if (conf >= 90) {
+  if (st.gastos_missing_confirmed) {
+    nivelLabel  = "Información incompleta";
+    explicacion = "El diagnóstico todavía puede mejorar cuando completes tus gastos mensuales.";
+  } else if (conf >= 90) {
     nivelLabel  = "Alta";
     explicacion = "La información disponible permite construir una interpretación consistente de tu situación.";
   } else if (conf >= 70) {
@@ -1624,7 +1628,8 @@ function renderConfianzaDiagnostico(diag) {
     explicacion = "Faltan datos o existen señales que limitan la precisión de este diagnóstico.";
   }
 
-  var missingPayMsg = (diag.missing_payment_information || iv2.missing_payment_information)
+  var missingPayMsg = (!st.gastos_missing_confirmed
+      && (diag.missing_payment_information || iv2.missing_payment_information))
     ? '<div style="margin-top:12px;padding:12px 14px;background:rgba(255,196,0,.06);border:1px solid rgba(255,196,0,.2);border-radius:10px;font-size:14px;color:#ffd447;line-height:1.6;">'
       + "Registraste deuda activa pero no informaste pagos mensuales. Algunas estimaciones pueden ser menos precisas hasta completar esa información."
       + "</div>"
@@ -1712,6 +1717,72 @@ function _hasMideudaRecommended(diag) {
 
 function _expensesMissing(st) {
   return !!(st && st.gastos_missing_confirmed);
+}
+
+function _hasDeclaredIncome(st) {
+  st = st || {};
+  var ing = (typeof PRE !== "undefined" && PRE.ingreso != null ? PRE.ingreso : null)
+    || st.declared_ingreso
+    || 0;
+  return (parseFloat(ing) || 0) > 0;
+}
+
+function _hasNoDeclaredDebts(st) {
+  st = st || {};
+  if (st.no_debts_declared) return true;
+  var deudas = st.deudas || [];
+  if (typeof deudasActivasParaCalculo === "function") {
+    return deudasActivasParaCalculo(deudas).length === 0;
+  }
+  return deudas.length === 0;
+}
+
+function isIncompleteFinancialProfile(diag, st) {
+  st = st || {};
+  if (!_hasDeclaredIncome(st)) return false;
+  return _hasNoDeclaredDebts(st) || _expensesMissing(st);
+}
+
+function _shouldShowEarlyExpensesCta(diag, st) {
+  if (!isIncompleteFinancialProfile(diag, st) || !_expensesMissing(st)) return false;
+  return resolveDashboardCtaHierarchy(diag, st).primary === "complete_expenses";
+}
+
+function _shouldSuppressDebtOrderingCopy(diag, st, nPaso) {
+  if (!_hasNoDeclaredDebts(st)) return false;
+  if (nPaso && nPaso.accion === "ordenar_panorama") return true;
+  if (nPaso && nPaso.texto && nPaso.texto.indexOf("panorama completo de deudas") >= 0) return true;
+  return isIncompleteFinancialProfile(diag, st);
+}
+
+function _renderIncompleteProfileNarrativeHtml(diag, st) {
+  st = st || _st();
+  var showCta = _expensesMissing(st)
+    && resolveDashboardCtaHierarchy(diag, st).primary === "complete_expenses"
+    && !_shouldShowEarlyExpensesCta(diag, st);
+  var ctaHtml = showCta
+    ? _renderCompleteExpensesCtaHtml({ primary: true, marginTop: "14px" })
+    : "";
+  var footnote = _expensesMissing(st)
+    ? '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07);'
+      + 'font-size:13px;color:#8390b5;line-height:1.6;">'
+      + 'Este diagnóstico todavía puede mejorar si completás la información de tus gastos mensuales.'
+      + '</div>'
+    : "";
+  return '<div class="plan-card">'
+    + '<div style="margin-bottom:16px;">'
+    + '<div style="font-size:11px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Qué está pasando</div>'
+    + '<div style="font-size:16px;font-weight:800;color:rgba(255,255,255,.92);line-height:1.4;margin-bottom:10px;">'
+    + 'Información insuficiente para completar el diagnóstico'
+    + '</div>'
+    + '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.65;">'
+    + 'Todavía no registraste todos los datos necesarios para estimar tu situación financiera real.'
+    + '<br><br>Antes de tomar decisiones, necesitamos conocer mejor tus gastos mensuales.'
+    + '</div>'
+    + '</div>'
+    + ctaHtml
+    + footnote
+    + '</div>';
 }
 
 function _isExtremeDebtProfile(diag, st) {
@@ -1807,6 +1878,8 @@ function _renderCompleteExpensesCtaHtml(opts) {
 function _resolveDiagnosisInjectedCtaHtml(diag, st) {
   diag = diag || {};
   st = st || {};
+  if (_shouldShowEarlyExpensesCta(diag, st)) return "";
+  if (isIncompleteFinancialProfile(diag, st) && _hasNoDeclaredDebts(st)) return "";
   var hierarchy = resolveDashboardCtaHierarchy(diag, st);
   if (hierarchy.primary !== "complete_expenses") return "";
   return _renderCompleteExpensesCtaHtml({ primary: true, marginTop: "12px" });
@@ -2049,6 +2122,10 @@ function renderNarrativaInterpretacion(diag, st) {
   var iv2 = diag.interpretacion_v2;
   if (!iv2 || !iv2.narrativa_jerarquizada) return "";
   st = st || _st();
+
+  if (isIncompleteFinancialProfile(diag, st) && _hasNoDeclaredDebts(st)) {
+    return _renderIncompleteProfileNarrativeHtml(diag, st);
+  }
 
   var nPrincipal = getNarrativaByTipo(iv2.narrativa_jerarquizada, "problema_principal");
   var nPresion   = getNarrativaByTipo(iv2.narrativa_jerarquizada, "presion_dominante");
@@ -2317,6 +2394,11 @@ function renderTabPlan() {
       + '⚠️ Este diagnóstico no incluye tus gastos mensuales. Algunas proyecciones pueden ser menos precisas.'
       + '</div>'
     : '';
+  var _earlyExpensesCta = _shouldShowEarlyExpensesCta(diag, st)
+    ? '<div style="margin-bottom:16px;">'
+      + _renderCompleteExpensesCtaHtml({ primary: true, marginTop: "0" })
+      + '</div>'
+    : '';
 
   var _profileFirstName = (typeof getProfileFirstName === "function") ? getProfileFirstName(st) : "";
   var _greetingHtml = _profileFirstName
@@ -2328,6 +2410,7 @@ function renderTabPlan() {
   return '<div class="fade">'
     + _greetingHtml
     + _gastosMissingCard
+    + _earlyExpensesCta
     + renderFinancialRealityWarning(diag)
     + _dashIaSectionOpen(true, "situacion")
     + _dashIaLabel("Tu situación actual", "situacion")
@@ -2405,7 +2488,9 @@ function renderTabPlan() {
     + (function() {
         var iv2 = diag.interpretacion_v2;
         if (!iv2 || !iv2.narrativa_jerarquizada) return "";
+        if (isIncompleteFinancialProfile(diag, st) && _hasNoDeclaredDebts(st)) return "";
         var nPaso = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
+        if (_shouldSuppressDebtOrderingCopy(diag, st, nPaso)) return "";
         var finAccion = _finFromDiag(diag);
         var textoAccion = ((finAccion.dti_ratio || 0) >= 1)
           ? CZ_DTI_ACCION_PRIORITARIA
@@ -4673,6 +4758,7 @@ window.CredizonaUI = {
   resolvePlanStatusLabel: resolvePlanStatusLabel,
   _renderProfileScoreLabelHtml: _renderProfileScoreLabelHtml,
   renderNarrativaInterpretacion: renderNarrativaInterpretacion,
+  isIncompleteFinancialProfile: isIncompleteFinancialProfile,
   isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
 };
 
