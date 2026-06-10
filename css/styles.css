@@ -1072,13 +1072,15 @@ body.modal-open{
   padding:14px 24px calc(14px + env(safe-area-inset-bottom));
 }
 .sticky-inner{max-width:820px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;}
-.sticky-lbl{font-size:13px;color:#8390b5;}
-.sticky-step{font-size:17px;font-weight:800;margin-top:2px;}
+.sticky-inner > div:first-child{min-width:0;flex:1 1 auto;}
+.sticky-lbl{font-size:13px;color:#8390b5;line-height:1.45;}
+.sticky-step{font-size:17px;font-weight:800;margin-top:2px;line-height:1.35;}
 .sticky-btn{
   height:56px;padding:0 28px;border:none;border-radius:16px;cursor:pointer;
   font-size:18px;font-weight:900;
   background:linear-gradient(90deg,#5b7cff,#3ddcff);color:white;
   white-space:nowrap;flex-shrink:0;transition:all .2s;
+  box-sizing:border-box;max-width:100%;
 }
 .sticky-btn:hover{transform:translateY(-1px);}
 .sticky-btn.premium{background:linear-gradient(90deg,#ffd447,#f59e0b);color:#1a1000;}
@@ -1111,13 +1113,42 @@ body.modal-open{
     padding:0;
     flex-shrink:1;
   }
+
+  /* Funnel steps (deudas / gastos) — same stacked mobile layout as dashboard */
+  .sticky-bar:not(.dashboard){
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    overflow-x:hidden;
+  }
+  .sticky-bar:not(.dashboard) .sticky-inner{
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+  .sticky-bar:not(.dashboard) .sticky-inner > div:first-child{
+    flex:0 0 auto;
+    width:100%;
+  }
+  .sticky-bar:not(.dashboard) .sticky-lbl{
+    font-size:13px;
+  }
+  .sticky-bar:not(.dashboard) .sticky-step{
+    font-size:16px;
+    line-height:1.4;
+  }
+  .sticky-bar:not(.dashboard) .sticky-btn{
+    width:100%;
+    height:52px;
+    font-size:17px;
+    padding:0;
+    flex-shrink:1;
+    white-space:normal;
+  }
 }
 
-/* Non-dashboard sticky: minor tightening on very small screens */
+/* Extra-small phones — slightly tighter horizontal padding only */
 @media(max-width:390px){
-  .sticky-bar:not(.dashboard){padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px));}
-  .sticky-bar:not(.dashboard) .sticky-inner{gap:8px;}
-  .sticky-bar:not(.dashboard) .sticky-btn{padding:0 16px;font-size:16px;}
+  .sticky-bar:not(.dashboard){padding:12px 14px calc(12px + env(safe-area-inset-bottom, 0px));}
+  .sticky-bar.dashboard{padding:12px 16px calc(14px + env(safe-area-inset-bottom, 0px));}
 }
 
 /* FOOTER */
