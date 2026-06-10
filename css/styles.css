@@ -331,20 +331,90 @@ select option{background:#0a1026;}
   box-sizing:border-box;
 }
 .dash-zone-hero{order:1;}
-.dash-zone-accion{order:2;}
-.dash-zone-frenando{order:3;}
+.dash-zone-diagnostico{order:2;}
+.dash-zone-accion{order:3;}
+.dash-zone-frenando{order:4;}
 .dash-zone-plus{order:5;}
 .dash-zone-situacion-hoy{order:6;}
 .dash-zone-numeros{order:7;}
 .dash-zone-confianza{order:8;}
 .dash-zone-sugerencias{order:9;}
-.dash-zone-diagnostico{order:10;}
+.dash-hierarchy .plan-card{margin-bottom:14px;}
 .cz-hero-card{
   box-shadow:0 18px 60px rgba(0,0,0,.28);
 }
 .cz-hero-card .btn-primary{
   font-size:17px;
   height:56px;
+}
+/* Sprint 1.5 — compact horizon card (incomplete profiles) */
+.plan-card.dash-horizon-compact{
+  padding:14px 16px;
+  margin-bottom:8px;
+}
+.dash-zone-accion.dash-accion-compact > div > span[aria-hidden="true"]{
+  font-size:20px;
+  margin-bottom:6px;
+}
+.dash-zone-accion.dash-accion-compact .dash-horizon-compact div[style*="line-height:1.65"]{
+  line-height:1.5;
+}
+/* Sprint 1.5 — Tus números accordion */
+.dash-numeros-accordion{
+  margin-bottom:0;
+  border-radius:16px;
+}
+.dash-numeros-trigger{
+  padding:14px 16px;
+  font-size:18px;
+}
+.dash-numeros-trigger-label{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-align:left;
+}
+.dash-numeros-trigger-icon{
+  font-size:22px;
+  line-height:1;
+}
+.dash-numeros-trigger-title{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.08em;
+  color:rgba(255,255,255,.35);
+  text-transform:uppercase;
+}
+.dash-numeros-toggle-text{
+  font-size:13px;
+  font-weight:600;
+  color:#40d7ff;
+  white-space:nowrap;
+}
+.dash-numeros-accordion .accordion-body{
+  padding:16px 16px 18px;
+}
+/* Sprint 1.5 — density zones */
+.dash-zone-frenando.dash-zone-density > div > span[aria-hidden="true"]{
+  font-size:20px;
+  margin-bottom:6px;
+}
+.dash-zone-frenando.dash-zone-density .plan-card,
+.dash-situacion-hoy-card{
+  padding:16px 18px;
+}
+.dash-situacion-hoy-card > div:first-child{
+  margin-bottom:10px;
+}
+.dash-situacion-hoy-card p{
+  margin-bottom:10px;
+}
+.dash-sugerencias-card{
+  padding:16px 18px;
+  margin-bottom:0;
+}
+.dash-sugerencias-card > div:first-child{
+  margin-bottom:10px;
 }
 
 /* SCORE */

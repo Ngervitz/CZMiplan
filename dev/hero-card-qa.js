@@ -69,6 +69,7 @@
   ok("A Mi Plan Plus in hero", tabInc.indexOf("btn-hero-ver-plus") >= 0);
   ok("A hero before diagnostic zone", zoneIndex(tabInc, "hero") >= 0
     && zoneIndex(tabInc, "hero") < zoneIndex(tabInc, "diagnostico"));
+  ok("A diagnostico before accion zone", zoneIndex(tabInc, "diagnostico") < zoneIndex(tabInc, "accion"));
   ok("A incomplete title", heroInc.indexOf("Tu diagnóstico todavía no está completo") >= 0);
 
   // B — Complete profile hero
@@ -95,6 +96,7 @@
 
   // C — Hierarchy order via CSS zones present
   ok("C dash-hierarchy wrapper", tabComplete.indexOf("dash-hierarchy") >= 0);
+  ok("C diagnostico before accion in DOM", zoneIndex(tabComplete, "diagnostico") < zoneIndex(tabComplete, "accion"));
   ok("C accion before frenando in order props", zoneIndex(tabComplete, "accion") < zoneIndex(tabComplete, "frenando"));
   ok("C plus before situacion-hoy", zoneIndex(tabComplete, "plus") < zoneIndex(tabComplete, "situacion-hoy"));
   ok("C confianza before sugerencias", zoneIndex(tabComplete, "confianza") < zoneIndex(tabComplete, "sugerencias"));

@@ -116,10 +116,10 @@
   var diagHtml = diagZoneStart >= 0 ? tabHtml.slice(diagZoneStart) : tabHtml;
   var planCardStart = diagHtml.indexOf('class="plan-card" style="border-color:');
   var planCardHtml = planCardStart >= 0 ? diagHtml.slice(planCardStart, planCardStart + 3000) : diagHtml;
-  titleIdx = planCardHtml.indexOf('class="plan-title-big"');
-  descIdx = planCardHtml.indexOf('class="plan-desc"');
-  statusIdx = planCardHtml.indexOf("Estado del plan:");
-  objetivoIdx = planCardHtml.indexOf("Que busca este plan");
+  var titleIdx = planCardHtml.indexOf('class="plan-title-big"');
+  var descIdx = planCardHtml.indexOf('class="plan-desc"');
+  var statusIdx = planCardHtml.indexOf("Estado del plan:");
+  var objetivoIdx = planCardHtml.indexOf("Que busca este plan");
   ok("A status below title block", statusIdx > titleIdx && statusIdx > descIdx);
   ok("A status above objetivo box", statusIdx > 0 && objetivoIdx > statusIdx);
   ok("A no inline status column", tabHtml.indexOf("text-align:right;flex-shrink:0") < 0);

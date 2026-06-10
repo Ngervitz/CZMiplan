@@ -1148,6 +1148,9 @@ function _dashTechIndicator(text) {
 var CZ_DASH_IA_SECTION_GAP =
   "margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);";
 
+var CZ_DASH_ZONE_GAP =
+  "margin-top:20px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06);";
+
 var CZ_DASH_IA_ICONS = {
   situacion: "🎯",
   frenando:  "⚠️",
@@ -2009,6 +2012,7 @@ function renderRetryBlockedFallbackCta(diag, st) {
 
 function renderHorizonteRecalificacion(diag, st) {
   st = st || (typeof window !== "undefined" ? window.CZState : null) || _st();
+  var incomplete = isIncompleteFinancialProfile(diag, st);
   var h   = diag.horizonte;
   var sev = _severityFromDiag(diag);
   var iv2 = diag.interpretacion_v2 || {};
@@ -2038,7 +2042,7 @@ function renderHorizonteRecalificacion(diag, st) {
 
   // ── 1. CRITICAL STATE OVERRIDE ────────────────────────────────────────────
   if (isCriticalRenderedState) {
-    return '<div class="plan-card" style="border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);">'
+    return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);")
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable sin estabilización previa</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Cuando el perfil está en estabilización crítica, primero hay que ordenar la situación y confirmar el saldo actualizado. Recién después se puede estimar un horizonte de recalificación.</div>'
@@ -2065,7 +2069,7 @@ function renderHorizonteRecalificacion(diag, st) {
     || hasNegativeCausaPrincipal;
 
   if (negativeFlowOverride) {
-    return '<div class="plan-card" style="border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);">'
+    return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);")
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable con flujo mensual negativo</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
@@ -2080,7 +2084,7 @@ function renderHorizonteRecalificacion(diag, st) {
 
   // Sprint 12.1.b — rejection-aware horizon when debt stock exceeds income
   if ((finHorizon.dti_ratio || 0) >= 1) {
-    return '<div class="plan-card" style="border-color:rgba(255,211,111,.22);background:rgba(255,211,111,.05);">'
+    return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,211,111,.22);background:rgba(255,211,111,.05);")
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:24px;font-weight:900;color:#ffd36f;line-height:1.3;margin-bottom:12px;">Tu deuda acumulada ya puede estar pesando en la evaluación</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:10px;">El total de deuda que declaraste supera tu ingreso mensual. Aunque no tengas pagos activos registrados, este nivel de deuda puede influir en una futura evaluación.</div>'
@@ -2098,7 +2102,16 @@ function renderHorizonteRecalificacion(diag, st) {
     && isPositiveHorizon;
 
   if (isLowConfidencePositiveHorizon) {
-    return '<div class="plan-card" style="border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);">'
+    if (incomplete) {
+      return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);")
+        + '<div style="font-size:14px;color:rgba(255,255,255,.85);line-height:1.55;margin-bottom:8px;">'
+        + "Completá la información pendiente para obtener una evaluación más precisa."
+        + "</div>"
+        + _horizonPlusPromoHtml(diag, st)
+        + _retryHorizonAddonHtml(diag, st)
+        + "</div>";
+    }
+    return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);")
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">Necesitamos completar tu diagnóstico</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Hay señales positivas en la información que registraste, pero todavía faltan datos para estimar con confianza si estás en condiciones de presentar una nueva solicitud.</div>'
@@ -2112,7 +2125,7 @@ function renderHorizonteRecalificacion(diag, st) {
   var col  = isPositiveHorizon ? "#34ffaf" : h.banda === "medio" ? "#ffd36f" : "#8390b5";
   var bg   = isPositiveHorizon ? "rgba(52,255,175,.06)"  : h.banda === "medio" ? "rgba(255,211,111,.06)"  : "rgba(255,255,255,.03)";
   var bord = isPositiveHorizon ? "rgba(52,255,175,.2)"   : h.banda === "medio" ? "rgba(255,211,111,.18)"  : "rgba(255,255,255,.08)";
-  return '<div class="plan-card" style="border-color:' + bord + ';background:' + bg + ';">'
+  return _horizonPlanCardOpen(diag, st, "border-color:" + bord + ";background:" + bg + ";")
     + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
     + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + horizonLabel + '</div>'
     + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Basado en la información declarada, sin nuevas deudas y siguiendo el plan. El historial del sistema financiero puede incluir elementos que esta simulación no alcanza a ver.</div>'
@@ -2273,7 +2286,7 @@ function _renderTuSituacionHoy(diag, st) {
   diag = diag || _diag();
 
   if (isIncompleteFinancialProfile(diag, st)) {
-    return '<div class="plan-card" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);">'
+    return '<div class="plan-card dash-situacion-hoy-card" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);">'
       + '<div style="font-size:20px;font-weight:800;margin-bottom:14px;line-height:1.3;">📌 Tu situación hoy</div>'
       + '<div style="font-size:14px;color:#8390b5;margin-bottom:16px;line-height:1.5;">' + _lineaDiaEvaluacion(st) + "</div>"
       + '<p style="font-size:16px;color:rgba(255,255,255,.92);line-height:1.65;margin:0 0 12px;">'
@@ -2346,7 +2359,7 @@ function _renderTuSituacionHoy(diag, st) {
       + "</div>";
   }
 
-  return '<div class="plan-card" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);">'
+  return '<div class="plan-card dash-situacion-hoy-card" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);">'
     + '<div style="font-size:20px;font-weight:800;margin-bottom:14px;line-height:1.3;">📌 Tu situación hoy</div>'
     + '<div style="font-size:14px;color:#8390b5;margin-bottom:16px;line-height:1.5;">' + _lineaDiaEvaluacion(st) + "</div>"
     + '<p style="font-size:16px;color:rgba(255,255,255,.92);line-height:1.65;margin:0 0 12px;">' + primaryText + "</p>"
@@ -2437,12 +2450,34 @@ function renderRetryCta(diag, st) {
   return "";
 }
 
-function _dashZoneOpen(zoneKey, extraStyle) {
-  return '<div class="dash-zone dash-zone-' + zoneKey + '" style="max-width:100%;box-sizing:border-box;' + (extraStyle || "") + '">';
+function _dashZoneOpen(zoneKey, extraStyle, extraClass) {
+  return '<div class="dash-zone dash-zone-' + zoneKey + (extraClass ? " " + extraClass : "")
+    + '" style="max-width:100%;box-sizing:border-box;' + (extraStyle || "") + '">';
 }
 
 function _dashZoneClose() {
   return "</div>";
+}
+
+function _horizonPlanCardOpen(diag, st, inlineStyle) {
+  var compact = isIncompleteFinancialProfile(diag, st);
+  return '<div class="plan-card' + (compact ? " dash-horizon-compact" : "") + '" style="' + (inlineStyle || "") + '">';
+}
+
+function _renderNumerosAccordionShell(innerHtml) {
+  return '<div class="accordion-item dash-numeros-accordion" id="cz-dash-numeros">'
+    + '<button type="button" class="accordion-trigger dash-numeros-trigger" data-dash-accordion '
+    + 'id="btn-dash-numeros-toggle" aria-expanded="false" aria-controls="cz-dash-numeros-body">'
+    + '<div class="dash-numeros-trigger-label">'
+    + '<span class="dash-numeros-trigger-icon" aria-hidden="true">' + _dashIaIcon("numeros") + "</span>"
+    + '<span class="dash-numeros-trigger-title">Tus números</span>'
+    + "</div>"
+    + '<span class="dash-numeros-toggle-text">Ver detalles <span class="chevron" aria-hidden="true">▼</span></span>'
+    + "</button>"
+    + '<div class="accordion-body" id="cz-dash-numeros-body">'
+    + innerHtml
+    + "</div>"
+    + "</div>";
 }
 
 function _resolveHeroNextActionText(diag, st) {
@@ -2584,8 +2619,42 @@ function renderTabPlan() {
     + _renderDashboardHeroCard(diag, st)
     + _dashZoneClose()
 
-    // 2 — Qué hacer ahora (+ horizonte, acciones)
-    + _dashZoneOpen("accion", CZ_DASH_IA_SECTION_GAP)
+    // 2 — Tu situación actual (primary diagnosis)
+    + _dashZoneOpen("diagnostico", CZ_DASH_ZONE_GAP)
+    + _gastosMissingCard
+    + _earlyExpensesCta
+    + renderFinancialRealityWarning(diag)
+    + _dashIaSectionOpen(true, "situacion")
+    + _dashIaLabel("Tu situación actual", "situacion")
+    + '<div style="margin-bottom:20px;padding:14px 18px;'
+    + 'background:rgba(255,255,255,.03);'
+    + 'border:1px solid rgba(255,255,255,.07);'
+    + 'border-radius:12px;font-size:13px;'
+    + 'color:#8390b5;line-height:1.6;">'
+    + 'Este análisis se basa exclusivamente en la información que declaraste.'
+    + '</div>'
+    + '<div class="plan-card" style="border-color:' + pc + '33;">'
+    + '<div style="margin-bottom:14px;">'
+    + '<div class="plan-title-big">' + diag.plan.icon + ' ' + diag.plan.titulo + '</div>'
+    + '<div class="plan-desc">' + diag.plan.problema + '</div>'
+    + '</div>'
+    + '<div style="margin-bottom:16px;">'
+    + _renderPlanStatusLabelHtml(_planStatusLabel)
+    + '</div>'
+    + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;">'
+    + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Que busca este plan</div>'
+    + '<div style="font-size:19px;color:rgba(255,255,255,.9);line-height:1.6;">' + diag.plan.objetivo + '</div>'
+    + '</div>'
+    + ((diag.planId === 4 || diag.nivelR === "C")
+        ? '<div style="margin-top:14px;font-size:12px;color:#8390b5;line-height:1.6;">ℹ️ Este plan se basa en tu situación al momento del diagnóstico. Los cambios que hacés en deudas o gastos actualizan la simulación, pero el punto de partida sigue siendo tu evaluación original.</div>'
+        : '')
+    + '</div>'
+    + renderNarrativaInterpretacion(diag, st)
+    + _dashIaSectionClose()
+    + _dashZoneClose()
+
+    // 3 — Qué hacer ahora (+ horizonte, acciones)
+    + _dashZoneOpen("accion", CZ_DASH_ZONE_GAP, _incompleteProfile ? "dash-accion-compact" : "")
     + _dashIaSectionOpen(true, "accion")
     + _dashIaLabel("Qué hacer ahora", "accion")
     + renderHorizonteRecalificacion(diag, st)
@@ -2681,8 +2750,8 @@ function renderTabPlan() {
     + _dashIaSectionClose()
     + _dashZoneClose()
 
-    // 3 — Qué está frenando tu perfil
-    + _dashZoneOpen("frenando", CZ_DASH_IA_SECTION_GAP)
+    // 4 — Qué está frenando tu perfil
+    + _dashZoneOpen("frenando", CZ_DASH_ZONE_GAP, "dash-zone-density")
     + _dashIaSectionOpen(false, "frenando")
     + _dashIaLabel("Qué está frenando tu perfil", "frenando")
     + renderBloqueadores(diag)
@@ -2692,7 +2761,7 @@ function renderTabPlan() {
     + _dashZoneClose()
 
     // 5 — Mi Plan Plus
-    + _dashZoneOpen("plus", CZ_DASH_IA_SECTION_GAP)
+    + _dashZoneOpen("plus", CZ_DASH_ZONE_GAP)
     + '<div class="plan-card" id="cz-plus-entry" style="background:rgba(64,215,255,.05);border-color:rgba(64,215,255,.2);">'
     + '<div style="font-size:13px;font-weight:800;color:#40d7ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">★ Mi Plan Plus</div>'
     + '<div style="font-size:16px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:20px;">Mi Plan Plus contrasta esta información con registros de BCU y Clearing para detectar diferencias, acreedores no declarados y otros factores que podrían estar afectando tu perfil financiero.</div>'
@@ -2701,19 +2770,18 @@ function renderTabPlan() {
     + _dashZoneClose()
 
     // 6 — Tu situación hoy
-    + _dashZoneOpen("situacion-hoy", CZ_DASH_IA_SECTION_GAP)
+    + _dashZoneOpen("situacion-hoy", CZ_DASH_ZONE_GAP, "dash-zone-density")
     + _renderTuSituacionHoy(diag, st)
     + _dashZoneClose()
 
-    // 7 — Tus números
-    + _dashZoneOpen("numeros", CZ_DASH_IA_SECTION_GAP)
-    + _dashIaSectionOpen(false, "numeros")
-    + _dashIaLabel("Tus números", "numeros")
-    + renderDashboardEditGastosCta(diag, st)
-    + renderRecommendedToolsSection(diag)
-    + renderRadiografia()
-    + renderHerramientas()
-    + (function() {
+    // 7 — Tus números (collapsed accordion)
+    + _dashZoneOpen("numeros", CZ_DASH_ZONE_GAP)
+    + _renderNumerosAccordionShell(
+        renderDashboardEditGastosCta(diag, st)
+        + renderRecommendedToolsSection(diag)
+        + renderRadiografia()
+        + renderHerramientas()
+        + (function() {
         var sev = _severityFromDiag(diag);
         var flujoNote = "";
         if (sev.severity_level === "critico" && sev.has_unpaid_debt) {
@@ -2792,51 +2860,17 @@ function renderTabPlan() {
           + '</div>'
         : "")
     + '</div>'
-    + _dashIaSectionClose()
+      )
     + _dashZoneClose()
 
     // 8 — Confianza del diagnóstico
-    + _dashZoneOpen("confianza", CZ_DASH_IA_SECTION_GAP)
+    + _dashZoneOpen("confianza", CZ_DASH_ZONE_GAP)
     + renderConfianzaDiagnostico(diag)
     + _dashZoneClose()
 
     // 9 — Sugerencias
-    + _dashZoneOpen("sugerencias", CZ_DASH_IA_SECTION_GAP)
+    + _dashZoneOpen("sugerencias", CZ_DASH_ZONE_GAP)
     + renderMiPlanSuggestionBox()
-    + _dashZoneClose()
-
-    // 10 — Detalle diagnóstico (plan card, narrativa, avisos)
-    + _dashZoneOpen("diagnostico", CZ_DASH_IA_SECTION_GAP)
-    + _gastosMissingCard
-    + _earlyExpensesCta
-    + renderFinancialRealityWarning(diag)
-    + _dashIaSectionOpen(true, "situacion")
-    + _dashIaLabel("Tu situación actual", "situacion")
-    + '<div style="margin-bottom:20px;padding:14px 18px;'
-    + 'background:rgba(255,255,255,.03);'
-    + 'border:1px solid rgba(255,255,255,.07);'
-    + 'border-radius:12px;font-size:13px;'
-    + 'color:#8390b5;line-height:1.6;">'
-    + 'Este análisis se basa exclusivamente en la información que declaraste.'
-    + '</div>'
-    + '<div class="plan-card" style="border-color:' + pc + '33;">'
-    + '<div style="margin-bottom:14px;">'
-    + '<div class="plan-title-big">' + diag.plan.icon + ' ' + diag.plan.titulo + '</div>'
-    + '<div class="plan-desc">' + diag.plan.problema + '</div>'
-    + '</div>'
-    + '<div style="margin-bottom:16px;">'
-    + _renderPlanStatusLabelHtml(_planStatusLabel)
-    + '</div>'
-    + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;">'
-    + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Que busca este plan</div>'
-    + '<div style="font-size:19px;color:rgba(255,255,255,.9);line-height:1.6;">' + diag.plan.objetivo + '</div>'
-    + '</div>'
-    + ((diag.planId === 4 || diag.nivelR === "C")
-        ? '<div style="margin-top:14px;font-size:12px;color:#8390b5;line-height:1.6;">ℹ️ Este plan se basa en tu situación al momento del diagnóstico. Los cambios que hacés en deudas o gastos actualizan la simulación, pero el punto de partida sigue siendo tu evaluación original.</div>'
-        : '')
-    + '</div>'
-    + renderNarrativaInterpretacion(diag, st)
-    + _dashIaSectionClose()
     + _dashZoneClose()
 
     + '</div>'
@@ -2865,10 +2899,10 @@ function renderMiPlanSuggestionBox() {
       + '</label>';
   }).join("");
 
-  return '<div class="plan-card" id="cz-feedback-box" style="margin-top:28px;border-color:rgba(255,255,255,.1);'
+  return '<div class="plan-card dash-sugerencias-card" id="cz-feedback-box" style="border-color:rgba(255,255,255,.1);'
     + _dashSectionAccentCss("sugerencias") + '">'
     + _dashCardTitle("💬", "Sugerencias", "sugerencias")
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:20px;">'
+    + '<div style="font-size:15px;color:#8390b5;line-height:1.55;margin-bottom:14px;">'
     + 'Contanos qué información te faltó o qué te gustaría que Mi Plan pueda ayudarte a entender.'
     + '</div>'
     + checks

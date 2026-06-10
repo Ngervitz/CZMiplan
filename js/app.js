@@ -2836,6 +2836,16 @@ document.addEventListener("DOMContentLoaded", function() {
     main.addEventListener("click", function(e) {
       var st = window.CZState;
 
+      // Dashboard números accordion (no GTM expense event)
+      var dashAcc = e.target.closest("[data-dash-accordion]");
+      if (dashAcc) {
+        dashAcc.classList.toggle("open");
+        var dashBody = dashAcc.nextElementSibling;
+        if (dashBody) dashBody.classList.toggle("open");
+        dashAcc.setAttribute("aria-expanded", dashAcc.classList.contains("open") ? "true" : "false");
+        return;
+      }
+
       // Acordeones
       var acc = e.target.closest("[data-accordion]");
       if (acc) {

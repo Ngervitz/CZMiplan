@@ -203,7 +203,18 @@
     missing_payment_information: false,
     recommended_tools: [],
   };
-  var stF = { snap: { plan_id: 1 }, deudas: [], gastos: { vivienda: 10000 }, gastos_missing_confirmed: false };
+  var stF = {
+    snap: { plan_id: 1 },
+    deudas: [{
+      tipo: "prestamo",
+      acreedor: "BROU",
+      monto: "10000",
+      pago: "2000",
+      situacion_ui: "pagando_normal",
+    }],
+    gastos: { vivienda: 10000 },
+    gastos_missing_confirmed: false,
+  };
   ok("F retry blocked by low confidence", !isRetryEligible(diagF, stF));
   var htmlF = renderHorizonteRecalificacion(diagF, stF);
   ok("F low-confidence replacement block", htmlF.indexOf("Necesitamos completar tu diagnóstico") >= 0);
