@@ -1293,11 +1293,30 @@ function _renderProfileScoreLabelHtml(labelObj) {
   return html;
 }
 
+function _planStatusPillStyles(color) {
+  if (color === "#ff4e72") {
+    return { bg: "rgba(255,78,114,.12)", border: "rgba(255,78,114,.28)" };
+  }
+  if (color === "#ffd36f") {
+    return { bg: "rgba(255,211,111,.10)", border: "rgba(255,211,111,.24)" };
+  }
+  if (color === "#34ffaf") {
+    return { bg: "rgba(52,255,175,.08)", border: "rgba(52,255,175,.22)" };
+  }
+  return { bg: "rgba(255,255,255,.04)", border: "rgba(255,255,255,.10)" };
+}
+
 function _renderPlanStatusLabelHtml(statusObj) {
   statusObj = statusObj || {};
-  return '<div style="font-size:20px;font-weight:800;color:' + (statusObj.color || "#8390b5") + ';line-height:1.35;text-align:right;">'
-    + (statusObj.emoji ? statusObj.emoji + " " : "")
-    + (statusObj.text || "")
+  var styles = _planStatusPillStyles(statusObj.color || "#8390b5");
+  var text = statusObj.text || "";
+  if (!text) return "";
+  return '<div style="display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;max-width:100%;'
+    + "padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;line-height:1.4;"
+    + "background:" + styles.bg + ";border:1px solid " + styles.border + ";"
+    + "color:" + (statusObj.color || "#8390b5") + ';">'
+    + '<span style="font-size:11px;font-weight:600;color:#8390b5;">Estado del plan:</span>'
+    + "<span>" + text + "</span>"
     + "</div>";
 }
 
@@ -2307,12 +2326,13 @@ function renderTabPlan() {
 
     // 1. Plan card — situacion actual
     + '<div class="plan-card" style="border-color:' + pc + '33;">'
-    + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;">'
-    + '<div><div class="plan-title-big">' + diag.plan.icon + ' ' + diag.plan.titulo + '</div>'
-    + '<div class="plan-desc">' + diag.plan.problema + '</div></div>'
-    + '<div style="text-align:right;flex-shrink:0;">'
+    + '<div style="margin-bottom:14px;">'
+    + '<div class="plan-title-big">' + diag.plan.icon + ' ' + diag.plan.titulo + '</div>'
+    + '<div class="plan-desc">' + diag.plan.problema + '</div>'
+    + '</div>'
+    + '<div style="margin-bottom:16px;">'
     + _renderPlanStatusLabelHtml(_planStatusLabel)
-    + '</div></div>'
+    + '</div>'
     + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;">'
     + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Que busca este plan</div>'
     + '<div style="font-size:19px;color:rgba(255,255,255,.9);line-height:1.6;">' + diag.plan.objetivo + '</div>'
