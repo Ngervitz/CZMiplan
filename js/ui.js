@@ -1264,8 +1264,12 @@ function _planStatusLabelFromTier(tier) {
   return { emoji: "", text: "Datos insuficientes para mostrar", color: "#8390b5" };
 }
 
-function resolvePlanStatusLabel(diag) {
+function resolvePlanStatusLabel(diag, st) {
   diag = diag || {};
+  st = st || _st();
+  if (isIncompleteFinancialProfile(diag, st)) {
+    return _incompletePlanStatusLabel();
+  }
   var sev = typeof _severityFromDiag === "function" ? _severityFromDiag(diag) : {};
   var severityLevel = sev.severity_level
     || (diag.interpretacion_v2 && diag.interpretacion_v2.severity_level);
@@ -1741,6 +1745,46 @@ function isIncompleteFinancialProfile(diag, st) {
   st = st || {};
   if (!_hasDeclaredIncome(st)) return false;
   return _hasNoDeclaredDebts(st) || _expensesMissing(st);
+}
+
+function _incompleteFinancialScoreLabel() {
+  return {
+    valid: true,
+    emoji: "⚠️",
+    text: "Pendiente de completar",
+    color: "#ffd447",
+    tooltip: null,
+  };
+}
+
+function _incompletePlanStatusLabel() {
+  return { emoji: "⚠️", text: "Diagnóstico pendiente", color: "#ffd447" };
+}
+
+var _FLOUJO_DEPENDENT_ACCION_IDS = {
+  flujo_libre_positivo: true,
+  flujo_negativo_accion: true,
+  gasto_mayor_categoria: true,
+};
+
+function _isFlujoDependentAccionRecomendada(accion) {
+  if (!accion) return false;
+  if (_FLOUJO_DEPENDENT_ACCION_IDS[accion.id]) return true;
+  var t = String(accion.texto || "").toLowerCase();
+  if (t.indexOf("flujo libre") >= 0) return true;
+  if (t.indexOf("flujo estimado") >= 0) return true;
+  if (t.indexOf("flujo actual") >= 0) return true;
+  if (t.indexOf("capacidad de pago") >= 0) return true;
+  if (t.indexOf("plata sobrante") >= 0) return true;
+  if (t.indexOf("[flujo_libre]") >= 0) return true;
+  if (t.indexOf("destinarlo") >= 0 && t.indexOf("[acreedor]") >= 0) return true;
+  return false;
+}
+
+function _filterAccionesForIncompleteProfile(acciones) {
+  return (acciones || []).filter(function(a) {
+    return !_isFlujoDependentAccionRecomendada(a);
+  });
 }
 
 function _shouldShowEarlyExpensesCta(diag, st) {
@@ -2403,9 +2447,12 @@ function renderTabPlan() {
   var showBehavCta = (typeof shouldShowBehavioralRefinementCta === "function")
     ? shouldShowBehavioralRefinementCta(st, diag)
     : false;
-  var _finScoreLabel = _scoreFinancieroLabel(fin.scoreFinanciero);
+  var _finScoreLabel = isIncompleteFinancialProfile(diag, st)
+    ? _incompleteFinancialScoreLabel()
+    : _scoreFinancieroLabel(fin.scoreFinanciero);
   var _behScoreLabel = _scoreConductualLabel(hasBehav && behEnc ? behEnc.score : null);
-  var _planStatusLabel = resolvePlanStatusLabel(diag);
+  var _planStatusLabel = resolvePlanStatusLabel(diag, st);
+  var _incompleteProfile = isIncompleteFinancialProfile(diag, st);
 
   // Sprint 9 — gastos missing warning card (near top of plan tab)
   var _gastosMissingCard = (st.gastos_missing_confirmed)
@@ -2647,9 +2694,22 @@ function renderTabPlan() {
         if (st.gastos_missing_confirmed && fin.flujoLibre >= 0 && !sev.has_unpaid_debt) {
           flujoSub = "estimado — gastos no declarados";
         }
+        var flujoMetric = _incompleteProfile
+          ? {
+              l: "PLATA LIBRE REAL",
+              v: "Pendiente de calcular",
+              c: "#8390b5",
+              s: "Completá tus gastos para ver este número.",
+            }
+          : {
+              l: "Plata que te sobra/mes",
+              v: fmt(fin.flujoLibre),
+              c: flujoColor,
+              s: flujoSub,
+            };
         return '<div class="metrics">'
           + [
-              { l: "Plata que te sobra/mes",   v: fmt(fin.flujoLibre),               c: flujoColor, s: flujoSub },
+              flujoMetric,
               { l: "Total de deudas",           v: fmt(fin.totalDeuda),               c: "#ffd36f",  s: (_st().deudas||[]).length + " deuda" + ((_st().deudas||[]).length !== 1 ? "s" : "") },
               { l: "De tu sueldo va a deudas",  v: ratioPct + "%",                    c: ratioColor, s: ratioSub },
               { l: "Pagas en cuotas por mes",   v: fmt(fin.totalPago),                c: "rgba(255,255,255,.7)", s: "suma de minimos" },
@@ -2665,7 +2725,9 @@ function renderTabPlan() {
     + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
     + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Situacion financiera</div>'
     + _renderProfileScoreLabelHtml(_finScoreLabel)
-    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">gastos y deudas</div></div>'
+    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">'
+    + (_incompleteProfile ? "faltan datos para estimarla" : "gastos y deudas")
+    + '</div></div>'
     + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
     + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Perfil conductual</div>'
     + _renderProfileScoreLabelHtml(_behScoreLabel)
@@ -2891,7 +2953,11 @@ function renderRadiografia() {
     + '</div>'
     + '<div style="height:14px;background:rgba(255,255,255,.08);border-radius:7px;overflow:hidden;margin-bottom:8px;">'
     + '<div style="height:100%;border-radius:7px;width:' + ratioPct + '%;background:' + ratioColor + ';"></div></div>'
-    + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8390b5;"><span>Pagos activos: ' + fmt(Math.round(r.comprometido)) + '</span><span>' + (st.gastos_missing_confirmed ? 'Flujo libre est. (sin gastos)' : 'Flujo libre') + ': ' + fmt(Math.max(0, r.flujoLibreActivo)) + '</span></div>'
+    + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8390b5;"><span>Pagos activos: ' + fmt(Math.round(r.comprometido)) + '</span><span>'
+    + (isIncompleteFinancialProfile(diag, st)
+        ? "Flujo libre: Pendiente de calcular"
+        : ((st.gastos_missing_confirmed ? "Flujo libre est. (sin gastos)" : "Flujo libre") + ": " + fmt(Math.max(0, r.flujoLibreActivo))))
+    + '</span></div>'
     + '</div>'
 
     // Sprint 12.3 — contexto de gastos vs ingreso (solo step 3, ingreso > 0, gastos > 0)
@@ -3864,9 +3930,13 @@ function _fallbackAccionesPlan5() {
 }
 
 function renderAccionesRecomendadasHtml(diag) {
+  var st = _st();
   var acciones = typeof seleccionarAccionesRecomendadas === "function"
     ? seleccionarAccionesRecomendadas(diag)
     : [];
+  if (isIncompleteFinancialProfile(diag, st)) {
+    acciones = _filterAccionesForIncompleteProfile(acciones);
+  }
   if (diag && diag.planId === 5 && acciones.length < 3) {
     var fb5 = _fallbackAccionesPlan5();
     for (var fi = 0; fi < fb5.length && acciones.length < 3; fi++) {
@@ -3902,9 +3972,13 @@ function renderAccionesRecomendadasHtml(diag) {
 }
 
 function accionesRecomendadasCompletadas(diag) {
+  var st = _st();
   var acciones = typeof seleccionarAccionesRecomendadas === "function"
     ? seleccionarAccionesRecomendadas(diag)
     : [];
+  if (isIncompleteFinancialProfile(diag, st)) {
+    acciones = _filterAccionesForIncompleteProfile(acciones);
+  }
   var comp_ = _herr().compromisos || {};
   return acciones.length > 0 && acciones.some(function(a) { return comp_[a.id]; });
 }
@@ -4778,6 +4852,7 @@ window.CredizonaUI = {
   _renderProfileScoreLabelHtml: _renderProfileScoreLabelHtml,
   renderNarrativaInterpretacion: renderNarrativaInterpretacion,
   isIncompleteFinancialProfile: isIncompleteFinancialProfile,
+  _filterAccionesForIncompleteProfile: _filterAccionesForIncompleteProfile,
   _renderTuSituacionHoy: _renderTuSituacionHoy,
   renderConfianzaDiagnostico: renderConfianzaDiagnostico,
   isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
