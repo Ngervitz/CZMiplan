@@ -111,11 +111,15 @@
   ok("J dashboard no max 30", tabHtml.indexOf("max 30") < 0);
   ok("J dashboard has status label", tabHtml.indexOf("En buen camino") >= 0 || tabHtml.indexOf("Requiere acción") >= 0 || tabHtml.indexOf("Prioridad alta") >= 0 || tabHtml.indexOf("En proceso") >= 0);
 
-  // Layout — status pill below description, not inline with title
-  var titleIdx = tabHtml.indexOf('class="plan-title-big"');
-  var descIdx = tabHtml.indexOf('class="plan-desc"');
-  var statusIdx = tabHtml.indexOf("Estado del plan:");
-  var objetivoIdx = tabHtml.indexOf("Que busca este plan");
+  // Layout — status pill below description in diagnostic plan card (not hero summary)
+  var diagZoneStart = tabHtml.indexOf("dash-zone-diagnostico");
+  var diagHtml = diagZoneStart >= 0 ? tabHtml.slice(diagZoneStart) : tabHtml;
+  var planCardStart = diagHtml.indexOf('class="plan-card" style="border-color:');
+  var planCardHtml = planCardStart >= 0 ? diagHtml.slice(planCardStart, planCardStart + 3000) : diagHtml;
+  titleIdx = planCardHtml.indexOf('class="plan-title-big"');
+  descIdx = planCardHtml.indexOf('class="plan-desc"');
+  statusIdx = planCardHtml.indexOf("Estado del plan:");
+  objetivoIdx = planCardHtml.indexOf("Que busca este plan");
   ok("A status below title block", statusIdx > titleIdx && statusIdx > descIdx);
   ok("A status above objetivo box", statusIdx > 0 && objetivoIdx > statusIdx);
   ok("A no inline status column", tabHtml.indexOf("text-align:right;flex-shrink:0") < 0);

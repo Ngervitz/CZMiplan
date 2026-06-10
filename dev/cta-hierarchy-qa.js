@@ -139,9 +139,9 @@
   var htmlDn = renderNarrativaInterpretacion(diagD, window.CZState);
   var htmlTabD = renderTabPlan();
   ok("D incomplete narrativa title", htmlDn.indexOf("Información insuficiente para completar el diagnóstico") >= 0);
-  ok("D early gastos CTA in tab plan", htmlTabD.indexOf("btn-retry-fallback-gastos") >= 0);
-  ok("D warning before early CTA", htmlTabD.indexOf("no incluye tus gastos mensuales") >= 0
-    && htmlTabD.indexOf("no incluye tus gastos mensuales") < htmlTabD.indexOf("btn-retry-fallback-gastos"));
+  ok("D early gastos CTA in hero", htmlTabD.indexOf("btn-retry-fallback-gastos") >= 0
+    && htmlTabD.indexOf("dash-zone-hero") < htmlTabD.indexOf("btn-retry-fallback-gastos"));
+  ok("D hero before diagnostic zone", htmlTabD.indexOf("dash-zone-hero") < htmlTabD.indexOf("dash-zone-diagnostico"));
   ok("D no duplicate CTA in narrativa", htmlDn.indexOf("btn-retry-fallback-gastos") < 0);
   ok("B no duplicate in horizon fallback", htmlD.indexOf("btn-retry-fallback-gastos") < 0);
   ok("D gastos footnote in diagnosis", htmlDn.indexOf("gastos mensuales") >= 0);

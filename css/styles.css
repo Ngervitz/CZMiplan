@@ -319,6 +319,34 @@ select option{background:#0a1026;}
 .plan-title-big{font-size:44px;font-weight:900;line-height:1;letter-spacing:-2px;margin-bottom:16px;}
 .plan-desc{color:#a5b1cf;font-size:19px;line-height:1.6;margin-bottom:20px;}
 
+/* Dashboard visual hierarchy — Sprint 1 Hero Card */
+.dash-hierarchy{
+  display:flex;
+  flex-direction:column;
+  max-width:100%;
+}
+.dash-zone{
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+}
+.dash-zone-hero{order:1;}
+.dash-zone-accion{order:2;}
+.dash-zone-frenando{order:3;}
+.dash-zone-plus{order:5;}
+.dash-zone-situacion-hoy{order:6;}
+.dash-zone-numeros{order:7;}
+.dash-zone-confianza{order:8;}
+.dash-zone-sugerencias{order:9;}
+.dash-zone-diagnostico{order:10;}
+.cz-hero-card{
+  box-shadow:0 18px 60px rgba(0,0,0,.28);
+}
+.cz-hero-card .btn-primary{
+  font-size:17px;
+  height:56px;
+}
+
 /* SCORE */
 .score-display{
   display:flex;align-items:center;gap:24px;

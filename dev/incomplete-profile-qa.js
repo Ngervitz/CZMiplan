@@ -73,10 +73,11 @@
   // C — Complete expenses CTA is primary (early in tab)
   var hC = resolveDashboardCtaHierarchy(diagA, stA);
   ok("C hierarchy P3 complete_expenses", hC.tier === "P3" && hC.primary === "complete_expenses");
-  ok("C early CTA in tab plan", tabA.indexOf("btn-retry-fallback-gastos") >= 0);
-  ok("C warning before CTA", tabA.indexOf("no incluye tus gastos mensuales") >= 0
-    && tabA.indexOf("no incluye tus gastos mensuales") < tabA.indexOf("btn-retry-fallback-gastos"));
-  ok("C no duplicate CTA in narrativa", narrA.indexOf("btn-retry-fallback-gastos") < 0);
+  ok("C early CTA in hero", tabA.indexOf("btn-retry-fallback-gastos") >= 0
+    && tabA.indexOf("dash-zone-hero") < tabA.indexOf("btn-retry-fallback-gastos")
+    && tabA.indexOf("btn-retry-fallback-gastos") < tabA.indexOf("dash-zone-diagnostico"));
+  ok("C hero before diagnostic sections", tabA.indexOf("Tu diagnóstico todavía no está completo") >= 0
+    && tabA.indexOf("Tu diagnóstico todavía no está completo") < tabA.indexOf("Tu situación actual"));
   ok("C no accion prioritaria block", tabA.indexOf("Acción prioritaria") < 0);
 
   // D — Profile with debts: existing debt narrative unchanged

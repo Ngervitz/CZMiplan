@@ -3453,7 +3453,8 @@ document.addEventListener("DOMContentLoaded", function() {
       // Botones Reset Plus (modal legacy — plan / IA)
       if (
         e.target.id === "btn-conocer-plus" ||
-        e.target.id === "btn-conocer-plus-ia"
+        e.target.id === "btn-conocer-plus-ia" ||
+        e.target.id === "btn-hero-ver-plus"
       ) {
         switchTab("plus");
         return;
