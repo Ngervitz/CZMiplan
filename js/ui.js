@@ -1178,6 +1178,129 @@ function _dashIaSectionClose() {
   return "</div>";
 }
 
+function _isValidUiScore(score) {
+  return score != null && score !== "" && !isNaN(Number(score)) && isFinite(Number(score));
+}
+
+function _scoreFinancieroLabel(score) {
+  if (!_isValidUiScore(score)) {
+    return {
+      valid: false,
+      emoji: "",
+      text: "Datos insuficientes para mostrar",
+      color: "#8390b5",
+      tooltip: null,
+    };
+  }
+  var s = Math.round(Number(score));
+  var tooltip = "Score financiero: " + s + "/30";
+  if (s <= 8) {
+    return { valid: true, emoji: "🔴", text: "Situación crítica", color: "#ff4e72", tooltip: tooltip };
+  }
+  if (s <= 15) {
+    return { valid: true, emoji: "🟠", text: "Con presión financiera", color: "#ffd36f", tooltip: tooltip };
+  }
+  if (s <= 22) {
+    return { valid: true, emoji: "🟡", text: "En recuperación", color: "#ffd36f", tooltip: tooltip };
+  }
+  return { valid: true, emoji: "🟢", text: "Estable", color: "#34ffaf", tooltip: tooltip };
+}
+
+function _scoreConductualLabel(score) {
+  if (!_isValidUiScore(score)) {
+    return {
+      valid: false,
+      emoji: "",
+      text: "Datos insuficientes para mostrar",
+      color: "#8390b5",
+      tooltip: null,
+    };
+  }
+  var s = Math.round(Number(score));
+  var tooltip = "Score conductual: " + s + "/30";
+  if (s <= 8) {
+    return { valid: true, emoji: "🔴", text: "Necesita trabajo", color: "#ff4e72", tooltip: tooltip };
+  }
+  if (s <= 15) {
+    return { valid: true, emoji: "🟠", text: "En desarrollo", color: "#ffd36f", tooltip: tooltip };
+  }
+  if (s <= 22) {
+    return { valid: true, emoji: "🟡", text: "Consistente", color: "#ffd36f", tooltip: tooltip };
+  }
+  return { valid: true, emoji: "🟢", text: "Sólido", color: "#34ffaf", tooltip: tooltip };
+}
+
+function _severityTierForPlanLabel(severityLevel) {
+  if (severityLevel === "critico") return 4;
+  if (severityLevel === "alto") return 3;
+  if (severityLevel === "medio") return 2;
+  if (severityLevel === "bajo") return 1;
+  return 0;
+}
+
+function _planIdTierForPlanLabel(planId) {
+  var p = parseInt(planId, 10);
+  if (isNaN(p)) return 0;
+  if (p >= 4) return 4;
+  if (p === 3) return 3;
+  if (p === 2) return 2;
+  if (p === 1) return 1;
+  return 0;
+}
+
+function _planStatusLabelFromTier(tier) {
+  if (tier >= 4) {
+    return { emoji: "🔴", text: "Prioridad alta", color: "#ff4e72" };
+  }
+  if (tier === 3) {
+    return { emoji: "🟠", text: "Requiere acción", color: "#ffd36f" };
+  }
+  if (tier === 2) {
+    return { emoji: "🟡", text: "En proceso", color: "#ffd36f" };
+  }
+  if (tier === 1) {
+    return { emoji: "🟢", text: "En buen camino", color: "#34ffaf" };
+  }
+  return { emoji: "", text: "Datos insuficientes para mostrar", color: "#8390b5" };
+}
+
+function resolvePlanStatusLabel(diag) {
+  diag = diag || {};
+  var sev = typeof _severityFromDiag === "function" ? _severityFromDiag(diag) : {};
+  var severityLevel = sev.severity_level
+    || (diag.interpretacion_v2 && diag.interpretacion_v2.severity_level);
+  var tier = Math.max(
+    _planIdTierForPlanLabel(diag.planId),
+    _severityTierForPlanLabel(severityLevel)
+  );
+  if (diag.nivelR === "C") tier = Math.max(tier, 4);
+  return _planStatusLabelFromTier(tier);
+}
+
+function _renderProfileScoreLabelHtml(labelObj) {
+  labelObj = labelObj || {};
+  var html = '<div style="display:inline-flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;max-width:100%;">'
+    + '<div style="font-size:22px;font-weight:800;color:' + (labelObj.color || "#8390b5") + ';line-height:1.35;">'
+    + (labelObj.emoji ? labelObj.emoji + " " : "")
+    + (labelObj.text || "")
+    + "</div>";
+  if (labelObj.tooltip) {
+    html += '<span title="' + String(labelObj.tooltip).replace(/"/g, "&quot;") + '" '
+      + 'style="font-size:13px;color:#8390b5;cursor:help;line-height:1;" '
+      + 'role="img" aria-label="Información adicional">ⓘ</span>';
+  }
+  html += "</div>";
+  return html;
+}
+
+function _renderPlanStatusLabelHtml(statusObj) {
+  statusObj = statusObj || {};
+  return '<div style="font-size:20px;font-weight:800;color:' + (statusObj.color || "#8390b5") + ';line-height:1.35;text-align:right;">'
+    + (statusObj.emoji ? statusObj.emoji + " " : "")
+    + (statusObj.text || "")
+    + "</div>";
+}
+
 // Sprint 12.5 — volver a gastos desde dashboard (solo UX; recálculo vía next() existente)
 function renderDashboardEditGastosCta(diag, st) {
   diag = diag || _diag();
@@ -2150,6 +2273,9 @@ function renderTabPlan() {
   var showBehavCta = (typeof shouldShowBehavioralRefinementCta === "function")
     ? shouldShowBehavioralRefinementCta(st, diag)
     : false;
+  var _finScoreLabel = _scoreFinancieroLabel(fin.scoreFinanciero);
+  var _behScoreLabel = _scoreConductualLabel(hasBehav && behEnc ? behEnc.score : null);
+  var _planStatusLabel = resolvePlanStatusLabel(diag);
 
   // Sprint 9 — gastos missing warning card (near top of plan tab)
   var _gastosMissingCard = (st.gastos_missing_confirmed)
@@ -2185,9 +2311,7 @@ function renderTabPlan() {
     + '<div><div class="plan-title-big">' + diag.plan.icon + ' ' + diag.plan.titulo + '</div>'
     + '<div class="plan-desc">' + diag.plan.problema + '</div></div>'
     + '<div style="text-align:right;flex-shrink:0;">'
-    + '<div class="score-big" style="color:' + colorScore(diag.scoreReset) + ';">' + diag.scoreReset + '</div>'
-    + '<div style="font-size:14px;color:#8390b5;margin-top:4px;">de 30</div>'
-    + '<div style="font-size:14px;font-weight:800;color:' + colorNivel(diag.nivelR) + ';margin-top:6px;">' + nivelTexto(diag.nivelR) + '</div>'
+    + _renderPlanStatusLabelHtml(_planStatusLabel)
     + '</div></div>'
     + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;">'
     + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Que busca este plan</div>'
@@ -2401,12 +2525,14 @@ function renderTabPlan() {
     + '<div class="grid">'
     + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
     + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Situacion financiera</div>'
-    + '<div style="font-size:52px;font-weight:900;color:' + colorScore(fin.scoreFinanciero) + ';line-height:1;letter-spacing:-2px;">' + fin.scoreFinanciero + '</div>'
-    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">gastos y deudas · max 30</div></div>'
+    + _renderProfileScoreLabelHtml(_finScoreLabel)
+    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">gastos y deudas</div></div>'
     + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
     + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Perfil conductual</div>'
-    + '<div style="font-size:52px;font-weight:900;color:' + (hasBehav && behEnc ? colorScore(behEnc.score) : "#8390b5") + ';line-height:1;letter-spacing:-2px;">' + (hasBehav && behEnc ? behEnc.score : "—") + '</div>'
-    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">' + (hasBehav && behEnc ? "analisis conductual · max 30" : "sin datos adicionales") + '</div></div>'
+    + _renderProfileScoreLabelHtml(_behScoreLabel)
+    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">'
+    + (hasBehav && behEnc && _behScoreLabel.valid ? "analisis conductual" : "sin datos adicionales")
+    + '</div></div>'
     + '</div>'
     + '<div style="margin-top:14px;font-size:15px;color:#8390b5;text-align:center;">Revision sugerida en <strong style="color:rgba(255,255,255,.8);">' + diag.plan.reevaluacion + '</strong></div>'
     + (showBehavCta
@@ -4507,6 +4633,10 @@ window.CredizonaUI = {
   getRetryCtaState: getRetryCtaState,
   renderRetryCta: renderRetryCta,
   resolveDashboardCtaHierarchy: resolveDashboardCtaHierarchy,
+  _scoreFinancieroLabel: _scoreFinancieroLabel,
+  _scoreConductualLabel: _scoreConductualLabel,
+  resolvePlanStatusLabel: resolvePlanStatusLabel,
+  _renderProfileScoreLabelHtml: _renderProfileScoreLabelHtml,
   isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
 };
 
