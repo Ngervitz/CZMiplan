@@ -1804,6 +1804,14 @@ function _renderCompleteExpensesCtaHtml(opts) {
     + '</div>';
 }
 
+function _resolveDiagnosisInjectedCtaHtml(diag, st) {
+  diag = diag || {};
+  st = st || {};
+  var hierarchy = resolveDashboardCtaHierarchy(diag, st);
+  if (hierarchy.primary !== "complete_expenses") return "";
+  return _renderCompleteExpensesCtaHtml({ primary: true, marginTop: "12px" });
+}
+
 function _renderMideudaFallbackCtaHtml(hierarchy) {
   var html = '<div style="margin-top:16px;">'
     + '<div style="font-size:14px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:12px;">'
@@ -1839,10 +1847,7 @@ function renderRetryBlockedFallbackCta(diag, st) {
   }
 
   if (hierarchy.primary === "complete_expenses") {
-    return _renderCompleteExpensesCtaHtml({
-      primary: true,
-      subcopy: "Completá tus gastos para obtener una evaluación más precisa antes de volver a solicitar.",
-    });
+    return "";
   }
 
   if (hierarchy.primary === "plus") {
@@ -2039,9 +2044,11 @@ function renderRecuperabilidadBadge(iv2) {
 // Renders the 4-block interpretacion_v2 narrative section.
 // Uses getNarrativaByTipo() — never accesses array by index.
 // Confidence note is rendered AFTER all four blocks, separate from card content.
-function renderNarrativaInterpretacion(diag) {
+// Optional st — when hierarchy primary is complete_expenses, injects contextual CTA after primer paso.
+function renderNarrativaInterpretacion(diag, st) {
   var iv2 = diag.interpretacion_v2;
   if (!iv2 || !iv2.narrativa_jerarquizada) return "";
+  st = st || _st();
 
   var nPrincipal = getNarrativaByTipo(iv2.narrativa_jerarquizada, "problema_principal");
   var nPresion   = getNarrativaByTipo(iv2.narrativa_jerarquizada, "presion_dominante");
@@ -2051,6 +2058,7 @@ function renderNarrativaInterpretacion(diag) {
   var textoPaso  = ((finNar.dti_ratio || 0) >= 1)
     ? CZ_DTI_ACCION_PRIORITARIA
     : (nPaso ? nPaso.texto : null);
+  var injectedCtaHtml = _resolveDiagnosisInjectedCtaHtml(diag, st);
 
   var block = function(label, text) {
     if (!text) return "";
@@ -2065,7 +2073,13 @@ function renderNarrativaInterpretacion(diag) {
   var showPresion = !(iv2.patron_deuda === "sin_patron" && iv2.confidence_level !== "low");
 
   var confidenceNote = "";
-  if (iv2.confidence_level === "low") {
+  if (injectedCtaHtml && st.gastos_missing_confirmed) {
+    confidenceNote = '<div style="margin-top:14px;padding-top:14px;'
+      + 'border-top:1px solid rgba(255,255,255,.07);'
+      + 'font-size:13px;color:#8390b5;line-height:1.6;">'
+      + 'Este diagnóstico todavía puede mejorar si completás la información de tus gastos mensuales.'
+      + '</div>';
+  } else if (iv2.confidence_level === "low") {
     confidenceNote = '<div style="margin-top:16px;padding-top:14px;'
       + 'border-top:1px solid rgba(255,255,255,.07);'
       + 'font-size:13px;color:#8390b5;line-height:1.6;">'
@@ -2085,6 +2099,7 @@ function renderNarrativaInterpretacion(diag) {
     + (showPresion ? block("Presión principal",          nPresion  ? nPresion.texto  : null) : "")
     + block("Capacidad de recuperación", nRecup     ? nRecup.texto    : null)
     + block("Primer paso recomendado",   textoPaso)
+    + injectedCtaHtml
     + confidenceNote
     + '</div>';
 }
@@ -2343,7 +2358,7 @@ function renderTabPlan() {
     + '</div>'
 
     // 2. Interpretacion v2 — narrative blocks (Sprint 7B)
-    + renderNarrativaInterpretacion(diag)
+    + renderNarrativaInterpretacion(diag, st)
     + _dashIaSectionClose()
 
     + _dashIaSectionOpen(false, "frenando")
@@ -4657,6 +4672,7 @@ window.CredizonaUI = {
   _scoreConductualLabel: _scoreConductualLabel,
   resolvePlanStatusLabel: resolvePlanStatusLabel,
   _renderProfileScoreLabelHtml: _renderProfileScoreLabelHtml,
+  renderNarrativaInterpretacion: renderNarrativaInterpretacion,
   isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
 };
 
