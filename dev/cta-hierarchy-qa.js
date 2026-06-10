@@ -80,15 +80,17 @@
   ok("A flag on diag", diagA.flag_deuda_sanity_extreme === true);
   ok("A hierarchy P1 mideuda", hA.tier === "P1" && hA.primary === "mideuda");
   ok("A secondary complete_expenses", hA.secondary === "complete_expenses");
-  ok("A MiDeuda branded primary", htmlA.indexOf("Ordenar mi deuda con MiDeuda") >= 0);
-  ok("A complete expenses secondary", htmlA.indexOf("btn-retry-fallback-gastos") >= 0);
-  ok("A Plus demoted", htmlA.indexOf("También podés contrastar tu situación") >= 0);
+  ok("A no MiDeuda as horizon primary when incomplete", htmlA.indexOf("Ordenar mi deuda con MiDeuda") < 0);
+  ok("A incomplete horizon gastos-first", htmlA.indexOf("Completar gastos mensuales") >= 0);
+  ok("A hero primary gastos on tab", renderTabPlan().indexOf("btn-retry-fallback-gastos") >= 0);
+  ok("A Plus demoted", htmlA.indexOf("También podés contrastar tu situación") >= 0
+    || htmlA.indexOf("Mi Plan Plus") >= 0);
   ok("A no retry CTA", htmlA.indexOf("btn-retry-application") < 0);
   ok("A no unlocked retry copy", htmlA.indexOf("Solicitar préstamo nuevamente") < 0
     && htmlA.indexOf("condiciones de revisar una nueva solicitud") < 0);
   var htmlAn = renderNarrativaInterpretacion(diagA, stA);
   ok("C extreme debt: no expenses CTA in diagnosis", htmlAn.indexOf("btn-retry-fallback-gastos") < 0);
-  ok("C extreme debt: secondary expenses in horizon only", htmlA.indexOf("btn-retry-fallback-gastos") >= 0);
+  ok("C extreme debt: gastos CTA in hero not horizon duplicate required", htmlA.indexOf("Completar gastos mensuales") >= 0);
 
   // B — Profile 31, expenses complete
   var diagB = runProfile31(false);

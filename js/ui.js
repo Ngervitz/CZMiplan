@@ -1528,18 +1528,30 @@ var CZ_DTI_ACCION_PRIORITARIA =
   "Confirmar el saldo actualizado y definir si esta deuda debe estabilizarse, refinanciarse o atacarse primero.";
 
 function renderRelacionDeudaIngreso(diag) {
+  var st = _st();
   var fin      = _finFromDiag(diag);
-  var deudas   = (_st().deudas || []);
+  var deudas   = (st.deudas || []);
   var totalDeuda = fin.totalDeuda != null ? fin.totalDeuda : 0;
   var dtiRatio   = fin.dti_ratio;
-
-  var isZeroDebt = deudas.length === 0
-    || totalDeuda <= 0
-    || (dtiRatio != null && dtiRatio <= 0);
 
   var cardOpen = '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);'
     + _dashSectionAccentCss("dti") + '">'
     + _dashCardTitle("⚖️", "Relación deuda / ingreso", "dti");
+
+  if (isIncompleteFinancialProfile(diag, st) && _expensesMissing(st) && deudas.length > 0 && totalDeuda > 0) {
+    return cardOpen
+      + '<div style="font-size:17px;font-weight:700;color:rgba(255,255,255,.9);line-height:1.45;margin-bottom:10px;">Saldo a revisar</div>'
+      + '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:14px;">'
+      + "Registraste deuda, pero falta el panorama de gastos para interpretar esta relación con tu ingreso. "
+      + "Este dato todavía no alcanza para decidir una estrategia de pago."
+      + "</div>"
+      + (dtiRatio != null ? _dashTechIndicator("Indicador técnico: " + _dtiRatioDisplay(dtiRatio)) : "")
+      + "</div>";
+  }
+
+  var isZeroDebt = deudas.length === 0
+    || totalDeuda <= 0
+    || (dtiRatio != null && dtiRatio <= 0);
 
   if (isZeroDebt) {
     return cardOpen
@@ -1581,8 +1593,10 @@ function renderFinancialRealityWarning(diag) {
 
 function renderPlan4SinDeudaActivaExplicacion(diag) {
   if (!diag || diag.planId !== 4) return "";
+  var st = _st();
+  if (isIncompleteFinancialProfile(diag, st) && _expensesMissing(st)) return "";
 
-  var deudas = _st().deudas || [];
+  var deudas = st.deudas || [];
   var activeDebtCount = typeof deudasActivasParaCalculo === "function"
     ? deudasActivasParaCalculo(deudas).length
     : 0;
@@ -1652,6 +1666,17 @@ function renderConfianzaDiagnostico(diag) {
 }
 
 function renderBloqueadores(diag) {
+  var st = _st();
+  if (isIncompleteFinancialProfile(diag, st) && _expensesMissing(st) && !_hasNoDeclaredDebts(st)) {
+    return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);">'
+      + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
+      + '<div style="padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;">'
+      + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.88);line-height:1.45;margin-bottom:8px;">Estrategia pendiente</div>'
+      + '<div style="font-size:14px;color:#8390b5;line-height:1.6;">'
+      + "Necesitamos tus gastos mensuales para definir qué factores están limitando tu margen real y priorizar una estrategia de pago."
+      + "</div></div></div>";
+  }
+
   var bl  = diag.bloqueadores;
   var iv2 = diag.interpretacion_v2 || {};
 
@@ -1791,9 +1816,7 @@ function _filterAccionesForIncompleteProfile(acciones) {
 }
 
 function _heroShowsExpensesCta(diag, st) {
-  return isIncompleteFinancialProfile(diag, st)
-    && _expensesMissing(st)
-    && resolveDashboardCtaHierarchy(diag, st).primary === "complete_expenses";
+  return isIncompleteFinancialProfile(diag, st) && _expensesMissing(st);
 }
 
 function _shouldShowEarlyExpensesCta(diag, st) {
@@ -1811,32 +1834,147 @@ function _shouldSuppressDebtOrderingCopy(diag, st, nPaso) {
 
 function _renderIncompleteProfileNarrativeHtml(diag, st) {
   st = st || _st();
-  var showCta = _expensesMissing(st)
-    && resolveDashboardCtaHierarchy(diag, st).primary === "complete_expenses"
-    && !_heroShowsExpensesCta(diag, st);
+  var hasDebt = !_hasNoDeclaredDebts(st);
+  var expensesMissing = _expensesMissing(st);
+  var showCta = expensesMissing && !_heroShowsExpensesCta(diag, st);
   var ctaHtml = showCta
-    ? _renderCompleteExpensesCtaHtml({ primary: true, marginTop: "14px" })
+    ? _renderCompleteExpensesCtaHtml({ primary: true, marginTop: "14px", buttonLabel: "Completar gastos" })
     : "";
-  var footnote = _expensesMissing(st)
+  var footnote = expensesMissing
     ? '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07);'
       + 'font-size:13px;color:#8390b5;line-height:1.6;">'
       + 'Este diagnóstico todavía puede mejorar si completás la información de tus gastos mensuales.'
       + '</div>'
     : "";
+  var title;
+  var bodyHtml;
+  if (hasDebt && expensesMissing) {
+    title = "Diagnóstico incompleto";
+    bodyHtml = '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.65;margin-bottom:12px;">'
+      + "Registraste una deuda importante, pero todavía faltan tus gastos mensuales para entender tu capacidad real de pago."
+      + "</div>"
+      + '<div style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;margin-bottom:12px;">'
+      + "Antes de definir si conviene estabilizar, refinanciar o atacar una deuda primero, necesitamos saber cuánto dinero te queda realmente cada mes."
+      + "</div>"
+      + '<div style="padding:14px 16px;background:rgba(255,196,0,.08);border:1px solid rgba(255,196,0,.2);border-radius:12px;font-size:15px;color:#ffd447;font-weight:700;line-height:1.65;">'
+      + "Completá tus gastos mensuales para ajustar el diagnóstico."
+      + "</div>";
+  } else {
+    title = "Información insuficiente para completar el diagnóstico";
+    bodyHtml = '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.65;">'
+      + "Todavía no registraste todos los datos necesarios para estimar tu situación financiera real."
+      + "<br><br>Antes de tomar decisiones, necesitamos conocer mejor tus gastos mensuales."
+      + "</div>";
+  }
   return '<div class="plan-card">'
     + '<div style="margin-bottom:16px;">'
     + '<div style="font-size:11px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Qué está pasando</div>'
     + '<div style="font-size:16px;font-weight:800;color:rgba(255,255,255,.92);line-height:1.4;margin-bottom:10px;">'
-    + 'Información insuficiente para completar el diagnóstico'
-    + '</div>'
-    + '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.65;">'
-    + 'Todavía no registraste todos los datos necesarios para estimar tu situación financiera real.'
-    + '<br><br>Antes de tomar decisiones, necesitamos conocer mejor tus gastos mensuales.'
-    + '</div>'
-    + '</div>'
+    + title
+    + "</div>"
+    + bodyHtml
+    + "</div>"
     + ctaHtml
     + footnote
-    + '</div>';
+    + "</div>";
+}
+
+function _renderIncompleteHorizonHtml(diag, st) {
+  var gastosBtn = _heroShowsExpensesCta(diag, st)
+    ? ""
+    : _renderCompleteExpensesCtaHtml({
+        primary: true,
+        marginTop: "0",
+        buttonLabel: "Completar gastos mensuales",
+      });
+  return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);")
+    + '<div style="font-size:14px;font-weight:800;color:rgba(255,255,255,.9);line-height:1.55;margin-bottom:8px;">'
+    + "Completar gastos mensuales"
+    + "</div>"
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">'
+    + "Antes de estimar un horizonte o definir una estrategia de pago, necesitamos conocer tus gastos mensuales."
+    + "</div>"
+    + gastosBtn
+    + '<div style="margin-top:12px;font-size:12px;color:#8390b5;line-height:1.55;">'
+    + "Después de completar tus gastos, Mi Plan podrá estimar mejor si conviene estabilizar, refinanciar o priorizar esta deuda."
+    + "</div>"
+    + _horizonPlusPromoHtml(diag, st)
+    + "</div>";
+}
+
+function _renderDashboardPriorityCard(diag, st, prio) {
+  st = st || _st();
+  diag = diag || _diag();
+  if (!prio) return "";
+
+  var m = parseFloat(prio.monto) || 0;
+  var p = parseFloat(prio.pago) || 0;
+  var sevPrio = _severityFromDiag(diag);
+  var intEst = prio.interes_mostrado || (function() {
+    if (!m || !p || prio.tipo === "informal") return 0;
+    var tasa = TASAS[prio.tipo] || 62;
+    var est  = m * tasa / 100 / 12;
+    var cap  = prio.estado === "al_dia" ? p * 0.80 : p * 0.95;
+    return Math.round(Math.min(est, cap));
+  })();
+  var latentLabel = "Presión mensual potencial";
+  var latentRaw   = prio.presion_latente_estimada || Math.round(m * (TASAS[prio.tipo] || 62) / 100 / 12);
+  var latentUnrealistic = prio.presion_latente_unrealistic_flag
+    || (m > 0 && latentRaw / m > 0.25)
+    || (PRE.ingreso > 0 && latentRaw / PRE.ingreso > 1.5);
+  var latentVal = latentUnrealistic ? null : fmt(latentRaw);
+  var rows;
+  if (p === 0 && sevPrio.severity_level === "critico") {
+    rows = latentUnrealistic
+      ? [["Monto", fmt(m), "#ff4e72"]]
+      : [["Monto", fmt(m), "#ff4e72"], [latentLabel, latentVal, "#ffd447"]];
+  } else {
+    rows = [["Monto", fmt(m), "#ff4e72"], ["Pago mensual", fmt(p), "#ffd36f"]];
+    if (!latentUnrealistic) {
+      rows.push([latentLabel, latentVal, "#8390b5"]);
+      rows.push(["Costo financiero est./mes", fmt(intEst), "#ffd36f"]);
+    }
+  }
+
+  var advisoryHtml = "";
+  if (isIncompleteFinancialProfile(diag, st) && _expensesMissing(st)) {
+    advisoryHtml = '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">'
+      + "Esta deuda debe revisarse, pero todavía falta conocer tus gastos mensuales para definir si conviene estabilizarla, refinanciarla o priorizar pagos."
+      + "</div>";
+  } else {
+    if (prio.tipo === "informal") {
+      advisoryHtml += '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,211,111,.06);border:1px solid rgba(255,211,111,.15);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">Este tipo de deuda no siempre figura en el historial financiero formal, pero puede generar presion significativa sobre el flujo mensual y dificultar la estabilidad general.</div>';
+    }
+    var sevP = _severityFromDiag(diag);
+    var p0 = (parseFloat(prio.pago) || 0) === 0;
+    var latentRawCheck = prio.presion_latente_estimada || 0;
+    var unrealisticCheck = prio.presion_latente_unrealistic_flag
+      || (parseFloat(prio.monto) > 0 && latentRawCheck / parseFloat(prio.monto) > 0.25)
+      || (PRE.ingreso > 0 && latentRawCheck / PRE.ingreso > 1.5);
+    if (unrealisticCheck) {
+      advisoryHtml += '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">El deterioro potencial de esta deuda es muy alto y el saldo actualizado debe verificarse.</div>';
+    } else if (p0) {
+      advisoryHtml += '<div style="margin-top:10px;font-size:12px;color:#8390b5;line-height:1.55;">Estimación si la deuda siguiera acumulando costo. No es una cuota activa.</div>';
+    }
+    if (sevP.severity_level === "critico" || sevP.has_mora_or_deje_pagar) {
+      advisoryHtml += '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">Antes de acelerar pagos, conviene estabilizar el atraso, confirmar el saldo actualizado y frenar el deterioro. La prioridad no es pagar mas rapido sino recuperar control.</div>';
+    }
+  }
+
+  return '<div class="priority-card">'
+    + '<div style="font-size:13px;font-weight:800;color:#ffd36f;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Por donde empezar</div>'
+    + '<div style="font-size:28px;font-weight:900;margin-bottom:14px;">'
+    + (prio.acreedor || DEBT_TYPES.find(function(t) { return t.v === prio.tipo; })?.l || "Sin nombre")
+    + "</div>"
+    + '<div class="grid">'
+    + rows.map(function(x) {
+        return '<div><small style="color:#8390b5;display:block;margin-bottom:6px;">' + x[0]
+          + '</small><strong style="font-size:' + (x[2] === "#8390b5" ? "20" : "32") + 'px;color:' + x[2] + ';">'
+          + x[1] + "</strong></div>";
+      }).join("")
+    + "</div>"
+    + advisoryHtml
+    + "</div>";
 }
 
 function _isExtremeDebtProfile(diag, st) {
@@ -1967,6 +2105,9 @@ function _retryHorizonAddonHtml(diag, st) {
 function renderRetryBlockedFallbackCta(diag, st) {
   st = st || _st();
   diag = diag || _diag();
+  if (isIncompleteFinancialProfile(diag, st) && _expensesMissing(st)) {
+    return "";
+  }
   var hierarchy = resolveDashboardCtaHierarchy(diag, st);
   var deudas = st.deudas || [];
 
@@ -2013,6 +2154,9 @@ function renderRetryBlockedFallbackCta(diag, st) {
 function renderHorizonteRecalificacion(diag, st) {
   st = st || (typeof window !== "undefined" ? window.CZState : null) || _st();
   var incomplete = isIncompleteFinancialProfile(diag, st);
+  if (incomplete && _expensesMissing(st)) {
+    return _renderIncompleteHorizonHtml(diag, st);
+  }
   var h   = diag.horizonte;
   var sev = _severityFromDiag(diag);
   var iv2 = diag.interpretacion_v2 || {};
@@ -2188,7 +2332,7 @@ function renderNarrativaInterpretacion(diag, st) {
   if (!iv2 || !iv2.narrativa_jerarquizada) return "";
   st = st || _st();
 
-  if (isIncompleteFinancialProfile(diag, st) && _hasNoDeclaredDebts(st)) {
+  if (isIncompleteFinancialProfile(diag, st)) {
     return _renderIncompleteProfileNarrativeHtml(diag, st);
   }
 
@@ -2669,7 +2813,7 @@ function renderTabPlan() {
     + (function() {
         var iv2 = diag.interpretacion_v2;
         if (!iv2 || !iv2.narrativa_jerarquizada) return "";
-        if (isIncompleteFinancialProfile(diag, st) && _hasNoDeclaredDebts(st)) return "";
+        if (isIncompleteFinancialProfile(diag, st)) return "";
         var nPaso = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
         if (_shouldSuppressDebtOrderingCopy(diag, st, nPaso)) return "";
         var finAccion = _finFromDiag(diag);
@@ -2686,67 +2830,7 @@ function renderTabPlan() {
           + textoAccion
           + '</div></div></div>';
       })()
-    + (prio
-        ? '<div class="priority-card">'
-          + '<div style="font-size:13px;font-weight:800;color:#ffd36f;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Por donde empezar</div>'
-          + '<div style="font-size:28px;font-weight:900;margin-bottom:14px;">' + (prio.acreedor || DEBT_TYPES.find(function(t) { return t.v === prio.tipo; })?.l || "Sin nombre") + '</div>'
-          + '<div class="grid">'
-          + (function() {
-              var m = parseFloat(prio.monto) || 0;
-              var p = parseFloat(prio.pago)  || 0;
-              var sevPrio = _severityFromDiag(diag);
-              var intEst = prio.interes_mostrado || (function() {
-                if (!m || !p || prio.tipo === "informal") return 0;
-                var tasa = TASAS[prio.tipo] || 62;
-                var est  = m * tasa / 100 / 12;
-                var cap  = prio.estado === "al_dia" ? p * 0.80 : p * 0.95;
-                return Math.round(Math.min(est, cap));
-              })();
-              var latentLabel = "Presión mensual potencial";
-              var latentRaw   = prio.presion_latente_estimada || Math.round(m * (TASAS[prio.tipo]||62) / 100 / 12);
-              var latentUnrealistic = prio.presion_latente_unrealistic_flag
-                || (m > 0 && latentRaw / m > 0.25)
-                || (PRE.ingreso > 0 && latentRaw / PRE.ingreso > 1.5);
-              var latentVal = latentUnrealistic ? null : fmt(latentRaw);
-              var rows;
-              if (p === 0 && sevPrio.severity_level === "critico") {
-                rows = latentUnrealistic
-                  ? [["Monto", fmt(m), "#ff4e72"]]
-                  : [["Monto", fmt(m), "#ff4e72"], [latentLabel, latentVal, "#ffd447"]];
-              } else {
-                rows = [["Monto", fmt(m), "#ff4e72"], ["Pago mensual", fmt(p), "#ffd36f"]];
-                if (!latentUnrealistic) {
-                  rows.push([latentLabel, latentVal, "#8390b5"]);
-                  rows.push(["Costo financiero est./mes", fmt(intEst), "#ffd36f"]);
-                }
-              }
-              return rows;
-            })()
-            .map(function(x) { return '<div><small style="color:#8390b5;display:block;margin-bottom:6px;">' + x[0] + '</small><strong style="font-size:' + (x[2] === "#8390b5" ? "20" : "32") + 'px;color:' + x[2] + ';">' + x[1] + '</strong></div>'; }).join("")
-          + '</div>'
-          + (prio.tipo === "informal"
-              ? '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,211,111,.06);border:1px solid rgba(255,211,111,.15);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">Este tipo de deuda no siempre figura en el historial financiero formal, pero puede generar presion significativa sobre el flujo mensual y dificultar la estabilidad general.</div>'
-              : "")
-          + (function() {
-              var sevP = _severityFromDiag(diag);
-              var p0 = (parseFloat(prio.pago) || 0) === 0;
-              var latentRawCheck = prio.presion_latente_estimada || 0;
-              var unrealisticCheck = prio.presion_latente_unrealistic_flag
-                || (parseFloat(prio.monto) > 0 && latentRawCheck / parseFloat(prio.monto) > 0.25)
-                || (PRE.ingreso > 0 && latentRawCheck / PRE.ingreso > 1.5);
-              var out = "";
-              if (unrealisticCheck) {
-                out += '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">El deterioro potencial de esta deuda es muy alto y el saldo actualizado debe verificarse.</div>';
-              } else if (p0) {
-                out += '<div style="margin-top:10px;font-size:12px;color:#8390b5;line-height:1.55;">Estimación si la deuda siguiera acumulando costo. No es una cuota activa.</div>';
-              }
-              if (sevP.severity_level === "critico" || sevP.has_mora_or_deje_pagar) {
-                out += '<div style="margin-top:14px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">Antes de acelerar pagos, conviene estabilizar el atraso, confirmar el saldo actualizado y frenar el deterioro. La prioridad no es pagar mas rapido sino recuperar control.</div>';
-              }
-              return out;
-            })()
-          + '</div>'
-        : "")
+    + (prio ? _renderDashboardPriorityCard(diag, st, prio) : "")
     + _dashIaSectionClose()
     + _dashZoneClose()
 

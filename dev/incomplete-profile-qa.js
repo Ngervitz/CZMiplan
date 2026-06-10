@@ -123,8 +123,10 @@
   window.CZState.diag = diagE;
   var hE = resolveDashboardCtaHierarchy(diagE, window.CZState);
   var htmlE = renderHorizonteRecalificacion(diagE, window.CZState);
+  var tabE = renderTabPlan();
   ok("E MiDeuda P1 primary", hE.tier === "P1" && hE.primary === "mideuda");
-  ok("E MiDeuda branded CTA", htmlE.indexOf("Ordenar mi deuda con MiDeuda") >= 0);
+  ok("E no MiDeuda horizon when incomplete", htmlE.indexOf("Ordenar mi deuda con MiDeuda") < 0);
+  ok("E hero gastos primary", tabE.indexOf("btn-retry-fallback-gastos") >= 0);
   ok("E sanity flag", diagE.flag_deuda_sanity_extreme === true);
 
   // F — Retry-eligible profile: no regression
