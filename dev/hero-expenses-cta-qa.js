@@ -67,11 +67,9 @@
   ok("A Completar gastos in hero", htmlA.indexOf("Completar gastos") >= 0);
   ok("A btn-retry-fallback-gastos present", htmlA.indexOf("btn-retry-fallback-gastos") >= 0);
 
-  // B — Plus secondary, gastos primary also present
-  ok("B Plus button present", htmlA.indexOf("btn-hero-ver-plus") >= 0);
-  ok("B gastos CTA before Plus in DOM", htmlA.indexOf("btn-retry-fallback-gastos") < htmlA.indexOf("btn-hero-ver-plus"));
+  // B — gastos primary, no Plus in hero
+  ok("B no Plus in hero", htmlA.indexOf("btn-hero-ver-plus") < 0);
   ok("B gastos uses primary btn class", htmlA.indexOf('btn btn-primary" id="btn-retry-fallback-gastos"') >= 0);
-  ok("B Plus uses secondary btn class", htmlA.indexOf('btn btn-secondary" id="btn-hero-ver-plus"') >= 0);
 
   // C — gastos_missing_confirmed true
   var htmlC = heroHtml({

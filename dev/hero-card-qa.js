@@ -66,7 +66,7 @@
 
   ok("A hero visible", tabInc.indexOf("cz-dashboard-hero") >= 0);
   ok("A Completar gastos in hero", tabInc.indexOf("Completar gastos") >= 0);
-  ok("A Mi Plan Plus in hero", tabInc.indexOf("btn-hero-ver-plus") >= 0);
+  ok("A no Plus in hero", tabInc.indexOf("btn-hero-ver-plus") < 0);
   ok("A hero before diagnostic zone", zoneIndex(tabInc, "hero") >= 0
     && zoneIndex(tabInc, "hero") < zoneIndex(tabInc, "diagnostico"));
   ok("A diagnostico before accion zone", zoneIndex(tabInc, "diagnostico") < zoneIndex(tabInc, "accion"));

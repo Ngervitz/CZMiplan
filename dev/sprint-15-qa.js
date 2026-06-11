@@ -98,7 +98,7 @@
   // D — Plus still visible and functional IDs
   ok("D plus zone present", tabComplete.indexOf("dash-zone-plus") >= 0);
   ok("D btn-conocer-plus preserved", tabComplete.indexOf('id="btn-conocer-plus"') >= 0);
-  ok("D btn-hero-ver-plus preserved", tabInc.indexOf('id="btn-hero-ver-plus"') >= 0);
+  ok("D no btn-hero-ver-plus in hero", tabInc.indexOf('id="btn-hero-ver-plus"') < 0);
   ok("D cz-plus-entry preserved", tabComplete.indexOf('id="cz-plus-entry"') >= 0);
 
   // E — Tus números collapsed by default

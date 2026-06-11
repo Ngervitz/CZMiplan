@@ -111,19 +111,19 @@
   ok("J dashboard no max 30", tabHtml.indexOf("max 30") < 0);
   ok("J dashboard has status label", tabHtml.indexOf("En buen camino") >= 0 || tabHtml.indexOf("Requiere acción") >= 0 || tabHtml.indexOf("Prioridad alta") >= 0 || tabHtml.indexOf("En proceso") >= 0);
 
-  // Layout — status pill below description in diagnostic plan card (not hero summary)
+  // Layout — status pill only in Hero; diagnostico keeps objetivo without duplicated plan header
+  var heroZoneEnd = tabHtml.indexOf("dash-zone-diagnostico");
+  var heroHtml = heroZoneEnd >= 0 ? tabHtml.slice(0, heroZoneEnd) : tabHtml;
   var diagZoneStart = tabHtml.indexOf("dash-zone-diagnostico");
-  var diagHtml = diagZoneStart >= 0 ? tabHtml.slice(diagZoneStart) : tabHtml;
-  var planCardStart = diagHtml.indexOf('class="plan-card" style="border-color:');
-  var planCardHtml = planCardStart >= 0 ? diagHtml.slice(planCardStart, planCardStart + 3000) : diagHtml;
-  var titleIdx = planCardHtml.indexOf('class="plan-title-big"');
-  var descIdx = planCardHtml.indexOf('class="plan-desc"');
-  var statusIdx = planCardHtml.indexOf("Estado del plan:");
-  var objetivoIdx = planCardHtml.indexOf("Que busca este plan");
-  ok("A status below title block", statusIdx > titleIdx && statusIdx > descIdx);
-  ok("A status above objetivo box", statusIdx > 0 && objetivoIdx > statusIdx);
+  var diagHtml = diagZoneStart >= 0 ? tabHtml.slice(diagZoneStart) : "";
+  ok("A no plan-title-big in diagnostico", diagHtml.indexOf('class="plan-title-big"') < 0);
+  ok("A no plan-desc in diagnostico", diagHtml.indexOf('class="plan-desc"') < 0);
+  ok("A status only in hero", heroHtml.indexOf("Estado del plan:") >= 0
+    && diagHtml.indexOf("Estado del plan:") < 0);
+  ok("A objetivo preserved in diagnostico", diagHtml.indexOf("Que busca este plan") >= 0);
   ok("A no inline status column", tabHtml.indexOf("text-align:right;flex-shrink:0") < 0);
-  ok("B status pill subtle", tabHtml.indexOf("border-radius:999px") >= 0 && tabHtml.indexOf("Estado del plan:") >= 0);
+  ok("B status pill subtle in hero", heroHtml.indexOf("border-radius:999px") >= 0
+    && heroHtml.indexOf("Estado del plan:") >= 0);
   ok("B no giant emoji in plan pill", !/font-size:20px[^>]*>[\s\S]{0,40}🔴/.test(tabHtml));
   ok("C no numeric score in plan card header", tabHtml.indexOf("score-big") < 0);
 

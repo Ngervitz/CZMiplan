@@ -66,8 +66,8 @@
   ok("A isIncompleteFinancialProfile true", isIncompleteFinancialProfile(diagX, stX) === true);
   ok("B hero primary Completar gastos", heroX.indexOf("Completar gastos") >= 0
     && heroX.indexOf("btn-retry-fallback-gastos") >= 0);
-  ok("C hero secondary Ver Mi Plan Plus", heroX.indexOf("btn-hero-ver-plus") >= 0
-    && heroX.indexOf("Ver Mi Plan Plus") >= 0);
+  ok("C hero no Plus CTA", heroX.indexOf("btn-hero-ver-plus") < 0
+    && heroX.indexOf("Ver Mi Plan Plus") < 0);
   ok("D hero not Plus-only", heroX.indexOf("btn-retry-fallback-gastos") >= 0);
   ok("E no manejo posible copy", narrX.indexOf("manejo posible") < 0
     && narrX.indexOf("sostener decisiones simples") < 0

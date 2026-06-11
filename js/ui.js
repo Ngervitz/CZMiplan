@@ -1838,6 +1838,23 @@ function _heroShowsExpensesCta(diag, st) {
   return isIncompleteFinancialProfile(diag, st) && _expensesMissing(st);
 }
 
+function _heroShowsDebtsCta(diag, st) {
+  st = st || {};
+  if (!isIncompleteFinancialProfile(diag, st)) return false;
+  if (_expensesMissing(st)) return false;
+  if (st.no_debts_declared) return false;
+  return _hasNoDeclaredDebts(st);
+}
+
+function _renderHeroDebtsCtaHtml() {
+  return '<div style="margin-top:0;">'
+    + '<button type="button" class="btn btn-primary" id="btn-hero-confirmar-deudas" '
+    + 'style="width:100%;height:52px;font-size:16px;box-sizing:border-box;">'
+    + "Confirmar mis deudas"
+    + "</button>"
+    + "</div>";
+}
+
 function _shouldShowEarlyExpensesCta(diag, st) {
   if (_heroShowsExpensesCta(diag, st)) return false;
   if (!isIncompleteFinancialProfile(diag, st) || !_expensesMissing(st)) return false;
@@ -2664,6 +2681,14 @@ function _renderDashboardHeroCard(diag, st) {
 
   if (isIncompleteFinancialProfile(diag, st)) {
     var showGastosCta = _heroShowsExpensesCta(diag, st);
+    var showDebtsCta = _heroShowsDebtsCta(diag, st);
+    var heroCtaHtml = showGastosCta
+      ? _renderCompleteExpensesCtaHtml({
+          primary: true,
+          marginTop: "0",
+          buttonLabel: "Completar gastos",
+        })
+      : (showDebtsCta ? _renderHeroDebtsCtaHtml() : "");
     return '<div class="cz-hero-card plan-card" id="cz-dashboard-hero" style="border-color:rgba(255,211,111,.45);'
       + 'background:linear-gradient(165deg,rgba(255,211,111,.12) 0%,rgba(255,255,255,.04) 55%);'
       + 'padding:24px 22px;margin-bottom:4px;">'
@@ -2676,19 +2701,9 @@ function _renderDashboardHeroCard(diag, st) {
       + '<div style="font-size:16px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:18px;">'
       + "Nos falta conocer algunos datos para estimar con mayor precisión tu situación financiera."
       + "</div>"
-      + (showGastosCta
-          ? _renderCompleteExpensesCtaHtml({
-              primary: true,
-              marginTop: "0",
-              buttonLabel: "Completar gastos",
-            })
-          : "")
-      + '<div style="margin-top:12px;">'
-      + '<button type="button" class="btn btn-secondary" id="btn-hero-ver-plus" '
-      + 'style="width:100%;height:52px;font-size:16px;box-sizing:border-box;">Ver Mi Plan Plus</button>'
-      + "</div>"
+      + heroCtaHtml
       + '<div style="margin-top:14px;font-size:13px;color:#8390b5;line-height:1.6;">'
-      + "Podés mejorar el diagnóstico completando tu información o contrastarla con registros de BCU y Clearing."
+      + "Completá la información pendiente para mejorar la precisión de tu diagnóstico."
       + "</div>"
       + "</div>";
   }
@@ -2779,7 +2794,6 @@ function renderTabPlan() {
     ? _incompleteFinancialScoreLabel()
     : _scoreFinancieroLabel(fin.scoreFinanciero);
   var _behScoreLabel = _scoreConductualLabel(hasBehav && behEnc ? behEnc.score : null);
-  var _planStatusLabel = resolvePlanStatusLabel(diag, st);
   var _incompleteProfile = isIncompleteFinancialProfile(diag, st);
 
   // Sprint 9 — gastos missing warning card (suppressed when Hero Card covers incomplete state)
@@ -2824,22 +2838,17 @@ function renderTabPlan() {
     + 'color:#8390b5;line-height:1.6;">'
     + 'Este análisis se basa exclusivamente en la información que declaraste.'
     + '</div>'
-    + '<div class="plan-card" style="border-color:' + pc + '33;">'
-    + '<div style="margin-bottom:14px;">'
-    + '<div class="plan-title-big">' + diag.plan.icon + ' ' + diag.plan.titulo + '</div>'
-    + '<div class="plan-desc">' + diag.plan.problema + '</div>'
-    + '</div>'
-    + '<div style="margin-bottom:16px;">'
-    + _renderPlanStatusLabelHtml(_planStatusLabel)
-    + '</div>'
-    + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;">'
-    + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Que busca este plan</div>'
-    + '<div style="font-size:19px;color:rgba(255,255,255,.9);line-height:1.6;">' + diag.plan.objetivo + '</div>'
-    + '</div>'
-    + ((diag.planId === 4 || diag.nivelR === "C")
-        ? '<div style="margin-top:14px;font-size:12px;color:#8390b5;line-height:1.6;">ℹ️ Este plan se basa en tu situación al momento del diagnóstico. Los cambios que hacés en deudas o gastos actualizan la simulación, pero el punto de partida sigue siendo tu evaluación original.</div>'
+    + (!_incompleteProfile
+        ? '<div class="plan-card" style="border-color:' + pc + '33;">'
+          + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;">'
+          + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Que busca este plan</div>'
+          + '<div style="font-size:19px;color:rgba(255,255,255,.9);line-height:1.6;">' + diag.plan.objetivo + '</div>'
+          + '</div>'
+          + ((diag.planId === 4 || diag.nivelR === "C")
+              ? '<div style="margin-top:14px;font-size:12px;color:#8390b5;line-height:1.6;">ℹ️ Este plan se basa en tu situación al momento del diagnóstico. Los cambios que hacés en deudas o gastos actualizan la simulación, pero el punto de partida sigue siendo tu evaluación original.</div>'
+              : '')
+          + '</div>'
         : '')
-    + '</div>'
     + renderNarrativaInterpretacion(diag, st)
     + _dashIaSectionClose()
     + _dashZoneClose()

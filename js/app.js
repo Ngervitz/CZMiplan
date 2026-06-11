@@ -3175,6 +3175,12 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
+      // Sprint B2a — Hero operational CTAs (no Plus in Hero)
+      if (e.target.id === "btn-hero-confirmar-deudas") {
+        switchTab("deudas");
+        return;
+      }
+
       // Sprint 12.5 — editar gastos desde dashboard
       if (e.target.id === "btn-editar-gastos-dashboard"
         || e.target.id === "btn-retry-fallback-gastos"
@@ -3668,8 +3674,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Botones Reset Plus (modal legacy — plan / IA)
       if (
         e.target.id === "btn-conocer-plus" ||
-        e.target.id === "btn-conocer-plus-ia" ||
-        e.target.id === "btn-hero-ver-plus"
+        e.target.id === "btn-conocer-plus-ia"
       ) {
         switchTab("plus");
         return;
