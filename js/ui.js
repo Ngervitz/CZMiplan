@@ -1384,6 +1384,25 @@ function _deudasResumenStats(deudas) {
   };
 }
 
+// Sprint B5a — active debt with zero declared monthly payments (presentation only)
+var _ZERO_PAYMENT_DEBT_CLARIFICATION =
+  "Tenés deuda declarada sin pagos mensuales informados. Este indicador puede verse mejor de lo que realmente refleja tu situación.";
+
+function _shouldShowZeroPaymentDebtClarification(st) {
+  st = st || _st();
+  var stats = _deudasResumenStats(st.deudas || []);
+  if (stats.activaCount <= 0) return false;
+  if (stats.totalActiva <= 0) return false;
+  if (stats.pagosMensuales > 0) return false;
+  return true;
+}
+
+function _renderZeroPaymentDebtClarificationHtml() {
+  return '<div style="font-size:13px;color:#8390b5;line-height:1.55;margin-top:10px;padding:0 4px;">'
+    + _ZERO_PAYMENT_DEBT_CLARIFICATION
+    + "</div>";
+}
+
 function _deudasSubtitleCounter(activaCount, pagadaCount) {
   var actTxt = activaCount === 1 ? "1 activa" : activaCount + " activas";
   var pagTxt = pagadaCount === 1 ? "1 pagada" : pagadaCount + " pagadas";
@@ -2811,6 +2830,9 @@ function renderTabPlan() {
     : _scoreFinancieroLabel(fin.scoreFinanciero);
   var _behScoreLabel = _scoreConductualLabel(hasBehav && behEnc ? behEnc.score : null);
   var _incompleteProfile = isIncompleteFinancialProfile(diag, st);
+  var _zeroPaymentDebtClarification = _shouldShowZeroPaymentDebtClarification(st)
+    ? _renderZeroPaymentDebtClarificationHtml()
+    : "";
 
   // Sprint 9 — gastos missing warning card (suppressed when Hero Card covers incomplete state)
   var _gastosMissingCard = (st.gastos_missing_confirmed && !_incompleteProfile)
@@ -2995,6 +3017,8 @@ function renderTabPlan() {
     + _renderProfileScoreLabelHtml(_finScoreLabel)
     + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">'
     + (_incompleteProfile ? "faltan datos para estimarla" : "gastos y deudas")
+    + "</div>"
+    + _zeroPaymentDebtClarification
     + '</div></div>'
     + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
     + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Perfil conductual</div>'
@@ -5114,6 +5138,8 @@ window.CredizonaUI = {
   _resolveDashboardNextStepText: _resolveDashboardNextStepText,
   _resolveZeroActiveDebtHeroProblema: _resolveZeroActiveDebtHeroProblema,
   _renderDashboardHeroCard: _renderDashboardHeroCard,
+  _shouldShowZeroPaymentDebtClarification: _shouldShowZeroPaymentDebtClarification,
+  _ZERO_PAYMENT_DEBT_CLARIFICATION: _ZERO_PAYMENT_DEBT_CLARIFICATION,
   _filterAccionesForIncompleteProfile: _filterAccionesForIncompleteProfile,
   _renderTuSituacionHoy: _renderTuSituacionHoy,
   renderConfianzaDiagnostico: renderConfianzaDiagnostico,
