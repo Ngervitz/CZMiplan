@@ -1205,6 +1205,8 @@ function next() {
       return;
     }
 
+    syncGastosMissingConfirmedAfterExpensesDeclared(st);
+
     if (typeof syncPreRespuestasFromSeoIaSurvey === "function") {
       syncPreRespuestasFromSeoIaSurvey(st);
     }
@@ -1490,6 +1492,26 @@ function getTotalMonthlyExpensesSafe(st) {
   return Object.keys(st.gastos || {}).reduce(function(sum, key) {
     return sum + (parseFloat(st.gastos[key]) || 0);
   }, 0);
+}
+
+// Sprint B1.2 — clear skip flag once real gastos exist (total > 0).
+function syncGastosMissingConfirmedAfterExpensesDeclared(st) {
+  st = st || window.CZState || {};
+  if (getTotalMonthlyExpensesSafe(st) <= 0) return false;
+
+  var changed = false;
+  if (st.gastos_missing_confirmed) {
+    st.gastos_missing_confirmed = false;
+    changed = true;
+  }
+  if (!st.financial_expenses_complete) {
+    st.financial_expenses_complete = true;
+    changed = true;
+  }
+  if (typeof invalidateLowExpensesConfirmedIfStale === "function") {
+    invalidateLowExpensesConfirmedIfStale(st);
+  }
+  return changed;
 }
 
 function syncPreIngresoFromState(st) {
@@ -1825,6 +1847,7 @@ function getFinancialProfileCompleteness(st) {
 }
 
 window._getFinancialProfileCompleteness = getFinancialProfileCompleteness;
+window._syncGastosMissingConfirmedAfterExpensesDeclared = syncGastosMissingConfirmedAfterExpensesDeclared;
 
 var LOW_EXPENSES_COVERAGE_TRIGGER = 0.08;
 var LOW_EXPENSES_MIN_INGRESO = 30000;
@@ -2096,6 +2119,7 @@ async function init() {
         st.temporal.dashboard_generated_at = null;
       }
     }
+    syncGastosMissingConfirmedAfterExpensesDeclared(st);
     invalidateLowExpensesConfirmedIfStale(st);
   } else {
     st._diagSource = "url_pending";
@@ -2667,6 +2691,7 @@ document.addEventListener("DOMContentLoaded", function() {
       var gastoKey = e.target.getAttribute("data-gasto");
       if (gastoKey) {
         st.gastos[gastoKey] = e.target.value;
+        syncGastosMissingConfirmedAfterExpensesDeclared(st);
         window.guardarLocal();
         if (window.CredizonaUI && typeof window.CredizonaUI.updateGastosTotalDisplay === "function") {
           window.CredizonaUI.updateGastosTotalDisplay();
@@ -2697,6 +2722,7 @@ document.addEventListener("DOMContentLoaded", function() {
             delete st._custom_expense_debt_excluded[String(customIdx)];
           }
         }
+        syncGastosMissingConfirmedAfterExpensesDeclared(st);
         window.guardarLocal();
         if (customField === "description" && window.CredizonaUI
             && typeof window.CredizonaUI.updateCustomExpenseClassificationUI === "function") {
@@ -3237,6 +3263,7 @@ document.addEventListener("DOMContentLoaded", function() {
           if (st._custom_expense_debt_excluded) {
             st._custom_expense_debt_excluded = {};
           }
+          syncGastosMissingConfirmedAfterExpensesDeclared(st);
           window.guardarLocal();
           window.CredizonaUI.renderAll();
         }
@@ -3253,6 +3280,7 @@ document.addEventListener("DOMContentLoaded", function() {
           if (st._custom_expense_debt_excluded) {
             delete st._custom_expense_debt_excluded[String(idxG)];
           }
+          syncGastosMissingConfirmedAfterExpensesDeclared(st);
           window.guardarLocal();
           if (window.CredizonaUI && typeof window.CredizonaUI.updateCustomExpenseClassificationUI === "function") {
             window.CredizonaUI.updateCustomExpenseClassificationUI(idxG);
@@ -3273,6 +3301,7 @@ document.addEventListener("DOMContentLoaded", function() {
           if (!st._custom_expense_debt_excluded) st._custom_expense_debt_excluded = {};
           st._custom_expense_debt_excluded[String(idxD)] = true;
           st.custom_expenses[idxD].classification_override = false;
+          syncGastosMissingConfirmedAfterExpensesDeclared(st);
           window.guardarLocal();
           if (window.CredizonaUI && typeof window.CredizonaUI.updateCustomExpenseClassificationUI === "function") {
             window.CredizonaUI.updateCustomExpenseClassificationUI(idxD);
