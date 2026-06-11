@@ -1973,7 +1973,6 @@ function _renderIncompleteHorizonHtml(diag, st) {
     + '<div style="margin-top:12px;font-size:12px;color:#8390b5;line-height:1.55;">'
     + "Después de completar tus gastos, Mi Plan podrá estimar mejor si conviene estabilizar, refinanciar o priorizar esta deuda."
     + "</div>"
-    + _horizonPlusPromoHtml(diag, st)
     + "</div>";
 }
 
@@ -2113,6 +2112,7 @@ function resolveDashboardCtaHierarchy(diag, st) {
 }
 
 function _horizonPlusPromoHtml(diag, st) {
+  // Sprint B3c — not rendered in horizon zone; preserved for future non-horizon surfaces.
   var hierarchy = resolveDashboardCtaHierarchy(diag, st);
   if (hierarchy.primary === "mideuda") {
     return '<div style="margin-top:12px;font-size:12px;color:#8390b5;line-height:1.55;">'
@@ -2266,7 +2266,6 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable sin estabilización previa</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Cuando el perfil está en estabilización crítica, primero hay que ordenar la situación y confirmar el saldo actualizado. Recién después se puede estimar un horizonte de recalificación.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Este diagnóstico se basa exclusivamente en la información que declaraste.</div>'
-      + _horizonPlusPromoHtml(diag, st)
       + _retryHorizonAddonHtml(diag, st)
       + '</div>';
   }
@@ -2293,7 +2292,6 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable con flujo mensual negativo</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-      + _horizonPlusPromoHtml(diag, st)
       + _retryHorizonAddonHtml(diag, st)
       + '</div>';
   }
@@ -2309,7 +2307,6 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:13px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:10px;">El total de deuda que declaraste supera tu ingreso mensual. Aunque no tengas pagos activos registrados, este nivel de deuda puede influir en una futura evaluación.</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Como este diagnóstico parte de una solicitud rechazada, conviene revisar si esta deuda tiene pagos, refinanciaciones o información adicional que todavía no fue incorporada.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-      + _horizonPlusPromoHtml(diag, st)
       + _retryHorizonAddonHtml(diag, st)
       + '</div>';
   }
@@ -2326,7 +2323,6 @@ function renderHorizonteRecalificacion(diag, st) {
         + '<div style="font-size:14px;color:rgba(255,255,255,.85);line-height:1.55;margin-bottom:8px;">'
         + "Completá la información pendiente para obtener una evaluación más precisa."
         + "</div>"
-        + _horizonPlusPromoHtml(diag, st)
         + _retryHorizonAddonHtml(diag, st)
         + "</div>";
     }
@@ -2336,7 +2332,6 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Hay señales positivas en la información que registraste, pero todavía faltan datos para estimar con confianza si estás en condiciones de presentar una nueva solicitud.</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Completá la información pendiente para obtener una evaluación más precisa.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-      + _horizonPlusPromoHtml(diag, st)
       + _retryHorizonAddonHtml(diag, st)
       + '</div>';
   }
@@ -2349,7 +2344,6 @@ function renderHorizonteRecalificacion(diag, st) {
     + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + horizonLabel + '</div>'
     + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Basado en la información declarada, sin nuevas deudas y siguiendo el plan. El historial del sistema financiero puede incluir elementos que esta simulación no alcanza a ver.</div>'
     + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-    + _horizonPlusPromoHtml(diag, st)
     + _retryHorizonAddonHtml(diag, st)
     + '</div>';
 }

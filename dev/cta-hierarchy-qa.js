@@ -83,8 +83,9 @@
   ok("A no MiDeuda as horizon primary when incomplete", htmlA.indexOf("Ordenar mi deuda con MiDeuda") < 0);
   ok("A incomplete horizon gastos-first", htmlA.indexOf("Completar gastos mensuales") >= 0);
   ok("A hero primary gastos on tab", renderTabPlan().indexOf("btn-retry-fallback-gastos") >= 0);
-  ok("A Plus demoted", htmlA.indexOf("También podés contrastar tu situación") >= 0
-    || htmlA.indexOf("Mi Plan Plus") >= 0);
+  ok("A no horizon Plus promo (B3c)", htmlA.indexOf("btn-conocer-plus-tab") < 0
+    && htmlA.indexOf("También podés contrastar tu situación") < 0
+    && htmlA.indexOf("Para confirmar este calculo") < 0);
   ok("A no retry CTA", htmlA.indexOf("btn-retry-application") < 0);
   ok("A no unlocked retry copy", htmlA.indexOf("Solicitar préstamo nuevamente") < 0
     && htmlA.indexOf("condiciones de revisar una nueva solicitud") < 0);

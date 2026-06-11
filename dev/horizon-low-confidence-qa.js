@@ -58,7 +58,7 @@
   ok("A replacement block", htmlA.indexOf("Necesitamos completar tu diagnóstico") >= 0);
   ok("A no optimistic label", htmlA.indexOf("Ya hay condiciones") < 0);
   ok("A no retry button", htmlA.indexOf("btn-retry-application") < 0);
-  ok("A Plus link", htmlA.indexOf("btn-conocer-plus-tab") >= 0);
+  ok("A no horizon Plus promo (B3c)", htmlA.indexOf("btn-conocer-plus-tab") < 0);
 
   var b = mkDiag({ interpretacion_v2: { confidence_level: "medium", severity_level: "bajo" } });
   var htmlB = renderHorizonteRecalificacion(b, st);
@@ -72,7 +72,7 @@
   var htmlC = renderHorizonteRecalificacion(c, st);
   ok("C replacement corto", htmlC.indexOf("Necesitamos completar tu diagnóstico") >= 0);
   ok("C no retry", htmlC.indexOf("btn-retry-application") < 0);
-  ok("C Plus link", htmlC.indexOf("btn-conocer-plus-tab") >= 0);
+  ok("C no horizon Plus promo (B3c)", htmlC.indexOf("btn-conocer-plus-tab") < 0);
 
   var d = mkDiag({
     horizonte: { banda: "largo", label: "Horizonte largo" },

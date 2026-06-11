@@ -127,7 +127,7 @@
   ok("E retry fallback Plus unchanged", horizon.indexOf("btn-retry-fallback-plus") >= 0
     || horizon.indexOf("btn-retry-fallback-gastos") >= 0
     || horizon.indexOf("btn-retry-fallback-deuda") >= 0);
-  ok("F horizon Plus promo unchanged", horizon.indexOf("btn-conocer-plus-tab") >= 0);
+  ok("F no horizon Plus promo (B3c)", horizon.indexOf("btn-conocer-plus-tab") < 0);
 
   ok("G detectHiddenFactorOpportunity preserved", /function detectHiddenFactorOpportunity\s*\(/.test(algoJs));
   ok("G GTM SHOWN event preserved", eventsJs.indexOf("HIDDEN_FACTOR_CTA_SHOWN") >= 0);

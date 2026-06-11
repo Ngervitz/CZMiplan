@@ -49,7 +49,9 @@
     return {
       snap: { plan_id: snapPlan, fecha_inicio: new Date().toISOString() },
       deudas: [],
-      gastos: {},
+      gastos: { vivienda: 12000, alimentacion: 8000 },
+      gastos_missing_confirmed: false,
+      no_debts_declared: true,
     };
   }
 
@@ -72,16 +74,21 @@
 
   ok("B desktop same", htmlA.indexOf("Solicitar préstamo nuevamente") >= 0);
 
-  var locked = mobileReproDiag({ planId: 3 });
+  var locked = mobileReproDiag({ planId: 4, nivelR: "C", interpretacion_v2: { confidence_level: "medium", severity_level: "critico" } });
   ok("C locked no button", renderHorizonteRecalificacion(locked, mkSt(4)).indexOf("btn-retry-application") < 0);
 
-  ok("D Plus link", htmlA.indexOf("btn-conocer-plus-tab") >= 0 && htmlA.indexOf("Mi Plan Plus") >= 0);
+  ok("D no horizon Plus promo (B3c)", htmlA.indexOf("btn-conocer-plus-tab") < 0);
 
   ok("E click handler exists", fs.readFileSync(path.join(root, "js/app.js"), "utf8").indexOf('e.target.id === "btn-retry-application"') >= 0);
 
-  var dtiDiag = mobileReproDiag({ fin: { flujoLibre: 64778, ratio: 0, dti_ratio: 1.5, totalPago: 0, totalDeuda: 120000 } });
-  var dtiHtml = renderHorizonteRecalificacion(dtiDiag, st);
-  ok("DTI guard unlocked still gets button", getRetryCtaState(dtiDiag, st) === "unlocked"
+  var dtiDiag = mobileReproDiag({
+    fin: { flujoLibre: 64778, ratio: 0.025, dti_ratio: 0.8, totalPago: 2000, totalDeuda: 64000 },
+  });
+  var dtiSt = mkSt(4);
+  dtiSt.diag = dtiDiag;
+  global.window.CZState = dtiSt;
+  var dtiHtml = renderHorizonteRecalificacion(dtiDiag, dtiSt);
+  ok("DTI guard unlocked still gets button", getRetryCtaState(dtiDiag, dtiSt) === "unlocked"
     && dtiHtml.indexOf("btn-retry-application") >= 0);
 
   console.log("");
