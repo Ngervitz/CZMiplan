@@ -41,6 +41,9 @@ window.CZState = {
 
   // Sprint 9 — incomplete data flags
   gastos_missing_confirmed:  false,
+  low_expenses_confirmed:    false,
+  low_expenses_confirmed_at: null,
+  low_expenses_confirmed_snapshot: null,
   financial_income_complete:   false,
   financial_profile_complete:  false,
   income_source:               null,
@@ -1027,6 +1030,9 @@ window.guardarLocal = function(extra) {
       herr:                    st.herr,
       // Sprint 9 — persist incomplete-data flag across sessions
       gastos_missing_confirmed: !!st.gastos_missing_confirmed,
+      low_expenses_confirmed: !!st.low_expenses_confirmed,
+      low_expenses_confirmed_at: st.low_expenses_confirmed_at || null,
+      low_expenses_confirmed_snapshot: st.low_expenses_confirmed_snapshot || null,
       financial_income_complete: !!st.financial_income_complete,
       financial_profile_complete: !!st.financial_profile_complete,
       income_source: st.income_source || null,
@@ -1231,6 +1237,8 @@ function next() {
 
     st.financial_expenses_complete = true;
 
+    invalidateLowExpensesConfirmedIfStale(st);
+
     var isFirstDiagnosis = !st.first_assessment_at;
     if (isFirstDiagnosis) {
       st.first_assessment_at = new Date().toISOString();
@@ -1313,6 +1321,9 @@ function resetear() {
 
     // Sprint 9 — incomplete data flags
     gastos_missing_confirmed:  false,
+    low_expenses_confirmed:    false,
+    low_expenses_confirmed_at: null,
+    low_expenses_confirmed_snapshot: null,
     financial_income_complete: false,
     financial_profile_complete: false,
     income_source:             null,
@@ -1759,6 +1770,155 @@ function ensureFinancialStepBeforeDashboard(st) {
   return true;
 }
 
+// PHASE 1 STUB: expenses treated as complete if total > 0
+// Known limitation: $500 on $100k passes as complete
+// Coverage thresholds introduced in Sprint B after user distribution analysis
+function getFinancialProfileCompleteness(st) {
+  st = st || window.CZState || {};
+
+  var ingreso = (typeof PRE !== "undefined" && PRE.ingreso != null ? PRE.ingreso : 0);
+  ingreso = parseFloat(ingreso) || 0;
+  var income = ingreso > 0 ? "complete" : "missing";
+
+  var debts;
+  if (st.no_debts_declared) {
+    debts = "no_debts_confirmed";
+  } else if (st.deudas && st.deudas.length > 0) {
+    debts = "declared";
+  } else {
+    debts = "missing";
+  }
+
+  var expenses;
+  if (st.financial_expenses_complete || getTotalMonthlyExpensesSafe(st) > 0) {
+    expenses = "complete";
+  } else if (st.gastos_missing_confirmed) {
+    expenses = "missing";
+  } else {
+    expenses = "missing";
+  }
+
+  var gastosTotal = getTotalMonthlyExpensesSafe(st);
+  var coverageRatio = ingreso > 0 ? gastosTotal / ingreso : null;
+
+  var lowExpensesConfirmed = !!st.low_expenses_confirmed;
+
+  var overall;
+  if (income === "missing") {
+    overall = "incomplete";
+  } else if (debts === "missing") {
+    overall = "incomplete";
+  } else if (expenses === "missing") {
+    overall = "incomplete";
+  } else {
+    overall = "complete";
+  }
+
+  return {
+    income: income,
+    debts: debts,
+    expenses: expenses,
+    overall: overall,
+    coverage_ratio: coverageRatio,
+    low_expenses_confirmed: lowExpensesConfirmed,
+  };
+}
+
+window._getFinancialProfileCompleteness = getFinancialProfileCompleteness;
+
+var LOW_EXPENSES_COVERAGE_TRIGGER = 0.08;
+var LOW_EXPENSES_MIN_INGRESO = 30000;
+
+function clearLowExpensesConfirmed(st) {
+  st = st || window.CZState || {};
+  st.low_expenses_confirmed = false;
+  st.low_expenses_confirmed_at = null;
+  st.low_expenses_confirmed_snapshot = null;
+}
+
+function buildLowExpensesConfirmedSnapshot(st) {
+  st = st || window.CZState || {};
+  var ingreso = getCanonicalIngreso();
+  var gastosTotal = getTotalMonthlyExpensesSafe(st);
+  return {
+    ingreso: ingreso,
+    gastos_total: gastosTotal,
+    coverage_ratio: ingreso > 0 ? gastosTotal / ingreso : null,
+  };
+}
+
+function invalidateLowExpensesConfirmedIfStale(st) {
+  st = st || window.CZState || {};
+  if (!st.low_expenses_confirmed || !st.low_expenses_confirmed_snapshot) return false;
+
+  var snap = st.low_expenses_confirmed_snapshot;
+  var curIng = getCanonicalIngreso();
+  var curGastos = getTotalMonthlyExpensesSafe(st);
+
+  if (snap.ingreso !== curIng || snap.gastos_total !== curGastos) {
+    clearLowExpensesConfirmed(st);
+    return true;
+  }
+  return false;
+}
+
+function isLowExpensesConfirmSuppressed(st, diag) {
+  st = st || window.CZState || {};
+  diag = diag || st.diag || null;
+
+  if (st.step !== 3) return true;
+
+  if (getCanonicalIngreso() <= 0) return true;
+
+  if (st.gastos_missing_confirmed) return true;
+
+  if (getTotalMonthlyExpensesSafe(st) <= 0) return true;
+
+  if (!st.no_debts_declared && (!st.deudas || st.deudas.length === 0)) return true;
+
+  if (typeof isIncompleteFinancialProfile === "function" && diag
+      && isIncompleteFinancialProfile(diag, st)) {
+    return true;
+  }
+
+  return false;
+}
+
+function shouldShowLowExpensesConfirmCard(st, diag) {
+  st = st || window.CZState || {};
+  diag = diag || st.diag || null;
+
+  invalidateLowExpensesConfirmedIfStale(st);
+
+  if (isLowExpensesConfirmSuppressed(st, diag)) return false;
+  if (st.low_expenses_confirmed) return false;
+
+  var ingreso = getCanonicalIngreso();
+  if (ingreso < LOW_EXPENSES_MIN_INGRESO) return false;
+
+  var coverage = getTotalMonthlyExpensesSafe(st) / ingreso;
+  if (coverage >= LOW_EXPENSES_COVERAGE_TRIGGER) return false;
+
+  return true;
+}
+
+function confirmLowExpenses(st) {
+  st = st || window.CZState || {};
+  st.low_expenses_confirmed = true;
+  st.low_expenses_confirmed_at = new Date().toISOString();
+  st.low_expenses_confirmed_snapshot = buildLowExpensesConfirmedSnapshot(st);
+  window.guardarLocal();
+  if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
+    window.CredizonaUI.renderAll();
+  }
+}
+
+window.shouldShowLowExpensesConfirmCard = shouldShowLowExpensesConfirmCard;
+window.confirmLowExpenses = confirmLowExpenses;
+window.invalidateLowExpensesConfirmedIfStale = invalidateLowExpensesConfirmedIfStale;
+window.isLowExpensesConfirmSuppressed = isLowExpensesConfirmSuppressed;
+window.clearLowExpensesConfirmed = clearLowExpensesConfirmed;
+
 async function init() {
   trackMiplanSessionStartedOnce();
 
@@ -1805,6 +1965,9 @@ async function init() {
     st.custom_expenses = [];
     st.saldoIni = 0;
     st.gastos_missing_confirmed = false;
+    st.low_expenses_confirmed = false;
+    st.low_expenses_confirmed_at = null;
+    st.low_expenses_confirmed_snapshot = null;
     st.financial_income_complete = false;
     st.financial_profile_complete = false;
     st.income_source = null;
@@ -1873,6 +2036,9 @@ async function init() {
     if (dataToUse.herr) st.herr = dataToUse.herr;
     // Sprint 9 — restore incomplete-data flag
     st.gastos_missing_confirmed = !!dataToUse.gastos_missing_confirmed;
+    st.low_expenses_confirmed = !!dataToUse.low_expenses_confirmed;
+    st.low_expenses_confirmed_at = dataToUse.low_expenses_confirmed_at || null;
+    st.low_expenses_confirmed_snapshot = dataToUse.low_expenses_confirmed_snapshot || null;
     st.declared_ingreso = dataToUse.declared_ingreso != null ? dataToUse.declared_ingreso : null;
     st.declared_nombre = dataToUse.declared_nombre || null;
     st.declared_laboral = dataToUse.declared_laboral || null;
@@ -1930,6 +2096,7 @@ async function init() {
         st.temporal.dashboard_generated_at = null;
       }
     }
+    invalidateLowExpensesConfirmedIfStale(st);
   } else {
     st._diagSource = "url_pending";
   }
@@ -2258,6 +2425,9 @@ function completeSeoIaOnboarding() {
   st.custom_expenses = [];
   st.saldoIni = 0;
   st.gastos_missing_confirmed = false;
+  st.low_expenses_confirmed = false;
+  st.low_expenses_confirmed_at = null;
+  st.low_expenses_confirmed_snapshot = null;
   st.financial_income_complete = false;
   st.financial_profile_complete = false;
   st.income_source = null;
@@ -2981,8 +3151,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Sprint 12.5 — editar gastos desde dashboard
       if (e.target.id === "btn-editar-gastos-dashboard"
-        || e.target.id === "btn-retry-fallback-gastos") {
+        || e.target.id === "btn-retry-fallback-gastos"
+        || e.target.id === "btn-low-expenses-add-gastos") {
         goToEditGastosFromDashboard();
+        return;
+      }
+
+      if (e.target.id === "btn-low-expenses-confirm") {
+        confirmLowExpenses(st);
         return;
       }
 
@@ -3821,6 +3997,8 @@ function guardarIngresoActualizado() {
   st.declared_ingreso = total;
   st.income_source = "user_update";
   st.financial_income_complete = true;
+
+  invalidateLowExpensesConfirmedIfStale(st);
 
   recalcDiagYGuardar();
 

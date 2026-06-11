@@ -146,8 +146,9 @@
     && tabPlanBlock.slice(tabPlanBlock.indexOf("_renderNumerosAccordionShell")).indexOf("+ renderHerramientas()") < 0);
 
   // CSS order
-  ok("CSS acciones-recom order 6", /dash-zone-acciones-recom\{order:6;\}/.test(css));
-  ok("CSS numeros order 8", /dash-zone-numeros\{order:8;\}/.test(css));
+  ok("CSS low-expenses-confirm order 3", /dash-zone-low-expenses-confirm\{order:3;\}/.test(css));
+  ok("CSS acciones-recom order 7", /dash-zone-acciones-recom\{order:7;\}/.test(css));
+  ok("CSS numeros order 9", /dash-zone-numeros\{order:9;\}/.test(css));
 
   console.log("\nSprint 2A QA: " + passed + "/" + (passed + failed) + " PASS");
   process.exit(failed > 0 ? 1 : 0);

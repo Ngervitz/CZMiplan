@@ -2713,6 +2713,34 @@ function _renderDashboardHeroCard(diag, st) {
 // =============================================================================
 // TAB: MI PLAN
 // =============================================================================
+function renderLowExpensesConfirmCard(diag, st) {
+  diag = diag || _diag();
+  st = st || _st();
+  if (typeof shouldShowLowExpensesConfirmCard !== "function") return "";
+  if (!shouldShowLowExpensesConfirmCard(st, diag)) return "";
+
+  return '<div class="plan-card cz-low-expenses-confirm-card" id="cz-low-expenses-confirm" '
+    + 'role="region" aria-label="Confirmación de gastos mensuales" '
+    + 'style="border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.03);margin-bottom:4px;">'
+    + '<div style="font-size:18px;font-weight:800;color:rgba(255,255,255,.92);line-height:1.35;margin-bottom:12px;">'
+    + "¿Tus gastos mensuales están completos?"
+    + "</div>"
+    + '<div style="font-size:14px;color:#8390b5;line-height:1.65;margin-bottom:18px;">'
+    + "Queremos asegurarnos de que tu diagnóstico refleje tu situación real.<br><br>"
+    + "Si te faltó agregar algún costo fijo o gasto habitual, podés sumarlo ahora. "
+    + "Si los datos son correctos, simplemente confirmalo."
+    + "</div>"
+    + '<button type="button" class="btn btn-primary" id="btn-low-expenses-add-gastos" '
+    + 'style="width:100%;height:52px;font-size:16px;box-sizing:border-box;margin-bottom:10px;">'
+    + "✏️ Agregar más gastos"
+    + "</button>"
+    + '<button type="button" class="btn btn-secondary" id="btn-low-expenses-confirm" '
+    + 'style="width:100%;height:44px;font-size:15px;box-sizing:border-box;opacity:.88;">'
+    + "✓ Mis gastos son correctos"
+    + "</button>"
+    + "</div>";
+}
+
 function renderTabPlan() {
   var diag   = _diag();
   var st     = _st();
@@ -2797,7 +2825,12 @@ function renderTabPlan() {
     + _dashIaSectionClose()
     + _dashZoneClose()
 
-    // 3 — Qué hacer ahora (+ horizonte, acciones)
+    // 3 — Low-expenses confirmation (dashboard-only contextual card)
+    + _dashZoneOpen("low-expenses-confirm", CZ_DASH_ZONE_GAP)
+    + renderLowExpensesConfirmCard(diag, st)
+    + _dashZoneClose()
+
+    // 4 — Qué hacer ahora (+ horizonte, acciones)
     + _dashZoneOpen("accion", CZ_DASH_ZONE_GAP, _incompleteProfile ? "dash-accion-compact" : "")
     + _dashIaSectionOpen(true, "accion")
     + _dashIaLabel("Qué hacer ahora", "accion")
@@ -5060,6 +5093,7 @@ window.CredizonaUI = {
   _filterAccionesForIncompleteProfile: _filterAccionesForIncompleteProfile,
   _renderTuSituacionHoy: _renderTuSituacionHoy,
   renderConfianzaDiagnostico: renderConfianzaDiagnostico,
+  renderLowExpensesConfirmCard: renderLowExpensesConfirmCard,
   isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
 };
 
