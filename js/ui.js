@@ -2732,7 +2732,6 @@ function _renderDashboardHeroCard(diag, st) {
   var plan = diag.plan || {};
   var heroProblema = _resolveZeroActiveDebtHeroProblema(diag, st, plan.problema);
   var statusLabel = resolvePlanStatusLabel(diag, st);
-  var finLabel = _scoreFinancieroLabel((diag.fin && diag.fin.scoreFinanciero) || null);
   var nextAction = _resolveHeroNextActionText(diag, st);
 
   return '<div class="cz-hero-card plan-card" id="cz-dashboard-hero" style="border-color:' + pc + '55;'
@@ -2746,11 +2745,6 @@ function _renderDashboardHeroCard(diag, st) {
     + "</div>"
     + '<div style="margin-bottom:14px;">'
     + _renderPlanStatusLabelHtml(statusLabel)
-    + "</div>"
-    + '<div style="font-size:15px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:10px;">'
-    + (finLabel.emoji ? finLabel.emoji + " " : "")
-    + "<strong style=\"color:rgba(255,255,255,.92);\">Situación financiera:</strong> "
-    + (finLabel.text || "")
     + "</div>"
     + (heroProblema
         ? '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:14px;">' + heroProblema + "</div>"

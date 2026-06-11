@@ -93,6 +93,10 @@
   ok("B complete hero visible", tabComplete.indexOf("cz-dashboard-hero") >= 0);
   ok("B plan unchanged", diagComplete.planId != null && diagComplete.plan && diagComplete.plan.titulo);
   ok("B motor scoreReset unchanged path", diagComplete.scoreReset != null);
+  var heroCompleteHtml = _renderDashboardHeroCard(diagComplete, window.CZState);
+  ok("B4b no Situación financiera in complete Hero", heroCompleteHtml.indexOf("Situación financiera:") < 0);
+  ok("B4b Hero has status pill", heroCompleteHtml.indexOf("Estado del plan:") >= 0);
+  ok("B4b composicion still has Situacion financiera", tabComplete.indexOf("Situacion financiera") >= 0);
 
   // C — Hierarchy order via CSS zones present
   ok("C dash-hierarchy wrapper", tabComplete.indexOf("dash-hierarchy") >= 0);

@@ -127,6 +127,12 @@
   ok("B no giant emoji in plan pill", !/font-size:20px[^>]*>[\s\S]{0,40}🔴/.test(tabHtml));
   ok("C no numeric score in plan card header", tabHtml.indexOf("score-big") < 0);
 
+  // B4b — Hero no longer shows Situación financiera; composicion unchanged
+  ok("B4b hero no Situación financiera label", heroHtml.indexOf("Situación financiera:") < 0);
+  ok("B4b composicion Situacion financiera preserved", tabHtml.indexOf("Situacion financiera") >= 0);
+  ok("B4b _scoreFinancieroLabel still defined", typeof _scoreFinancieroLabel === "function");
+  ok("B4b helper stable label", _scoreFinancieroLabel(28).text === "Estable");
+
   console.log("");
   console.log("PASSED: " + passed + "/" + (passed + failed));
   process.exit(failed > 0 ? 1 : 0);
