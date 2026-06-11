@@ -1799,6 +1799,40 @@ function isIncompleteFinancialProfile(diag, st) {
   return _hasNoDeclaredDebts(st) || _expensesMissing(st);
 }
 
+// Sprint B2e — Plan 1 complete profile with debt history but zero active debts.
+var _ZERO_ACTIVE_DEBT_HERO_PROBLEMA = "No registrás deudas activas actualmente. El objetivo es mantener un equilibrio saludable entre ingresos y gastos para conservar tu estabilidad financiera.";
+var _ZERO_ACTIVE_DEBT_NEXT_STEP = "Revisá periódicamente tus gastos y tu margen disponible para mantener una situación financiera saludable.";
+
+function _isZeroActiveDebtCompleteProfile(diag, st) {
+  diag = diag || {};
+  st = st || _st();
+  if (parseInt(diag.planId, 10) !== 1) return false;
+  if (isIncompleteFinancialProfile(diag, st)) return false;
+  var deudas = st.deudas || [];
+  if (deudas.length === 0) return false;
+  if (typeof deudasActivasParaCalculo !== "function") return false;
+  return deudasActivasParaCalculo(deudas).length === 0;
+}
+
+function _resolveZeroActiveDebtHeroProblema(diag, st, planProblema) {
+  if (_isZeroActiveDebtCompleteProfile(diag, st)) return _ZERO_ACTIVE_DEBT_HERO_PROBLEMA;
+  return planProblema || null;
+}
+
+function _resolveDashboardNextStepText(diag, st) {
+  diag = diag || {};
+  st = st || _st();
+  if (isIncompleteFinancialProfile(diag, st)) return null;
+  if (_isZeroActiveDebtCompleteProfile(diag, st)) return _ZERO_ACTIVE_DEBT_NEXT_STEP;
+  var iv2 = diag.interpretacion_v2;
+  if (!iv2 || !iv2.narrativa_jerarquizada) return null;
+  var nPaso = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
+  if (_shouldSuppressDebtOrderingCopy(diag, st, nPaso)) return null;
+  var finAccion = _finFromDiag(diag);
+  if ((finAccion.dti_ratio || 0) >= 1) return CZ_DTI_ACCION_PRIORITARIA;
+  return nPaso && nPaso.texto ? nPaso.texto : null;
+}
+
 function _incompleteFinancialScoreLabel() {
   return {
     valid: true,
@@ -2380,11 +2414,7 @@ function renderNarrativaInterpretacion(diag, st) {
   var nPrincipal = getNarrativaByTipo(iv2.narrativa_jerarquizada, "problema_principal");
   var nPresion   = getNarrativaByTipo(iv2.narrativa_jerarquizada, "presion_dominante");
   var nRecup     = getNarrativaByTipo(iv2.narrativa_jerarquizada, "recuperabilidad");
-  var nPaso      = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
-  var finNar     = _finFromDiag(diag);
-  var textoPaso  = ((finNar.dti_ratio || 0) >= 1)
-    ? CZ_DTI_ACCION_PRIORITARIA
-    : (nPaso ? nPaso.texto : null);
+  var textoPaso = _resolveDashboardNextStepText(diag, st);
   var injectedCtaHtml = _resolveDiagnosisInjectedCtaHtml(diag, st);
 
   var block = function(label, text) {
@@ -2668,17 +2698,7 @@ function _renderNumerosAccordionShell(innerHtml) {
 }
 
 function _resolveHeroNextActionText(diag, st) {
-  diag = diag || {};
-  st = st || _st();
-  if (isIncompleteFinancialProfile(diag, st)) return null;
-  var iv2 = diag.interpretacion_v2;
-  if (!iv2 || !iv2.narrativa_jerarquizada) return null;
-  if (isIncompleteFinancialProfile(diag, st) && _hasNoDeclaredDebts(st)) return null;
-  var nPaso = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
-  if (_shouldSuppressDebtOrderingCopy(diag, st, nPaso)) return null;
-  var finAccion = _finFromDiag(diag);
-  if ((finAccion.dti_ratio || 0) >= 1) return CZ_DTI_ACCION_PRIORITARIA;
-  return nPaso && nPaso.texto ? nPaso.texto : null;
+  return _resolveDashboardNextStepText(diag, st);
 }
 
 function _renderDashboardHeroCard(diag, st) {
@@ -2716,6 +2736,7 @@ function _renderDashboardHeroCard(diag, st) {
   }
 
   var plan = diag.plan || {};
+  var heroProblema = _resolveZeroActiveDebtHeroProblema(diag, st, plan.problema);
   var statusLabel = resolvePlanStatusLabel(diag, st);
   var finLabel = _scoreFinancieroLabel((diag.fin && diag.fin.scoreFinanciero) || null);
   var nextAction = _resolveHeroNextActionText(diag, st);
@@ -2737,8 +2758,8 @@ function _renderDashboardHeroCard(diag, st) {
     + "<strong style=\"color:rgba(255,255,255,.92);\">Situación financiera:</strong> "
     + (finLabel.text || "")
     + "</div>"
-    + (plan.problema
-        ? '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:14px;">' + plan.problema + "</div>"
+    + (heroProblema
+        ? '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:14px;">' + heroProblema + "</div>"
         : "")
     + (nextAction
         ? '<div style="padding:14px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;">'
@@ -2874,15 +2895,7 @@ function renderTabPlan() {
     // detectHiddenFactorOpportunity() preserved for future use outside this tab.
     + '<div style="display:none;height:0;overflow:hidden;">' + renderAccionPrioritaria(diag) + '</div>'
     + (function() {
-        var iv2 = diag.interpretacion_v2;
-        if (!iv2 || !iv2.narrativa_jerarquizada) return "";
-        if (isIncompleteFinancialProfile(diag, st)) return "";
-        var nPaso = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
-        if (_shouldSuppressDebtOrderingCopy(diag, st, nPaso)) return "";
-        var finAccion = _finFromDiag(diag);
-        var textoAccion = ((finAccion.dti_ratio || 0) >= 1)
-          ? CZ_DTI_ACCION_PRIORITARIA
-          : (nPaso && nPaso.texto ? nPaso.texto : null);
+        var textoAccion = _resolveDashboardNextStepText(diag, st);
         if (!textoAccion) return "";
         return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);'
           + _dashSectionAccentCss("accion") + '">'
@@ -5109,6 +5122,9 @@ window.CredizonaUI = {
   _renderProfileScoreLabelHtml: _renderProfileScoreLabelHtml,
   renderNarrativaInterpretacion: renderNarrativaInterpretacion,
   isIncompleteFinancialProfile: isIncompleteFinancialProfile,
+  _isZeroActiveDebtCompleteProfile: _isZeroActiveDebtCompleteProfile,
+  _resolveDashboardNextStepText: _resolveDashboardNextStepText,
+  _resolveZeroActiveDebtHeroProblema: _resolveZeroActiveDebtHeroProblema,
   _renderDashboardHeroCard: _renderDashboardHeroCard,
   _filterAccionesForIncompleteProfile: _filterAccionesForIncompleteProfile,
   _renderTuSituacionHoy: _renderTuSituacionHoy,
