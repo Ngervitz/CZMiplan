@@ -2942,8 +2942,8 @@ function renderTabPlan() {
     // 8 — Tus números (collapsed accordion)
     + _dashZoneOpen("numeros", CZ_DASH_ZONE_GAP)
     + _renderNumerosAccordionShell(
-        renderDashboardEditGastosCta(diag, st)
-        + renderRecommendedToolsSection(diag)
+        // Sprint B2f — Edit Expenses CTA lives only in Tu situación hoy (#btn-editar-gastos-situacion-hoy).
+        renderRecommendedToolsSection(diag)
         + renderRadiografia()
         + (function() {
         var sev = _severityFromDiag(diag);
