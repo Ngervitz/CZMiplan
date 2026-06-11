@@ -1345,6 +1345,14 @@ function renderDashboardEditGastosCta(diag, st) {
     + "</div>";
 }
 
+function _renderSituacionHoyEditGastosCta() {
+  return '<div style="margin-top:18px;max-width:100%;">'
+    + '<button type="button" class="btn btn-secondary" id="btn-editar-gastos-situacion-hoy" '
+    + 'style="width:100%;max-width:100%;height:52px;font-size:16px;box-sizing:border-box;">'
+    + "Editar gastos</button>"
+    + "</div>";
+}
+
 // Sprint 13.2 — resumen alineado con motor (deudasActivasParaCalculo)
 function _isDeudaPagadaParaConteo(d) {
   return typeof isDeudaPagada === "function"
@@ -2475,6 +2483,7 @@ function _renderTuSituacionHoy(diag, st) {
       + '<div style="padding:14px 16px;background:rgba(255,196,0,.08);border:1px solid rgba(255,196,0,.2);border-radius:12px;font-size:15px;color:#ffd447;font-weight:700;line-height:1.65;">'
       + "Próximo paso recomendado: completar tus gastos mensuales."
       + "</div>"
+      + _renderSituacionHoyEditGastosCta()
       + "</div>";
   }
 
@@ -2542,6 +2551,7 @@ function _renderTuSituacionHoy(diag, st) {
     + '<p style="font-size:16px;color:rgba(255,255,255,.92);line-height:1.65;margin:0 0 12px;">' + primaryText + "</p>"
     + '<p style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;margin:0;">' + consequenceText + "</p>"
     + secondaryHtml
+    + _renderSituacionHoyEditGastosCta()
     + "</div>";
 }
 

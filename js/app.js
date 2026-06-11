@@ -3183,6 +3183,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Sprint 12.5 — editar gastos desde dashboard
       if (e.target.id === "btn-editar-gastos-dashboard"
+        || e.target.id === "btn-editar-gastos-situacion-hoy"
         || e.target.id === "btn-retry-fallback-gastos"
         || e.target.id === "btn-low-expenses-add-gastos") {
         goToEditGastosFromDashboard();
