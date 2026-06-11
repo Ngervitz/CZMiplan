@@ -2870,13 +2870,8 @@ function renderTabPlan() {
     + _dashIaSectionOpen(true, "accion")
     + _dashIaLabel("Qué hacer ahora", "accion")
     + renderHorizonteRecalificacion(diag, st)
-    + (typeof detectHiddenFactorOpportunity === "function" && detectHiddenFactorOpportunity(diag)
-        ? '<div class="plan-card" id="cz-hf-cta" style="background:rgba(64,215,255,.05);border-color:rgba(64,215,255,.2);">'
-          + '<div style="font-size:13px;font-weight:800;color:#40d7ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">⚠️ Este diagnóstico se basa únicamente en la información que declaraste</div>'
-          + '<div style="font-size:16px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:20px;">Mi Plan Plus contrasta esta información con registros de BCU y Clearing para detectar diferencias, acreedores no declarados y otros factores que podrían estar afectando tu perfil financiero.</div>'
-          + '<button class="btn btn-primary" id="btn-hf-cta" style="width:100%;height:60px;font-size:18px;">Ver mi situación real</button>'
-          + '</div>'
-        : '')
+    // Sprint B3a — Hidden Factor inline card removed; dash-zone-plus is canonical Plus offer.
+    // detectHiddenFactorOpportunity() preserved for future use outside this tab.
     + '<div style="display:none;height:0;overflow:hidden;">' + renderAccionPrioritaria(diag) + '</div>'
     + (function() {
         var iv2 = diag.interpretacion_v2;
@@ -5077,18 +5072,8 @@ function renderAll() {
       });
     }
 
-    // Sprint 9 — fire hidden_factor_cta_shown exactly once per diagnosis session
-    var _diag3 = st.diag;
-    if (!st._hfCtaShown
-        && _diag3
-        && typeof detectHiddenFactorOpportunity === "function"
-        && detectHiddenFactorOpportunity(_diag3)) {
-      st._hfCtaShown = true;
-      var _iv2CtaShown = _diag3.interpretacion_v2 || {};
-      trackEvent(CZ_EVENT_NAMES.HIDDEN_FACTOR_CTA_SHOWN, {
-        cta_source: "hidden_factor",
-      });
-    }
+    // Sprint B3a — Hidden Factor dashboard card removed; do not fire SHOWN without visible CTA.
+    // detectHiddenFactorOpportunity() + HIDDEN_FACTOR_CTA_* events preserved for future surfaces.
   }
 
   if (st.step === 3 && typeof window.updateIngresoSaveButtonState === "function") {
