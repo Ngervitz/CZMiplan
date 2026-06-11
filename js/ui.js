@@ -1747,8 +1747,27 @@ function _hasMideudaRecommended(diag) {
   return !!(diag && diag.recommended_tools && diag.recommended_tools.indexOf("mideuda") >= 0);
 }
 
+function _totalMonthlyExpensesFromState(st) {
+  st = st || window.CZState || {};
+  var liveState = typeof window !== "undefined" ? window.CZState : null;
+  if (st === liveState && typeof getTotalMonthlyExpensesSafe === "function") {
+    return getTotalMonthlyExpensesSafe(st);
+  }
+  var base = typeof getCategoryGastosTotal === "function"
+    ? getCategoryGastosTotal(st.gastos || {})
+    : Object.keys(st.gastos || {}).reduce(function(sum, key) {
+        return sum + (parseFloat(st.gastos[key]) || 0);
+      }, 0);
+  if (st === liveState && typeof getCustomExpensesIncludedTotal === "function") {
+    return base + getCustomExpensesIncludedTotal();
+  }
+  return base;
+}
+
 function _expensesMissing(st) {
-  return !!(st && st.gastos_missing_confirmed);
+  st = st || {};
+  if (st.gastos_missing_confirmed) return true;
+  return _totalMonthlyExpensesFromState(st) <= 0;
 }
 
 function _hasDeclaredIncome(st) {

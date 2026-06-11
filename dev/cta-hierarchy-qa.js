@@ -92,13 +92,13 @@
   ok("C extreme debt: no expenses CTA in diagnosis", htmlAn.indexOf("btn-retry-fallback-gastos") < 0);
   ok("C extreme debt: gastos CTA in hero not horizon duplicate required", htmlA.indexOf("Completar gastos mensuales") >= 0);
 
-  // B — Profile 31, expenses complete
+  // B — Profile 31, empty gastos without skip flag (B1.1: expenses still missing)
   var diagB = runProfile31(false);
   var stB = window.CZState;
   var hB = resolveDashboardCtaHierarchy(diagB, stB);
   var htmlB = renderHorizonteRecalificacion(diagB, stB);
   ok("B MiDeuda primary", hB.primary === "mideuda");
-  ok("B no complete expenses secondary", hB.secondary == null);
+  ok("B complete expenses secondary when gastos empty", hB.secondary === "complete_expenses");
   ok("B no gastos fallback button", htmlB.indexOf("btn-retry-fallback-gastos") < 0);
   ok("B no retry CTA", htmlB.indexOf("btn-retry-application") < 0);
 
@@ -171,7 +171,7 @@
   ok("E retry button present", htmlE.indexOf("btn-retry-application") >= 0);
   ok("E no expenses CTA in diagnosis", renderNarrativaInterpretacion(diagE, window.CZState).indexOf("btn-retry-fallback-gastos") < 0);
 
-  // D (Plus priority) — no debt, retry blocked
+  // D (Plus secondary) — no debt, empty gastos, retry blocked (B1.1: gastos CTA wins over Plus-only)
   PRE.ingreso = 50000;
   window.CZState = {
     gastos: {},
@@ -183,7 +183,8 @@
   var diagPlus = calcularMotor();
   window.CZState.diag = diagPlus;
   var hPlus = resolveDashboardCtaHierarchy(diagPlus, window.CZState);
-  ok("D plus priority tier", hPlus.primary === "plus");
+  ok("D empty gastos primary complete_expenses not plus-only", hPlus.primary === "complete_expenses");
+  ok("D plus secondary when gastos empty", hPlus.secondary === "plus");
   ok("D no expenses in diagnosis", renderNarrativaInterpretacion(diagPlus, window.CZState).indexOf("btn-retry-fallback-gastos") < 0);
 
   // F — same button id / handler contract
