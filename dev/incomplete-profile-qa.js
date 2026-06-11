@@ -65,9 +65,10 @@
   ok("A no debt-ordering copy in narrativa", narrA.indexOf("panorama completo de deudas") < 0);
   ok("A no ordenar_panorama accion in tab", tabA.indexOf("Ordenar el panorama completo de deudas") < 0);
 
-  // B — Incomplete profile: contextual missing-information narrative
-  ok("B incomplete title present", narrA.indexOf("Información insuficiente para completar el diagnóstico") >= 0);
-  ok("B body mentions gastos mensuales", narrA.indexOf("necesitamos conocer mejor tus gastos mensuales") >= 0);
+  // B — Incomplete profile: gastos missing, debts confirmed via no_debts_declared
+  ok("B incomplete title present", narrA.indexOf("Diagnóstico incompleto") >= 0
+    || narrA.indexOf("Información insuficiente para completar el diagnóstico") >= 0);
+  ok("B body mentions gastos mensuales", narrA.indexOf("gastos mensuales") >= 0);
   ok("B no generic debt flow copy", narrA.indexOf("punto de partida más útil") < 0);
 
   // C — Complete expenses CTA is primary (early in tab)

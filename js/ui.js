@@ -1780,12 +1780,9 @@ function _hasDeclaredIncome(st) {
 
 function _hasNoDeclaredDebts(st) {
   st = st || {};
-  if (st.no_debts_declared) return true;
-  var deudas = st.deudas || [];
-  if (typeof deudasActivasParaCalculo === "function") {
-    return deudasActivasParaCalculo(deudas).length === 0;
-  }
-  return deudas.length === 0;
+  if (st.no_debts_declared) return false;
+  if (st.financial_debts_complete) return false;
+  return (st.deudas || []).length === 0;
 }
 
 function isIncompleteFinancialProfile(diag, st) {
