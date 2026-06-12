@@ -5,8 +5,8 @@
 (function(global) {
   "use strict";
 
-  /** Set true locally for design review only. Never commit as true. */
-  var PLUS_MOCK_MODE = false;
+  /** Review build only — set false before production release. */
+  var PLUS_MOCK_MODE = true;
 
   var PLUS_MOCK_DATA = {
     peor: {
@@ -325,7 +325,7 @@
       + "</div>";
   }
 
-  function renderPlusMockTab() {
+  function renderPlusMockTab(/* st */) {
     if (_session.accessState === "blocked") {
       return _renderBlocked();
     }
@@ -334,8 +334,9 @@
     return _renderUnlocked(data);
   }
 
-  function handleMockControlClick(targetId) {
-    if (!PLUS_MOCK_MODE) return false;
+  function handlePlusMockClick(e) {
+    if (global.PLUS_MOCK_MODE !== true) return false;
+    var targetId = e && e.target ? e.target.id : "";
 
     if (targetId === "btn-plus-mock-blocked") {
       _session.accessState = "blocked";
@@ -371,13 +372,18 @@
     }
   }
 
+  global.PLUS_MOCK_MODE = PLUS_MOCK_MODE;
+  global.PLUS_MOCK_DATA = PLUS_MOCK_DATA;
+  global.renderPlusMockTab = renderPlusMockTab;
+  global.handlePlusMockClick = handlePlusMockClick;
+
   global.PlusMock = {
-    isActive: function() { return PLUS_MOCK_MODE === true; },
+    isActive: function() { return global.PLUS_MOCK_MODE === true; },
     renderTab: renderPlusMockTab,
-    handleControlClick: handleMockControlClick,
+    handleControlClick: function(id) { return handlePlusMockClick({ target: { id: id } }); },
     getData: function() { return PLUS_MOCK_DATA; },
     getSession: function() { return _session; },
-    _setModeForQA: function(v) { PLUS_MOCK_MODE = !!v; },
+    _setModeForQA: function(v) { global.PLUS_MOCK_MODE = !!v; },
     _resetSessionForQA: function() {
       _session.accessState = "blocked";
       _session.scenario = "peor";

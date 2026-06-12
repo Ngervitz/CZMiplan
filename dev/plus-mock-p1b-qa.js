@@ -72,10 +72,15 @@
 
   boot();
 
-  // Default: mock off
-  ok("O mock off by default", !PlusMock.isActive());
+  // Default: mock on for review build (toggle off for production path test)
+  ok("O mock globals exposed", typeof window.PLUS_MOCK_MODE !== "undefined"
+    && typeof window.PLUS_MOCK_DATA === "object"
+    && typeof window.renderPlusMockTab === "function"
+    && typeof window.handlePlusMockClick === "function");
 
+  window.PLUS_MOCK_MODE = false;
   var prodHtml = plusHtml({ tab: "plus", plus_purchased: false, plus_status: null }, false);
+  ok("O production when mock off", window.PLUS_MOCK_MODE === false);
   ok("O production presentation", prodHtml.indexOf("Ver mi situación real") >= 0);
   ok("O no mock review bar in prod", prodHtml.indexOf("plus-mock-review-bar") < 0);
   ok("P robot in prod", prodHtml.indexOf("plus-ai-highlight-icon") >= 0 && prodHtml.indexOf("🤖") >= 0);

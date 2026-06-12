@@ -3683,8 +3683,10 @@ document.addEventListener("DOMContentLoaded", function() {
       }
 
       // P1b — Mi Plan Plus design mock (review-only; no state mutation)
-      if (typeof PlusMock !== "undefined" && PlusMock.handleControlClick
-        && PlusMock.handleControlClick(e.target.id)) {
+      if (typeof window !== "undefined"
+        && window.PLUS_MOCK_MODE === true
+        && typeof window.handlePlusMockClick === "function"
+        && window.handlePlusMockClick(e)) {
         return;
       }
 

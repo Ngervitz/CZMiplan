@@ -4045,11 +4045,12 @@ function renderPlusError() {
 }
 
 function renderTabPlus() {
-  if (typeof PlusMock !== "undefined" && PlusMock.isActive && PlusMock.isActive()) {
-    return PlusMock.renderTab();
-  }
-
   var st = _st();
+  if (typeof window !== "undefined"
+    && window.PLUS_MOCK_MODE === true
+    && typeof window.renderPlusMockTab === "function") {
+    return window.renderPlusMockTab(st);
+  }
   var status = st.plus_status;
 
   if (status === "PLUS_PROCESSING") return renderPlusProcessing();
