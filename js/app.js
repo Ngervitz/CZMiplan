@@ -84,6 +84,15 @@ window.CZState = {
   // Mi Plan dashboard — anchor for "Día X desde tu primera evaluación"
   first_assessment_at:       null,
 
+  // Sprint C1 — vertical profiling (CRM enrichment only; no motor impact)
+  vertical_housing_status:          null,
+  vertical_has_vehicle:             undefined,
+  vertical_has_health_coverage:     undefined,
+  vertical_has_education_expenses:  undefined,
+  vertical_profiling_opened:        false,
+  vertical_profiling_completion:    0,
+  vertical_profiling_completed:     false,
+
   // Business state — SEPARATE from UI step navigation
   // Only mutate via setRecoveryState(). Never set directly across files.
   user_recovery_state: null,
@@ -124,6 +133,27 @@ function _safeCelebration(opts) {
     window.triggerCelebration(opts);
   }
 }
+
+// Sprint C1 — vertical profiling completion (CRM / state only; no motor impact)
+function computeVerticalProfilingCompletion(st) {
+  st = st || {};
+  return (
+    (st.vertical_housing_status != null ? 1 : 0)
+    + (st.vertical_has_vehicle !== undefined && st.vertical_has_vehicle !== null ? 1 : 0)
+    + (st.vertical_has_health_coverage !== undefined && st.vertical_has_health_coverage !== null ? 1 : 0)
+    + (st.vertical_has_education_expenses !== undefined && st.vertical_has_education_expenses !== null ? 1 : 0)
+  );
+}
+
+function syncVerticalProfilingCompletion(st) {
+  st = st || window.CZState || {};
+  st.vertical_profiling_completion = computeVerticalProfilingCompletion(st);
+  st.vertical_profiling_completed = st.vertical_profiling_completion === 4;
+  return st.vertical_profiling_completion;
+}
+
+window.computeVerticalProfilingCompletion = computeVerticalProfilingCompletion;
+window.syncVerticalProfilingCompletion = syncVerticalProfilingCompletion;
 
 function _maybeCelebratePositiveFlow(st, prevFlujo) {
   if (!st || st._celebratedPositiveFlow) return;
@@ -1057,6 +1087,13 @@ window.guardarLocal = function(extra) {
       // Sprint 10.1 — persist feedback suggestions
       feedback_suggestions:     st.feedback_suggestions || [],
       first_assessment_at:      st.first_assessment_at || null,
+      vertical_housing_status:          st.vertical_housing_status != null ? st.vertical_housing_status : null,
+      vertical_has_vehicle:             st.vertical_has_vehicle !== undefined ? st.vertical_has_vehicle : null,
+      vertical_has_health_coverage:     st.vertical_has_health_coverage !== undefined ? st.vertical_has_health_coverage : null,
+      vertical_has_education_expenses:  st.vertical_has_education_expenses !== undefined ? st.vertical_has_education_expenses : null,
+      vertical_profiling_opened:        !!st.vertical_profiling_opened,
+      vertical_profiling_completion:    st.vertical_profiling_completion != null ? st.vertical_profiling_completion : 0,
+      vertical_profiling_completed:     !!st.vertical_profiling_completed,
       fecha:                   new Date().toISOString(),
     }, extra)));
   } catch (e) {}
@@ -1338,6 +1375,15 @@ function resetear() {
     _showGastosWarning:        false,
     _hfCtaShown:               false,
     _gastosWarningTracked:     false,
+
+    // Sprint C1 — vertical profiling (CRM only)
+    vertical_housing_status:          null,
+    vertical_has_vehicle:             undefined,
+    vertical_has_health_coverage:     undefined,
+    vertical_has_education_expenses:  undefined,
+    vertical_profiling_opened:        false,
+    vertical_profiling_completion:    0,
+    vertical_profiling_completed:     false,
 
     // Sprint 10 — Mi Plan in-app legal consent
     consent:               null,
@@ -2110,6 +2156,28 @@ async function init() {
     // Sprint 10.1 — restore feedback suggestions
     if (dataToUse.feedback_suggestions) st.feedback_suggestions = dataToUse.feedback_suggestions;
     if (dataToUse.first_assessment_at) st.first_assessment_at = dataToUse.first_assessment_at;
+    if (dataToUse.vertical_housing_status != null) {
+      st.vertical_housing_status = dataToUse.vertical_housing_status;
+    } else {
+      st.vertical_housing_status = null;
+    }
+    if (dataToUse.vertical_has_vehicle !== undefined) {
+      st.vertical_has_vehicle = dataToUse.vertical_has_vehicle;
+    } else {
+      st.vertical_has_vehicle = undefined;
+    }
+    if (dataToUse.vertical_has_health_coverage !== undefined) {
+      st.vertical_has_health_coverage = dataToUse.vertical_has_health_coverage;
+    } else {
+      st.vertical_has_health_coverage = undefined;
+    }
+    if (dataToUse.vertical_has_education_expenses !== undefined) {
+      st.vertical_has_education_expenses = dataToUse.vertical_has_education_expenses;
+    } else {
+      st.vertical_has_education_expenses = undefined;
+    }
+    st.vertical_profiling_opened = !!dataToUse.vertical_profiling_opened;
+    syncVerticalProfilingCompletion(st);
 
     if (hasCompletedFinancialInputs(st)) {
       st.step = 3;
@@ -3039,6 +3107,32 @@ document.addEventListener("DOMContentLoaded", function() {
         var dashBody = dashAcc.nextElementSibling;
         if (dashBody) dashBody.classList.toggle("open");
         dashAcc.setAttribute("aria-expanded", dashAcc.classList.contains("open") ? "true" : "false");
+        return;
+      }
+
+      // Sprint C1 — vertical profiling block (step 2 only; CRM enrichment)
+      var verticalToggle = e.target.closest("#btn-vertical-profiling-toggle");
+      if (verticalToggle) {
+        st.vertical_profiling_opened = true;
+        syncVerticalProfilingCompletion(st);
+        window.guardarLocal();
+        window.CredizonaUI.renderAll();
+        return;
+      }
+
+      var verticalField = e.target.getAttribute("data-vertical-field");
+      if (verticalField) {
+        var rawVal = e.target.getAttribute("data-vertical-val");
+        if (verticalField === "vertical_housing_status") {
+          st.vertical_housing_status = rawVal;
+        } else if (rawVal === "true") {
+          st[verticalField] = true;
+        } else if (rawVal === "false") {
+          st[verticalField] = false;
+        }
+        syncVerticalProfilingCompletion(st);
+        window.guardarLocal();
+        window.CredizonaUI.renderAll();
         return;
       }
 

@@ -292,6 +292,31 @@ function buildCRMData(motor) {
       : [],
     partner_signals: buildPartnerSignalsCrm(motor),
     mideuda: buildMideudaCrmBlock(st, motor),
+
+    // Sprint C1 — vertical profiling (optional step-2 enrichment; no motor impact)
+    vertical_housing_status: st.vertical_housing_status || null,
+    vertical_has_vehicle: st.vertical_has_vehicle !== undefined
+      ? st.vertical_has_vehicle
+      : null,
+    vertical_has_health_coverage: st.vertical_has_health_coverage !== undefined
+      ? st.vertical_has_health_coverage
+      : null,
+    vertical_has_education_expenses: st.vertical_has_education_expenses !== undefined
+      ? st.vertical_has_education_expenses
+      : null,
+    vertical_profiling_completion: (
+      (st.vertical_housing_status != null ? 1 : 0)
+      + (st.vertical_has_vehicle !== undefined && st.vertical_has_vehicle !== null ? 1 : 0)
+      + (st.vertical_has_health_coverage !== undefined && st.vertical_has_health_coverage !== null ? 1 : 0)
+      + (st.vertical_has_education_expenses !== undefined && st.vertical_has_education_expenses !== null ? 1 : 0)
+    ),
+    vertical_profiling_completed: (
+      (st.vertical_housing_status != null ? 1 : 0)
+      + (st.vertical_has_vehicle !== undefined && st.vertical_has_vehicle !== null ? 1 : 0)
+      + (st.vertical_has_health_coverage !== undefined && st.vertical_has_health_coverage !== null ? 1 : 0)
+      + (st.vertical_has_education_expenses !== undefined && st.vertical_has_education_expenses !== null ? 1 : 0)
+    ) === 4,
+    vertical_profiling_opened: st.vertical_profiling_opened || false,
   };
 }
 

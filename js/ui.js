@@ -429,6 +429,72 @@ function renderGastosEducacionBlock() {
   return html + "</div>";
 }
 
+function _renderVerticalProfilingChipGroup(field, opts, curValue) {
+  return '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">'
+    + opts.map(function(o) {
+        var active = curValue === o.v;
+        return '<button type="button"'
+          + ' data-vertical-field="' + field + '"'
+          + ' data-vertical-val="' + String(o.v) + '"'
+          + ' style="padding:8px 14px;border-radius:999px;border:1.5px solid '
+          + (active ? "rgba(64,215,255,.5)" : "rgba(255,255,255,.1)") + ";background:"
+          + (active ? "rgba(64,215,255,.08)" : "transparent") + ";color:"
+          + (active ? "#40d7ff" : "rgba(255,255,255,.65)") + ";font-size:13px;font-weight:"
+          + (active ? "700" : "500") + ';cursor:pointer;">'
+          + o.l + "</button>";
+      }).join("")
+    + "</div>";
+}
+
+function renderVerticalProfilingBlock() {
+  var st = _st();
+  var opened = !!st.vertical_profiling_opened;
+  var html = '<div id="vertical-profiling-block" style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.08);">'
+    + '<button type="button" id="btn-vertical-profiling-toggle" style="display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:0;cursor:pointer;text-align:left;">'
+    + '<span style="font-size:12px;color:#8390b5;line-height:1;">' + (opened ? "▲" : "▼") + "</span>"
+    + '<span style="font-size:14px;font-weight:700;color:rgba(255,255,255,.75);">Personalizá tus recomendaciones (opcional)</span>'
+    + "</button>";
+
+  if (opened) {
+    html += '<div id="vertical-profiling-body" style="margin-top:14px;">'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.6;margin-bottom:18px;">'
+      + "Ayudanos a entender mejor tu situación para mostrarte herramientas, beneficios y oportunidades relevantes."
+      + "</div>"
+      + '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.82);margin-bottom:4px;">¿Cómo es tu vivienda?</div>'
+      + _renderVerticalProfilingChipGroup("vertical_housing_status", [
+          { v: "rent", l: "Alquilo" },
+          { v: "mortgage", l: "Hipoteca" },
+          { v: "own_family", l: "Propia/Familiar" },
+        ], st.vertical_housing_status || null)
+      + "</div>"
+      + '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.82);margin-bottom:4px;">¿Tenés vehículo propio?</div>'
+      + _renderVerticalProfilingChipGroup("vertical_has_vehicle", [
+          { v: true, l: "Sí" },
+          { v: false, l: "No" },
+        ], st.vertical_has_vehicle !== undefined ? st.vertical_has_vehicle : null)
+      + "</div>"
+      + '<div style="margin-bottom:16px;">'
+      + '<div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.82);margin-bottom:4px;">¿Pagás mutualista o seguro médico?</div>'
+      + _renderVerticalProfilingChipGroup("vertical_has_health_coverage", [
+          { v: true, l: "Sí" },
+          { v: false, l: "No" },
+        ], st.vertical_has_health_coverage !== undefined ? st.vertical_has_health_coverage : null)
+      + "</div>"
+      + '<div style="margin-bottom:4px;">'
+      + '<div style="font-size:14px;font-weight:700;color:rgba(255,255,255,.82);margin-bottom:4px;">¿Pagás colegio privado o universidad?</div>'
+      + _renderVerticalProfilingChipGroup("vertical_has_education_expenses", [
+          { v: true, l: "Sí" },
+          { v: false, l: "No" },
+        ], st.vertical_has_education_expenses !== undefined ? st.vertical_has_education_expenses : null)
+      + "</div>"
+      + "</div>";
+  }
+
+  return html + "</div>";
+}
+
 function updateGastosCategoryInsights() {
   var ingreso = PRE.ingreso || 0;
   var gastos  = _st().gastos || {};
@@ -578,6 +644,7 @@ function renderGastos() {
     + '<button type="button" class="btn btn-secondary" id="btn-agregar-gasto-custom" style="width:100%;height:60px;font-size:17px;margin-top:18px;">Agregar otro gasto</button>'
     + '</div>'
     + '<div id="gastos-educacion-block">' + renderGastosEducacionBlock() + '</div>'
+    + renderVerticalProfilingBlock()
     + '</div>';
 
   // Sprint 9 — inline warning when user tries to continue with no gastos
@@ -5138,6 +5205,7 @@ window.CredizonaUI = {
   _resolveDashboardNextStepText: _resolveDashboardNextStepText,
   _resolveZeroActiveDebtHeroProblema: _resolveZeroActiveDebtHeroProblema,
   _renderDashboardHeroCard: _renderDashboardHeroCard,
+  renderVerticalProfilingBlock: renderVerticalProfilingBlock,
   _shouldShowZeroPaymentDebtClarification: _shouldShowZeroPaymentDebtClarification,
   _ZERO_PAYMENT_DEBT_CLARIFICATION: _ZERO_PAYMENT_DEBT_CLARIFICATION,
   _filterAccionesForIncompleteProfile: _filterAccionesForIncompleteProfile,
