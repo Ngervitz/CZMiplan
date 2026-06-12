@@ -61,7 +61,9 @@
   ok("A Plus tab has tab-btn-plus class", tabsHtml.indexOf("tab-btn-plus") >= 0
     && tabsHtml.indexOf('data-tab="plus"') >= 0);
   ok("A plan/deudas tabs lack tab-btn-plus",
-    (tabsHtml.match(/tab-btn-plus/g) || []).length === 1);
+    (tabsHtml.match(/data-tab="plus"/g) || []).length === 1
+    && tabsHtml.indexOf('data-tab="plan"') >= 0
+    && tabsHtml.indexOf('data-tab="deudas"') >= 0);
   ok("A tab-plus-icon present", tabsHtml.indexOf("tab-plus-icon") >= 0);
 
   ok("B tab-btn-plus uses existing tab-btn base", css.indexOf(".tab-btn-plus{") >= 0

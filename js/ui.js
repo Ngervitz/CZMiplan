@@ -1515,9 +1515,8 @@ function renderDeudasResumen(deudas) {
     + "</div></div>";
 }
 
-function renderDashboard() {
-  var st  = _st();
-  var tab = st.tab || "plan";
+function _renderTabsNav(activeTab) {
+  var tab = activeTab || "plan";
   if (tab === "ia") tab = "plan";
 
   var TABS = [
@@ -1526,16 +1525,41 @@ function renderDashboard() {
     { id: "plus",   l: "Mi Plan Plus", icon: "★" },
   ];
 
+  var plusNav = (typeof getPlusTabNavDisplay === "function") ? getPlusTabNavDisplay() : null;
+
   return '<div class="tabs">'
     + TABS.map(function(t) {
-        var plusClass = t.id === "plus" ? " tab-btn-plus" : "";
-        var iconHtml = t.id === "plus"
-          ? '<span class="tab-plus-icon" aria-hidden="true">' + t.icon + "</span>"
-          : t.icon;
+        if (t.id !== "plus") {
+          return '<button class="tab-btn tab-nav-item' + (tab === t.id ? " active" : "") + '" data-tab="' + t.id + '">'
+            + t.icon + " " + t.l + "</button>";
+        }
+        var plusLabel = plusNav ? plusNav.label : t.l;
+        var plusIcon = plusNav ? plusNav.icon : t.icon;
+        var plusClass = " tab-btn-plus";
+        if (plusNav && plusNav.locked) plusClass += " tab-btn-plus-locked";
+        if (plusNav && plusNav.unlocked) plusClass += " tab-btn-plus-unlocked-state";
         return '<button class="tab-btn tab-nav-item' + plusClass + (tab === t.id ? " active" : "") + '" data-tab="' + t.id + '">'
-          + iconHtml + " " + t.l + "</button>";
+          + '<span class="tab-plus-icon" aria-hidden="true">' + plusIcon + "</span> "
+          + plusLabel + "</button>";
       }).join("")
-    + '</div><div id="tab-content"></div>';
+    + "</div>";
+}
+
+function syncTabsNav() {
+  var st = _st();
+  if (st.step !== 3) return;
+  var tabsEl = document.querySelector(".tabs");
+  if (!tabsEl) return;
+  tabsEl.outerHTML = _renderTabsNav(st.tab || "plan");
+  bindTabEvents();
+}
+
+function renderDashboard() {
+  var st  = _st();
+  var tab = st.tab || "plan";
+  if (tab === "ia") tab = "plan";
+
+  return _renderTabsNav(tab) + '<div id="tab-content"></div>';
 }
 
 function renderTab() {
@@ -5187,6 +5211,7 @@ function renderAll() {
 window.CredizonaUI = {
   renderAll: renderAll,
   renderTab: renderTab,
+  syncTabsNav: syncTabsNav,
   expandAccionesRecomendadas: function() { _accionesRecomExpand = true; },
   toggleDeudasHistorial: function() {
     _deudasHistorialExpand = !_deudasHistorialExpand;

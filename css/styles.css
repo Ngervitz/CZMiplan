@@ -346,6 +346,20 @@ select option{background:#0a1026;}
     background:rgba(64,215,255,.08);
   }
 }
+.tab-btn-plus-locked{
+  border-color:rgba(64,215,255,.36);
+  background:rgba(64,215,255,.07);
+}
+.tab-btn-plus-locked .tab-plus-icon{
+  font-size:14px;
+}
+.tab-btn-plus-locked.active{
+  border-color:rgba(64,215,255,.5);
+  box-shadow:0 0 18px rgba(61,220,255,.14);
+}
+.tab-btn-plus-unlocked-state .tab-plus-icon{
+  color:rgba(64,215,255,.92);
+}
 @media (max-width:430px){
   .tab-btn-plus{
     padding:13px 6px;
@@ -1626,7 +1640,11 @@ body.modal-open{
 }
 .plus-mock-price{
   font-size:22px;font-weight:900;color:rgba(255,255,255,.95);
-  text-align:center;line-height:1.2;margin:0 0 6px;letter-spacing:-.02em;
+  text-align:center;line-height:1.2;margin:0 0 4px;letter-spacing:-.02em;
+}
+.plus-mock-price-once{
+  font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  color:rgba(64,215,255,.85);text-align:center;margin:0 0 8px;line-height:1.35;
 }
 .plus-mock-price-access{
   font-size:13px;font-weight:700;color:rgba(255,255,255,.55);

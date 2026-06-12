@@ -272,6 +272,7 @@
         + '<span class="plus-mock-cta-icon" aria-hidden="true">🔒</span>'
         + "Ver mi situación financiera real</button>"
         + '<p class="plus-mock-price">' + _esc(CZ_PLUS_PRICE_DISPLAY) + "</p>"
+        + '<p class="plus-mock-price-once">Pago único</p>'
         + '<p class="plus-mock-price-access">Acceso completo al informe</p>'
         + _ctaIncludesList()
         + '<p class="plus-mock-reassurance">Disponible inmediatamente luego de completar la verificación.</p>'
@@ -430,9 +431,22 @@
     return false;
   }
 
+  function getPlusTabNavDisplay() {
+    if (global.PLUS_MOCK_MODE !== true) return null;
+    if (_session.accessState === "blocked") {
+      return { icon: "🔒", label: "Mi Plan Plus", locked: true };
+    }
+    return { icon: "★", label: "Mi Plan Plus Activo", unlocked: true };
+  }
+
   function _rerender() {
-    if (global.CredizonaUI && typeof global.CredizonaUI.renderTab === "function") {
-      global.CredizonaUI.renderTab();
+    if (global.CredizonaUI) {
+      if (typeof global.CredizonaUI.syncTabsNav === "function") {
+        global.CredizonaUI.syncTabsNav();
+      }
+      if (typeof global.CredizonaUI.renderTab === "function") {
+        global.CredizonaUI.renderTab();
+      }
     }
   }
 
@@ -441,6 +455,7 @@
   global.CZ_PLUS_PRICE_DISPLAY = CZ_PLUS_PRICE_DISPLAY;
   global.renderPlusMockTab = renderPlusMockTab;
   global.handlePlusMockClick = handlePlusMockClick;
+  global.getPlusTabNavDisplay = getPlusTabNavDisplay;
 
   global.PlusMock = {
     isActive: function() { return global.PLUS_MOCK_MODE === true; },

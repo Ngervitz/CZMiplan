@@ -74,7 +74,7 @@
   ok("E price via CZ_PLUS_PRICE_DISPLAY", window.CZ_PLUS_PRICE_DISPLAY === "UYU 1.290 IVA incluido"
     && blocked.indexOf("UYU 1.290 IVA incluido") >= 0
     && (plusMockSrc.match(/UYU 1\.290/g) || []).length === 1);
-  ok("E no Pago único", blocked.indexOf("Pago único") < 0);
+  ok("E pago unico microcopy", blocked.indexOf("Pago único") >= 0);
   ok("E acceso completo", blocked.indexOf("Acceso completo al informe") >= 0);
 
   ok("F hero copy", blocked.indexOf("¿Tu situación financiera real coincide con lo que recordás?") >= 0
