@@ -4045,6 +4045,10 @@ function renderPlusError() {
 }
 
 function renderTabPlus() {
+  if (typeof PlusMock !== "undefined" && PlusMock.isActive && PlusMock.isActive()) {
+    return PlusMock.renderTab();
+  }
+
   var st = _st();
   var status = st.plus_status;
 

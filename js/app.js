@@ -3682,6 +3682,12 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
+      // P1b — Mi Plan Plus design mock (review-only; no state mutation)
+      if (typeof PlusMock !== "undefined" && PlusMock.handleControlClick
+        && PlusMock.handleControlClick(e.target.id)) {
+        return;
+      }
+
       // Sprint 14.0 — Mi Plan Plus tab CTA
       if (e.target.id === "btn-plus-obtener-informe") {
         onPlusCtaClick();

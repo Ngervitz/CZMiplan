@@ -1407,3 +1407,109 @@ body.modal-open{
 @keyframes shimmer{0%{background-position:-400px 0;}100%{background-position:400px 0;}}
 .fade{animation:fadeUp .3s ease both;}
 .skeleton{background:linear-gradient(90deg,#0f1738 25%,#1a2848 50%,#0f1738 75%);background-size:400px 100%;animation:shimmer 1.4s infinite;border-radius:12px;}
+
+/* P1b — Mi Plan Plus V2 design mock (review-only) */
+.plus-mock-review-bar{
+  margin-bottom:14px;padding:14px 16px;max-width:100%;box-sizing:border-box;
+  background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.14);border-radius:14px;
+}
+.plus-mock-review-label{
+  font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:rgba(255,255,255,.38);margin-bottom:10px;
+}
+.plus-mock-segment{
+  display:flex;flex-wrap:wrap;gap:8px;max-width:100%;
+}
+.plus-mock-scenario-segment{margin-top:10px;}
+.plus-mock-segment-btn{
+  flex:1 1 auto;min-width:0;max-width:100%;
+  padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);
+  background:rgba(255,255,255,.04);color:rgba(255,255,255,.72);
+  font-size:12px;font-weight:700;line-height:1.35;cursor:pointer;
+  font-family:inherit;box-sizing:border-box;word-break:break-word;text-align:center;
+}
+.plus-mock-segment-btn-active{
+  border-color:rgba(96,165,250,.35);background:rgba(96,165,250,.12);color:rgba(255,255,255,.92);
+}
+.plus-mock-unlocked{max-width:100%;box-sizing:border-box;}
+.plus-mock-verification-status{
+  display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.025);
+  max-width:100%;box-sizing:border-box;
+}
+.plus-mock-verification-emoji{font-size:22px;line-height:1;flex-shrink:0;}
+.plus-mock-verification-title{
+  font-size:14px;font-weight:800;color:rgba(255,255,255,.9);margin-bottom:4px;line-height:1.35;
+}
+.plus-mock-verification-msg{
+  font-size:13px;color:rgba(255,255,255,.58);line-height:1.5;margin:0;word-break:break-word;
+}
+.plus-mock-coincidence{text-align:center;max-width:100%;}
+.plus-mock-coincidence-label{
+  font-size:13px;font-weight:800;color:rgba(255,255,255,.65);margin-bottom:8px;
+  text-transform:uppercase;letter-spacing:.04em;
+}
+.plus-mock-coincidence-pct{
+  font-size:48px;font-weight:900;color:rgba(255,255,255,.95);line-height:1;margin-bottom:12px;
+  letter-spacing:-1px;
+}
+.plus-mock-coincidence-pct span{font-size:24px;font-weight:800;opacity:.75;}
+.plus-mock-diag-compare{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;max-width:100%;
+}
+@media(max-width:640px){
+  .plus-mock-diag-compare{grid-template-columns:1fr;}
+}
+.plus-mock-diag-card{margin-bottom:0;}
+.plus-mock-diag-plan{
+  font-size:28px;font-weight:900;color:rgba(255,255,255,.92);line-height:1.1;margin-bottom:8px;
+}
+.plus-mock-verified-card{
+  border:1px solid rgba(96,165,250,.28) !important;
+  background:rgba(96,165,250,.07) !important;
+  box-shadow:0 0 24px rgba(96,165,250,.1);
+}
+.plus-mock-diag-message{
+  font-size:13px;color:rgba(255,255,255,.55);line-height:1.55;margin:0 0 16px;
+  padding:0 2px;word-break:break-word;
+}
+.plus-mock-findings{margin-bottom:0;}
+.plus-mock-table-wrap{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;}
+.plus-mock-compare-table{
+  width:100%;min-width:280px;border-collapse:collapse;font-size:13px;
+}
+.plus-mock-compare-table th,
+.plus-mock-compare-table td{
+  padding:10px 8px;text-align:left;border-bottom:1px solid rgba(255,255,255,.08);
+  color:rgba(255,255,255,.72);word-break:break-word;
+}
+.plus-mock-compare-table th{
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;
+  color:rgba(255,255,255,.45);
+}
+.plus-mock-compare-table td:last-child{color:rgba(96,210,255,.88);font-weight:700;}
+.plus-mock-priorities{
+  margin:0;padding-left:20px;font-size:14px;color:rgba(255,255,255,.72);line-height:1.55;
+}
+.plus-mock-priorities li{margin-bottom:8px;word-break:break-word;}
+.plus-mock-ia-preview{margin-bottom:12px;}
+.plus-mock-ia-preview .plus-report-p:last-child{margin-bottom:0;}
+.plus-mock-helper{
+  font-size:12px;color:rgba(255,255,255,.38);line-height:1.5;margin:8px 0 0;text-align:center;
+  word-break:break-word;
+}
+.plus-mock-docs{margin-top:4px;max-width:100%;}
+.plus-mock-docs-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:100%;
+}
+@media(max-width:768px){
+  .plus-mock-docs-grid{grid-template-columns:1fr;}
+}
+.plus-mock-doc-card{margin-bottom:0;text-align:center;}
+.plus-mock-doc-icon{font-size:28px;line-height:1;margin-bottom:8px;}
+.plus-mock-doc-card strong{
+  display:block;font-size:14px;color:rgba(255,255,255,.9);margin-bottom:8px;
+}
+.plus-mock-doc-btn{
+  width:100%;height:44px;font-size:14px;font-weight:700;margin-top:4px;
+}
