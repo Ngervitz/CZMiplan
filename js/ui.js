@@ -317,7 +317,7 @@ function renderIngreso() {
     + '</div>'
 
     + '<div style="margin-top:18px;">'
-    + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:8px;">¿Cuál es tu ingreso líquido mensual?</label>'
+    + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:8px;">¿Cuánto dinero te entra aproximadamente por mes?</label>'
     + '<div style="position:relative;max-width:100%;">'
     + '<span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
     + _profileFieldInput("number", "inp-ingreso-mensual", {
@@ -326,6 +326,7 @@ function renderIngreso() {
         style: "padding-left:36px;",
       })
     + '</div>'
+    + '<div style="margin-top:8px;font-size:13px;color:#8390b5;line-height:1.55;">Incluí sueldo, changas, comisiones, ventas, ayuda familiar u otras entradas de dinero. Si varía, usá un estimado promedio.</div>'
     + _profileFieldError("profile-ingreso-error")
     + '</div>'
 

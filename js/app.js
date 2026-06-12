@@ -1711,7 +1711,7 @@ function collectBasicProfileForm() {
     valid = false;
   }
   if (!incomeVal || incomeVal <= 0 || isNaN(incomeVal)) {
-    showBasicProfileFieldError("profile-ingreso-error", "Ingresá tu ingreso líquido mensual.");
+    showBasicProfileFieldError("profile-ingreso-error", "Ingresá un monto estimado, aunque tus ingresos varíen. Cualquier entrada de dinero cuenta.");
     valid = false;
   }
   if (!valid) return null;
