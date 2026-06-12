@@ -209,17 +209,29 @@
     return _wrap(
       _reviewBar(_session)
       + _card(
-        '<div class="plus-header-icon" aria-hidden="true">★</div>'
-        + '<h2 class="plus-header-title">Desbloqueá tu diagnóstico verificado</h2>'
-        + '<p class="plus-header-subtitle">Comparamos lo que declaraste con registros consultados para detectar diferencias, '
+        '<div class="plus-header-icon plus-mock-header-icon" aria-hidden="true">★</div>'
+        + '<h2 class="plus-header-title plus-mock-hero-title">Desbloqueá tu diagnóstico verificado</h2>'
+        + '<p class="plus-header-subtitle plus-mock-hero-subtitle">Comparamos lo que declaraste con registros consultados para detectar diferencias, '
         + "riesgos y oportunidades que pueden estar afectando tu situación financiera.</p>"
+        + '<div class="plus-mock-positioning" aria-label="Mi Plan vs Mi Plan Plus">'
+        + '<div class="plus-mock-positioning-row plus-mock-positioning-base">'
+        + '<span class="plus-mock-positioning-label">Mi Plan</span>'
+        + '<span class="plus-mock-positioning-desc">Lo que declaraste</span>'
+        + "</div>"
+        + '<div class="plus-mock-positioning-row plus-mock-positioning-premium">'
+        + '<span class="plus-mock-positioning-label">Mi Plan Plus</span>'
+        + '<span class="plus-mock-positioning-desc">Lo que verificamos</span>'
+        + "</div></div>"
         + _robotHighlight()
         + '<div class="plus-block plus-benefits-compact">'
         + '<h3 class="plus-block-title">¿Qué incluye tu diagnóstico verificado?</h3>'
         + '<ul class="plus-check-list">' + benefits.map(_checkItem).join("") + "</ul>"
         + "</div>"
-        + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-mock-unlock-cta" disabled>'
+        + '<div class="plus-mock-cta-zone">'
+        + '<button type="button" class="btn btn-primary plus-cta-btn plus-mock-cta-primary" id="btn-plus-mock-unlock-cta" disabled>'
+        + '<span class="plus-mock-cta-icon" aria-hidden="true">★</span>'
         + "Desbloquear diagnóstico verificado</button>"
+        + "</div>"
       )
     );
   }
@@ -253,15 +265,18 @@
       )
 
       + '<div class="plus-mock-diag-compare">'
-      + '<div class="plus-section-card plus-mock-diag-card">'
-      + '<h3 class="plus-section-title">Diagnóstico inicial</h3>'
-      + '<div class="plus-mock-diag-plan">Plan ' + diag.inicialPlan + "</div>"
-      + '<p class="plus-report-p">Basado en información declarada</p>'
+      + '<div class="plus-section-card plus-mock-diag-card plus-mock-diag-card-inicial">'
+      + '<h3 class="plus-section-title plus-mock-diag-title-muted">Diagnóstico inicial</h3>'
+      + '<div class="plus-mock-diag-plan plus-mock-diag-plan-inicial">Plan ' + diag.inicialPlan + "</div>"
+      + '<p class="plus-report-p plus-mock-diag-caption-muted">Basado en información declarada</p>'
       + "</div>"
       + '<div class="plus-section-card plus-mock-diag-card plus-mock-verified-card">'
+      + '<div class="plus-mock-verified-head">'
       + '<h3 class="plus-section-title">Diagnóstico verificado ⭐</h3>'
-      + '<div class="plus-mock-diag-plan">Plan ' + diag.verificadoPlan + "</div>"
-      + '<p class="plus-report-p">Basado en registros consultados</p>'
+      + '<span class="plus-badge plus-badge-media plus-mock-verified-badge">Verificado</span>'
+      + "</div>"
+      + '<div class="plus-mock-diag-plan plus-mock-diag-plan-verified">Plan ' + diag.verificadoPlan + "</div>"
+      + '<p class="plus-report-p plus-mock-diag-caption-verified">Basado en registros consultados</p>'
       + "</div>"
       + "</div>"
       + '<p class="plus-mock-diag-message">' + _esc(diag.message) + "</p>"

@@ -1528,8 +1528,12 @@ function renderDashboard() {
 
   return '<div class="tabs">'
     + TABS.map(function(t) {
-        return '<button class="tab-btn tab-nav-item' + (tab === t.id ? " active" : "") + '" data-tab="' + t.id + '">'
-          + t.icon + " " + t.l + '</button>';
+        var plusClass = t.id === "plus" ? " tab-btn-plus" : "";
+        var iconHtml = t.id === "plus"
+          ? '<span class="tab-plus-icon" aria-hidden="true">' + t.icon + "</span>"
+          : t.icon;
+        return '<button class="tab-btn tab-nav-item' + plusClass + (tab === t.id ? " active" : "") + '" data-tab="' + t.id + '">'
+          + iconHtml + " " + t.l + "</button>";
       }).join("")
     + '</div><div id="tab-content"></div>';
 }
