@@ -287,6 +287,12 @@ select option{background:#0a1026;}
   text-align:center;
 }
 @media (min-width:601px){
+  .tab-nav-item:not(.tab-btn-plus){
+    flex:3 1 0;
+  }
+  .tab-btn-plus{
+    flex:4 1 0;
+  }
   .tab-btn:hover:not(.locked):not(.active){
     color:rgba(255,255,255,.8);
     border-color:rgba(255,255,255,.25);
@@ -310,16 +316,29 @@ select option{background:#0a1026;}
     border-color:rgba(64,215,255,.32);
     background:rgba(64,215,255,.08);
   }
+  .tab-btn-plus-premium.tab-btn-plus-locked{
+    background:linear-gradient(135deg,rgba(64,215,255,.18),rgba(64,215,255,.08));
+    border-color:rgba(64,215,255,.55);
+    box-shadow:0 0 14px rgba(64,215,255,.18);
+  }
+  .tab-btn-plus-premium.tab-btn-plus-unlocked-state{
+    background:linear-gradient(135deg,rgba(64,215,255,.28),rgba(64,215,255,.12));
+    border-color:rgba(64,215,255,.75);
+    box-shadow:0 0 16px rgba(64,215,255,.24);
+  }
   .tab-btn-plus.active{
     background:rgba(64,215,255,.14);
     border-color:rgba(64,215,255,.5);
     box-shadow:0 0 16px rgba(61,220,255,.14);
   }
   .tab-btn-plus .tab-plus-icon{
-    display:block;
-    font-size:15px;
+    display:inline;
+    font-size:14px;
     line-height:1;
-    margin-bottom:2px;
+    margin-bottom:0;
+  }
+  .tab-plus-row-main{
+    gap:3px;
   }
 }
 
@@ -340,31 +359,109 @@ select option{background:#0a1026;}
   border-bottom-color:rgba(64,215,255,.95);
   box-shadow:0 0 20px rgba(61,220,255,.12);
 }
+.tab-btn-plus-premium{
+  flex-direction:column;
+  align-items:stretch;
+  padding:12px 10px;
+  white-space:normal;
+  line-height:1.25;
+}
+.tab-plus-inner{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  gap:3px;
+}
+.tab-plus-row-main{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  width:100%;
+}
+.tab-plus-title{
+  font-weight:800;
+  color:rgba(255,255,255,.96);
+}
+.tab-plus-secondary{
+  display:block;
+  font-size:10px;
+  font-weight:500;
+  color:rgba(160,210,225,.82);
+  line-height:1.25;
+  letter-spacing:.01em;
+}
+.tab-plus-badge{
+  display:inline-block;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+  padding:2px 7px;
+  border-radius:4px;
+  border:1px solid rgba(64,215,255,.55);
+  background:rgba(64,215,255,.14);
+  color:rgba(64,215,255,.95);
+  white-space:nowrap;
+  line-height:1.3;
+}
 @media (min-width:601px){
   .tab-btn-plus:hover:not(.active){
     border-color:rgba(64,215,255,.32);
     background:rgba(64,215,255,.08);
   }
+  .tab-btn-plus-premium.tab-btn-plus-locked:hover:not(.active){
+    background:linear-gradient(135deg,rgba(64,215,255,.22),rgba(64,215,255,.1));
+  }
+  .tab-btn-plus-premium.tab-btn-plus-unlocked-state:hover:not(.active){
+    background:linear-gradient(135deg,rgba(64,215,255,.32),rgba(64,215,255,.14));
+  }
 }
 .tab-btn-plus-locked{
-  border-color:rgba(64,215,255,.36);
-  background:rgba(64,215,255,.07);
+  color:rgba(255,255,255,.95);
+  background:linear-gradient(135deg,rgba(64,215,255,.18),rgba(64,215,255,.08));
+  border:1px solid rgba(64,215,255,.55);
+  box-shadow:0 0 18px rgba(64,215,255,.20);
 }
 .tab-btn-plus-locked .tab-plus-icon{
   font-size:14px;
 }
 .tab-btn-plus-locked.active{
-  border-color:rgba(64,215,255,.5);
-  box-shadow:0 0 18px rgba(61,220,255,.14);
+  border-color:rgba(64,215,255,.65);
+  border-bottom-color:rgba(64,215,255,.95);
+  box-shadow:0 0 22px rgba(64,215,255,.26);
+}
+.tab-btn-plus-unlocked-state{
+  color:rgba(255,255,255,.98);
+  background:linear-gradient(135deg,rgba(64,215,255,.28),rgba(64,215,255,.12));
+  border:1px solid rgba(64,215,255,.75);
+  box-shadow:0 0 24px rgba(64,215,255,.28);
 }
 .tab-btn-plus-unlocked-state .tab-plus-icon{
-  color:rgba(64,215,255,.92);
+  color:rgba(64,215,255,.95);
+}
+.tab-btn-plus-unlocked-state.active{
+  border-color:rgba(64,215,255,.85);
+  border-bottom-color:rgba(64,215,255,.95);
+  box-shadow:0 0 28px rgba(64,215,255,.34);
 }
 @media (max-width:430px){
   .tab-btn-plus{
     padding:13px 6px;
     font-size:12px;
     line-height:1.25;
+  }
+  .tab-btn-plus-premium{
+    padding:11px 5px;
+  }
+  .tab-plus-secondary{
+    font-size:9px;
+  }
+  .tab-plus-badge{
+    display:none;
   }
 }
 

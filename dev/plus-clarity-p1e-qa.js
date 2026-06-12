@@ -59,14 +59,20 @@
   ok("A blocked tab shows lock", blockedTabs.indexOf("tab-btn-plus-locked") >= 0
     && blockedTabs.indexOf("🔒") >= 0
     && blockedTabs.indexOf("Mi Plan Plus") >= 0
+    && blockedTabs.indexOf("Situación financiera real") >= 0
+    && blockedTabs.indexOf("VERIFICADO") >= 0
     && blockedTabs.indexOf("Mi Plan Plus Activo") < 0);
 
   PlusMock.getSession().accessState = "unlocked";
   var unlockedTabs = tabsHtml();
 
   ok("B unlocked tab premium state", unlockedTabs.indexOf("tab-btn-plus-unlocked-state") >= 0
-    && unlockedTabs.indexOf("Mi Plan Plus Activo") >= 0
-    && unlockedTabs.indexOf("🔒") < 0);
+    && unlockedTabs.indexOf("⭐") >= 0
+    && unlockedTabs.indexOf("Mi Plan Plus") >= 0
+    && unlockedTabs.indexOf("Situación financiera real") >= 0
+    && unlockedTabs.indexOf("ACTIVO") >= 0
+    && unlockedTabs.indexOf("🔒") < 0
+    && unlockedTabs.indexOf("Mi Plan Plus Activo") < 0);
 
   window.PLUS_MOCK_MODE = false;
   var prodTabs = tabsHtml();

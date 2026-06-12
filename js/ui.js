@@ -1533,14 +1533,23 @@ function _renderTabsNav(activeTab) {
           return '<button class="tab-btn tab-nav-item' + (tab === t.id ? " active" : "") + '" data-tab="' + t.id + '">'
             + t.icon + " " + t.l + "</button>";
         }
-        var plusLabel = plusNav ? plusNav.label : t.l;
-        var plusIcon = plusNav ? plusNav.icon : t.icon;
         var plusClass = " tab-btn-plus";
         if (plusNav && plusNav.locked) plusClass += " tab-btn-plus-locked";
         if (plusNav && plusNav.unlocked) plusClass += " tab-btn-plus-unlocked-state";
+        if (plusNav && plusNav.secondaryLine) plusClass += " tab-btn-plus-premium";
+        if (!plusNav) {
+          return '<button class="tab-btn tab-nav-item' + plusClass + (tab === t.id ? " active" : "") + '" data-tab="' + t.id + '">'
+            + t.icon + " " + t.l + "</button>";
+        }
         return '<button class="tab-btn tab-nav-item' + plusClass + (tab === t.id ? " active" : "") + '" data-tab="' + t.id + '">'
-          + '<span class="tab-plus-icon" aria-hidden="true">' + plusIcon + "</span> "
-          + plusLabel + "</button>";
+          + '<span class="tab-plus-inner">'
+          + '<span class="tab-plus-row-main">'
+          + '<span class="tab-plus-icon" aria-hidden="true">' + plusNav.icon + "</span>"
+          + '<span class="tab-plus-title">' + plusNav.label + "</span>"
+          + (plusNav.badge ? '<span class="tab-plus-badge">' + plusNav.badge + "</span>" : "")
+          + "</span>"
+          + (plusNav.secondaryLine ? '<span class="tab-plus-secondary">' + plusNav.secondaryLine + "</span>" : "")
+          + "</span></button>";
       }).join("")
     + "</div>";
 }

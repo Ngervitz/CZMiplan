@@ -433,10 +433,23 @@
 
   function getPlusTabNavDisplay() {
     if (global.PLUS_MOCK_MODE !== true) return null;
+    var secondaryLine = "Situación financiera real";
     if (_session.accessState === "blocked") {
-      return { icon: "🔒", label: "Mi Plan Plus", locked: true };
+      return {
+        icon: "🔒",
+        label: "Mi Plan Plus",
+        secondaryLine: secondaryLine,
+        badge: "VERIFICADO",
+        locked: true,
+      };
     }
-    return { icon: "★", label: "Mi Plan Plus Activo", unlocked: true };
+    return {
+      icon: "⭐",
+      label: "Mi Plan Plus",
+      secondaryLine: secondaryLine,
+      badge: "ACTIVO",
+      unlocked: true,
+    };
   }
 
   function _rerender() {
