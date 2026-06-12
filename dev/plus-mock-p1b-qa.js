@@ -88,9 +88,9 @@
 
   // Blocked mock
   var blockedHtml = plusHtml({ tab: "plus" }, true);
-  ok("A blocked hero title", blockedHtml.indexOf("Desbloqueá tu diagnóstico verificado") >= 0);
-  ok("A blocked subtitle", blockedHtml.indexOf("Comparamos lo que declaraste con registros consultados") >= 0);
-  ok("A blocked CTA disabled", blockedHtml.indexOf("Desbloquear diagnóstico verificado") >= 0
+  ok("A blocked hero title", blockedHtml.indexOf("¿Tu situación financiera real coincide con lo que recordás?") >= 0);
+  ok("A blocked subtitle", blockedHtml.indexOf("Descubrí diferencias, riesgos y oportunidades") >= 0);
+  ok("A blocked CTA disabled", blockedHtml.indexOf("Ver mi situación financiera real") >= 0
     && blockedHtml.indexOf("disabled") >= 0);
   ok("L blocked toggle active", blockedHtml.indexOf("btn-plus-mock-blocked") >= 0);
   ok("P robot in blocked", blockedHtml.indexOf("🤖") >= 0);
@@ -107,6 +107,7 @@
   ok("D peor verification", peorHtml.indexOf("Requiere atención adicional") >= 0);
   ok("E peor coincidence 72%", peorHtml.indexOf("Coincidencia parcial") >= 0 && peorHtml.indexOf("72") >= 0);
   ok("F peor plans 2 vs 4", peorHtml.indexOf("Plan 2") >= 0 && peorHtml.indexOf("Plan 4") >= 0);
+  ok("F peor plan transition", peorHtml.indexOf("plus-mock-plan-transition") >= 0);
   ok("G peor finding mora", peorHtml.indexOf("registros de mora") >= 0);
   ok("H peor table $890.000", peorHtml.indexOf("$890.000") >= 0);
   ok("I peor priority mora", peorHtml.indexOf("Regularizar mora") >= 0);

@@ -80,18 +80,19 @@
 
   ok("E blocked CTA hierarchy class", blockedHtml.indexOf("plus-mock-cta-primary") >= 0
     && blockedHtml.indexOf("plus-mock-cta-zone") >= 0);
-  ok("E CTA copy unchanged", blockedHtml.indexOf("Desbloquear diagnóstico verificado") >= 0);
+  ok("E CTA lock icon", blockedHtml.indexOf("🔒") >= 0
+    && blockedHtml.indexOf("Ver mi situación financiera real") >= 0);
   ok("E CTA icon treatment", blockedHtml.indexOf("plus-mock-cta-icon") >= 0);
 
   ok("F premium positioning strip", blockedHtml.indexOf("plus-mock-positioning") >= 0
-    && blockedHtml.indexOf("Lo que declaraste") >= 0
-    && blockedHtml.indexOf("Lo que verificamos") >= 0);
+    && blockedHtml.indexOf("Tu percepción") >= 0
+    && blockedHtml.indexOf("Tu situación verificada") >= 0);
 
   PlusMock.getSession().accessState = "unlocked";
   PlusMock.getSession().scenario = "peor";
   var unlockedHtml = renderTabPlus();
 
-  ok("G verified card badge", unlockedHtml.indexOf("plus-mock-verified-badge") >= 0
+  ok("G verified card badge", unlockedHtml.indexOf("plus-mock-verified-badge-prominent") >= 0
     && unlockedHtml.indexOf("plus-mock-verified-card") >= 0);
   ok("G inicial card muted", unlockedHtml.indexOf("plus-mock-diag-card-inicial") >= 0
     && unlockedHtml.indexOf("plus-mock-diag-plan-verified") >= 0);

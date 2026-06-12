@@ -8,6 +8,9 @@
   /** Review build only — set false before production release. */
   var PLUS_MOCK_MODE = true;
 
+  /** Single source for Plus mock price display — edit here only. */
+  var CZ_PLUS_PRICE_DISPLAY = "UYU 1.290 IVA incluido";
+
   var PLUS_MOCK_DATA = {
     peor: {
       verificationResult: {
@@ -196,41 +199,82 @@
     return html;
   }
 
-  function _renderBlocked() {
-    var benefits = [
-      "<strong>Nivel de coincidencia</strong> — ¿Qué tan alineada está tu percepción financiera con la realidad registrada?",
-      "<strong>Diagnóstico verificado</strong> — Tu plan actualizado utilizando registros consultados.",
-      "<strong>Hallazgos relevantes</strong> — Deudas omitidas · Moras · Diferencias · Cambios",
-      "<strong>Informe IA personalizado</strong>",
-      "<strong>Registros consultados</strong>",
-      "<strong>Plan editable (Sheet)</strong>",
-    ];
+  function _outcomeBlock(title, body) {
+    return '<div class="plus-block plus-mock-outcome-block">'
+      + '<h3 class="plus-block-title plus-mock-outcome-title">' + title + "</h3>"
+      + '<p class="plus-diff-text plus-mock-outcome-body">' + body + "</p>"
+      + "</div>";
+  }
 
+  function _ctaIncludesList() {
+    var items = [
+      "Diagnóstico verificado",
+      "Informe IA personalizado",
+      "Registros consultados",
+      "Plan editable",
+    ];
+    return '<div class="plus-mock-cta-includes">'
+      + '<div class="plus-mock-cta-includes-label">Incluye:</div>'
+      + '<ul class="plus-mock-cta-includes-list">'
+      + items.map(function(item) { return "<li>" + _esc(item) + "</li>"; }).join("")
+      + "</ul></div>";
+  }
+
+  function _renderPlanTransition(diag) {
+    var samePlan = diag.inicialPlan === diag.verificadoPlan;
+    var arrow = samePlan ? "=" : "↓";
+    return '<div class="plus-mock-plan-transition" aria-label="Transición de diagnóstico">'
+      + '<div class="plus-mock-plan-transition-from">'
+      + '<span class="plus-mock-plan-transition-tag">Inicial</span>'
+      + '<div class="plus-mock-plan-transition-num">Plan ' + diag.inicialPlan + "</div>"
+      + "</div>"
+      + '<div class="plus-mock-plan-transition-arrow" aria-hidden="true">' + arrow + "</div>"
+      + '<div class="plus-mock-plan-transition-to">'
+      + '<span class="plus-mock-plan-transition-tag plus-mock-plan-transition-tag-verified">Verificado</span>'
+      + '<div class="plus-mock-plan-transition-num plus-mock-plan-transition-num-verified">Plan '
+      + diag.verificadoPlan + "</div>"
+      + "</div></div>";
+  }
+
+  function _renderBlocked() {
     return _wrap(
       _reviewBar(_session)
       + _card(
         '<div class="plus-header-icon plus-mock-header-icon" aria-hidden="true">★</div>'
-        + '<h2 class="plus-header-title plus-mock-hero-title">Desbloqueá tu diagnóstico verificado</h2>'
-        + '<p class="plus-header-subtitle plus-mock-hero-subtitle">Comparamos lo que declaraste con registros consultados para detectar diferencias, '
-        + "riesgos y oportunidades que pueden estar afectando tu situación financiera.</p>"
-        + '<div class="plus-mock-positioning" aria-label="Mi Plan vs Mi Plan Plus">'
+        + '<h2 class="plus-header-title plus-mock-hero-title">¿Tu situación financiera real coincide con lo que recordás?</h2>'
+        + '<p class="plus-header-subtitle plus-mock-hero-subtitle">Descubrí diferencias, riesgos y oportunidades '
+        + "que pueden estar afectando tu perfil financiero.</p>"
+        + '<div class="plus-mock-positioning" aria-label="Percepción vs situación verificada">'
         + '<div class="plus-mock-positioning-row plus-mock-positioning-base">'
-        + '<span class="plus-mock-positioning-label">Mi Plan</span>'
-        + '<span class="plus-mock-positioning-desc">Lo que declaraste</span>'
+        + '<span class="plus-mock-positioning-label">Tu percepción</span>'
+        + '<span class="plus-mock-positioning-desc">Lo que recordás o declaraste</span>'
         + "</div>"
+        + '<div class="plus-mock-positioning-vs" aria-hidden="true">VS</div>'
         + '<div class="plus-mock-positioning-row plus-mock-positioning-premium">'
-        + '<span class="plus-mock-positioning-label">Mi Plan Plus</span>'
-        + '<span class="plus-mock-positioning-desc">Lo que verificamos</span>'
+        + '<span class="plus-mock-positioning-label">Tu situación verificada</span>'
+        + '<span class="plus-mock-positioning-desc">Lo que encontramos en registros consultados</span>'
         + "</div></div>"
         + _robotHighlight()
-        + '<div class="plus-block plus-benefits-compact">'
-        + '<h3 class="plus-block-title">¿Qué incluye tu diagnóstico verificado?</h3>'
-        + '<ul class="plus-check-list">' + benefits.map(_checkItem).join("") + "</ul>"
-        + "</div>"
+        + _outcomeBlock(
+          "Podrías estar peor de lo que creés",
+          "Detectamos deudas, moras o inconsistencias que pueden afectar tu situación financiera."
+        )
+        + _outcomeBlock(
+          "Podrías estar mejor de lo que creés",
+          "Algunas personas descubren que su situación real es más favorable de lo que estimaban."
+        )
+        + _outcomeBlock(
+          "Recibí un plan basado en información verificada",
+          "Tu diagnóstico se actualiza utilizando registros consultados."
+        )
         + '<div class="plus-mock-cta-zone">'
         + '<button type="button" class="btn btn-primary plus-cta-btn plus-mock-cta-primary" id="btn-plus-mock-unlock-cta" disabled>'
-        + '<span class="plus-mock-cta-icon" aria-hidden="true">★</span>'
-        + "Desbloquear diagnóstico verificado</button>"
+        + '<span class="plus-mock-cta-icon" aria-hidden="true">🔒</span>'
+        + "Ver mi situación financiera real</button>"
+        + '<p class="plus-mock-price">' + _esc(CZ_PLUS_PRICE_DISPLAY) + "</p>"
+        + '<p class="plus-mock-price-access">Acceso completo al informe</p>'
+        + _ctaIncludesList()
+        + '<p class="plus-mock-reassurance">Disponible inmediatamente luego de completar la verificación.</p>'
         + "</div>"
       )
     );
@@ -255,15 +299,9 @@
       + '<p class="plus-mock-verification-msg">' + _esc(vr.message) + "</p>"
       + "</div></div>"
 
-      + _section(
-        "⭐ Tu diagnóstico verificado",
-        '<div class="plus-mock-coincidence">'
-        + '<div class="plus-mock-coincidence-label">' + _esc(coin.label) + "</div>"
-        + '<div class="plus-mock-coincidence-pct">' + coin.pct + "<span>%</span></div>"
-        + '<p class="plus-report-p">' + _esc(coin.message) + "</p>"
-        + "</div>"
-      )
-
+      + '<div class="plus-section-card plus-mock-diag-shift-card">'
+      + '<h3 class="plus-section-title plus-mock-diag-shift-title">Tu diagnóstico podría cambiar</h3>'
+      + _renderPlanTransition(diag)
       + '<div class="plus-mock-diag-compare">'
       + '<div class="plus-section-card plus-mock-diag-card plus-mock-diag-card-inicial">'
       + '<h3 class="plus-section-title plus-mock-diag-title-muted">Diagnóstico inicial</h3>'
@@ -273,13 +311,23 @@
       + '<div class="plus-section-card plus-mock-diag-card plus-mock-verified-card">'
       + '<div class="plus-mock-verified-head">'
       + '<h3 class="plus-section-title">Diagnóstico verificado ⭐</h3>'
-      + '<span class="plus-badge plus-badge-media plus-mock-verified-badge">Verificado</span>'
+      + '<span class="plus-badge plus-badge-alta plus-mock-verified-badge plus-mock-verified-badge-prominent">Verificado</span>'
       + "</div>"
       + '<div class="plus-mock-diag-plan plus-mock-diag-plan-verified">Plan ' + diag.verificadoPlan + "</div>"
       + '<p class="plus-report-p plus-mock-diag-caption-verified">Basado en registros consultados</p>'
       + "</div>"
       + "</div>"
       + '<p class="plus-mock-diag-message">' + _esc(diag.message) + "</p>"
+      + "</div>"
+
+      + _section(
+        "⭐ Tu diagnóstico verificado",
+        '<div class="plus-mock-coincidence">'
+        + '<div class="plus-mock-coincidence-label">' + _esc(coin.label) + "</div>"
+        + '<div class="plus-mock-coincidence-pct">' + coin.pct + "<span>%</span></div>"
+        + '<p class="plus-report-p">' + _esc(coin.message) + "</p>"
+        + "</div>"
+      )
 
       + _section(
         "Principales hallazgos",
@@ -318,6 +366,7 @@
 
       + '<div class="plus-mock-docs">'
       + '<h3 class="plus-section-title">Centro de documentos</h3>'
+      + '<p class="plus-mock-docs-included">Incluido con Mi Plan Plus</p>'
       + '<div class="plus-mock-docs-grid">'
       + _docCard("📄", "Informe IA", "Análisis personalizado de tu situación", "Descargar")
       + _docCard("📋", "Registros consultados", "Información obtenida de fuentes verificadas", "Descargar")
@@ -389,6 +438,7 @@
 
   global.PLUS_MOCK_MODE = PLUS_MOCK_MODE;
   global.PLUS_MOCK_DATA = PLUS_MOCK_DATA;
+  global.CZ_PLUS_PRICE_DISPLAY = CZ_PLUS_PRICE_DISPLAY;
   global.renderPlusMockTab = renderPlusMockTab;
   global.handlePlusMockClick = handlePlusMockClick;
 
