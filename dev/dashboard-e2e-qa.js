@@ -1,0 +1,535 @@
+/**
+ * dev/dashboard-e2e-qa.js — End-to-end dashboard QA (motor → coherence)
+ */
+(function() {
+  "use strict";
+  var fs = require("fs");
+  var path = require("path");
+  var vm = require("vm");
+  var root = path.join(__dirname, "..");
+
+  var passed = 0;
+  var failed = 0;
+
+  function ok(label, cond) {
+    console.log((cond ? "[PASS]" : "[FAIL]") + " " + label);
+    if (cond) passed++; else failed++;
+  }
+
+  function load(file) {
+    vm.runInThisContext(
+      fs.readFileSync(path.join(root, file), "utf8").replace(/\bconst /g, "var "),
+      { filename: path.join(root, file) }
+    );
+  }
+
+  function boot(search) {
+    global.window = global;
+    global.window.location = {
+      search: search || "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      href: "",
+    };
+    global.document = {
+      getElementById: function() { return null; },
+      querySelectorAll: function() { return []; },
+      addEventListener: function() {},
+    };
+    global.trackEvent = function() {};
+    global.trackCRMEvent = function() {};
+    global.enviarCRM = function() {};
+    global.localStorage = { getItem: function() { return null; }, setItem: function() {} };
+    global.sessionStorage = { getItem: function() { return null; }, setItem: function() {} };
+
+    load("js/config.js");
+    load("js/creditors.js");
+    load("js/survey.js");
+    load("js/algorithms.js");
+    load("js/events.js");
+    load("js/crm.js");
+    load("js/ui.js");
+  }
+
+  function runPipeline(profile) {
+    boot(profile.search);
+    PRE.ingreso = profile.ingreso;
+    window.CZState = profile.state;
+    var diag = calcularMotor();
+    window.CZState.diag = diag;
+    var coherence = resolveDashboardCoherence(diag, window.CZState);
+    return { diag: diag, coherence: coherence };
+  }
+
+  function assertProfile(label, result, expected) {
+    var diag = result.diag;
+    var coh = result.coherence;
+    ok(label + " planId " + expected.planId, diag.planId === expected.planId);
+    ok(label + " profileTier " + expected.profileTier, coh.profileTier === expected.profileTier);
+    ok(label + " whatIsHappeningText", coh.whatIsHappeningText === expected.whatIsHappeningText);
+    ok(label + " heroProblemOverride", coh.heroProblemOverride === expected.heroProblemOverride);
+    ok(label + " nextStepKey " + expected.nextStepKey, coh.nextStepKey === expected.nextStepKey);
+    ok(label + " showRetry " + expected.showRetry, coh.showRetry === expected.showRetry);
+    ok(label + " suppressOrdenarPanorama " + expected.suppressOrdenarPanorama,
+      coh.suppressOrdenarPanorama === expected.suppressOrdenarPanorama);
+  }
+
+  var HERO_ALTO =
+    "Tu perfil financiero está en orden. El próximo paso es optimizar el costo de tu deuda.";
+  var HERO_MANTENER =
+    "Tu perfil financiero está en orden. Mantener la disciplina de pagos es lo que consolida la recuperación.";
+
+  var CASE1_TEXT =
+    "Tu situación declarada muestra un perfil ordenado y con margen disponible. "
+    + "El principal ajuste no es ordenar más información, sino reducir el costo "
+    + "de la deuda que ya estás pagando.";
+  var CASE2_TEXT =
+    "Tu situación declarada muestra un perfil ordenado, con pagos controlados y margen disponible. "
+    + "El foco ahora es mantener la disciplina y evitar que la deuda vuelva a crecer.";
+  var CASE3_TEXT =
+    "No registrás deudas activas actualmente. El foco es mantener el equilibrio entre ingresos "
+    + "y gastos para sostener tu estabilidad financiera.";
+  var CASE2_PREFIX = "Tu situación declarada muestra un perfil ordenado, con pagos controlados";
+  var PLAN5_SURVEY = "?p1=B&p2=B&p3=B&p4=B&p5=B&p6=A&p7=B&p8=B&p9=B&p10=B";
+
+  function hasActiveDebts(st) {
+    st = st || {};
+    if (typeof deudasActivasParaCalculo === "function") {
+      return deudasActivasParaCalculo(st.deudas || []).length > 0;
+    }
+    return (st.deudas || []).length > 0;
+  }
+
+  function assertP8(label, result) {
+    var diag = result.diag;
+    var coh = result.coherence;
+    ok(label + " planId 5 path", diag.planId === 5 || diag.assigned_plan_raw === 5);
+    ok(label + " profileTier critical", coh.profileTier === "critical");
+    ok(label + " whatIsHappeningText null", coh.whatIsHappeningText === null);
+    ok(label + " heroProblemOverride null", coh.heroProblemOverride === null);
+    ok(label + " nextStepKey confirmar_saldo_stock_deuda", coh.nextStepKey === "confirmar_saldo_stock_deuda");
+    ok(label + " showRetry false", coh.showRetry === false);
+    ok(label + " suppressOrdenarPanorama false", coh.suppressOrdenarPanorama === false);
+  }
+
+  function assertP9(label, result, expected) {
+    assertProfile(label, result, expected);
+  }
+
+  function assertP10(label, result) {
+    var coh = result.coherence;
+    ok(label + " whatIsHappeningText null", coh.whatIsHappeningText === null);
+    ok(label + " showRetry false", coh.showRetry === false);
+    ok(label + " profileTier standard", coh.profileTier === "standard"
+      || (PRE.ingreso === 0 && coh.profileTier === "critical"));
+  }
+
+  function assertP11(label, result) {
+    var diag = result.diag;
+    var coh = result.coherence;
+    var st = window.CZState;
+    var active = hasActiveDebts(st);
+    ok(label + " profileTier derived " + coh.profileTier, coh.profileTier === "healthy_organized"
+      || coh.profileTier === "standard");
+    ok(label + " zero active debts", active === false);
+    ok(label + " whatIsHappeningText not active-debt CASE 1", coh.whatIsHappeningText !== CASE1_TEXT);
+    ok(label + " whatIsHappeningText not active-debt CASE 2", coh.whatIsHappeningText !== CASE2_TEXT);
+    if (coh.profileTier === "healthy_organized") {
+      ok(label + " whatIsHappeningText CASE 3 when healthy", coh.whatIsHappeningText === CASE3_TEXT);
+    } else {
+      ok(label + " whatIsHappeningText null when standard", coh.whatIsHappeningText === null);
+    }
+    ok(label + " motor planId " + diag.planId, diag.planId === 1);
+  }
+
+  function assertP12(label, result) {
+    var diag = result.diag;
+    var coh = result.coherence;
+    var costo = String(diag.fin.costoDeudaNivel || "").toLowerCase();
+    ok(label + " whatIsHappeningText not CASE 1 alto copy", coh.whatIsHappeningText !== CASE1_TEXT);
+    if (coh.profileTier === "healthy_organized" && costo !== "alto") {
+      ok(label + " whatIsHappeningText CASE 2 when costo not alto", coh.whatIsHappeningText === CASE2_TEXT);
+    } else if (coh.profileTier !== "healthy_organized") {
+      ok(label + " whatIsHappeningText null when not healthy", coh.whatIsHappeningText === null);
+    } else {
+      ok(label + " whatIsHappeningText null or CASE 2", coh.whatIsHappeningText === null
+        || coh.whatIsHappeningText.indexOf(CASE2_PREFIX) === 0);
+    }
+  }
+
+  function assertP13(label, result) {
+    var diag = result.diag;
+    var coh = result.coherence;
+    var costo = String(diag.fin.costoDeudaNivel || "").toLowerCase();
+    var active = hasActiveDebts(window.CZState);
+    ok(label + " only active debt counts", active === true);
+    ok(label + " whatIsHappeningText not CASE 3", coh.whatIsHappeningText !== CASE3_TEXT);
+    if (coh.profileTier === "healthy_organized") {
+      var expectedWhat = costo === "alto" ? CASE1_TEXT : CASE2_TEXT;
+      ok(label + " whatIsHappeningText matches costoDeudaNivel", coh.whatIsHappeningText === expectedWhat);
+    } else {
+      ok(label + " whatIsHappeningText null when not healthy", coh.whatIsHappeningText === null);
+    }
+    ok(label + " profileTier healthy_organized", coh.profileTier === "healthy_organized");
+    ok(label + " costoDeudaNivel Alto", costo === "alto");
+  }
+
+  var PROFILES = [
+    {
+      id: "P1",
+      label: "P1 healthy_organized active debt alto",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 65300,
+      state: {
+        gastos: { vivienda: 18000, alimentacion: 9000, servicios: 3000, transporte: 2000 },
+        gastos_missing_confirmed: false,
+        deudas: [{
+          tipo: "tarjeta",
+          acreedor: "OCA",
+          monto: "27000",
+          pago: "700",
+          situacion_ui: "pagando_normal",
+          debt_confidence: "high",
+        }],
+        snap: { plan_id: 1 },
+        diag: null,
+      },
+      expected: {
+        planId: 3,
+        profileTier: "healthy_organized",
+        whatIsHappeningText:
+          "Tu situación declarada muestra un perfil ordenado y con margen disponible. "
+          + "El principal ajuste no es ordenar más información, sino reducir el costo "
+          + "de la deuda que ya estás pagando.",
+        heroProblemOverride: HERO_ALTO,
+        nextStepKey: "optimizar_deuda_cara",
+        showRetry: true,
+        suppressOrdenarPanorama: true,
+      },
+    },
+    {
+      id: "P2",
+      label: "P2 healthy_organized active debt bajo",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 75000,
+      state: {
+        gastos: { alquiler: 18000, alimentacion: 9000, servicios: 2000, transporte: 2000 },
+        gastos_missing_confirmed: false,
+        deudas: [{
+          tipo: "prestamo",
+          acreedor: "BROU",
+          monto: "100000",
+          pago: "7000",
+          situacion_ui: "pagando_normal",
+          debt_confidence: "high",
+        }],
+        snap: { plan_id: 2 },
+        diag: null,
+      },
+      expected: {
+        planId: 3,
+        profileTier: "healthy_organized",
+        whatIsHappeningText:
+          "Tu situación declarada muestra un perfil ordenado, con pagos controlados y margen disponible. "
+          + "El foco ahora es mantener la disciplina y evitar que la deuda vuelva a crecer.",
+        heroProblemOverride: HERO_MANTENER,
+        nextStepKey: "mantener_disciplina",
+        showRetry: false,
+        suppressOrdenarPanorama: true,
+      },
+    },
+    {
+      id: "P3",
+      label: "P3 healthy_organized no active debt",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 80000,
+      state: {
+        step: 3,
+        gastos: { vivienda: 12000, alimentacion: 8000, salud: 3000, transporte: 2000 },
+        gastos_missing_confirmed: false,
+        no_debts_declared: false,
+        deudas: [{
+          tipo: "prestamo",
+          monto: "50000",
+          pago: "5000",
+          cancelada: true,
+        }],
+        snap: { plan_id: 1 },
+        diag: null,
+      },
+      expected: {
+        planId: 1,
+        profileTier: "healthy_organized",
+        whatIsHappeningText:
+          "No registrás deudas activas actualmente. El foco es mantener el equilibrio entre ingresos "
+          + "y gastos para sostener tu estabilidad financiera.",
+        heroProblemOverride: HERO_MANTENER,
+        nextStepKey: "mantener_disciplina",
+        showRetry: true,
+        suppressOrdenarPanorama: true,
+      },
+    },
+    {
+      id: "P4",
+      label: "P4 standard Plan 2",
+      search: "?p1=B&p2=B&p3=B&p4=B&p5=B&p6=B&p7=B&p8=B&p9=B&p10=B",
+      ingreso: 45000,
+      state: {
+        gastos: { vivienda: 12000, alimentacion: 7000 },
+        gastos_missing_confirmed: false,
+        deudas: [{
+          tipo: "prestamo",
+          acreedor: "BROU",
+          monto: "40000",
+          pago: "17000",
+          situacion_ui: "pagando_normal",
+          debt_confidence: "high",
+        }],
+        snap: { plan_id: 2 },
+        diag: null,
+      },
+      expected: {
+        planId: 2,
+        profileTier: "standard",
+        whatIsHappeningText: null,
+        heroProblemOverride: null,
+        nextStepKey: "ordenar_panorama",
+        showRetry: false,
+        suppressOrdenarPanorama: false,
+      },
+    },
+    {
+      id: "P5",
+      label: "P5 standard Plan 3",
+      search: "?p1=A&p2=A&p3=A&p4=A&p5=A&p6=B&p7=A&p8=A&p9=A&p10=A",
+      ingreso: 60000,
+      state: {
+        gastos: { vivienda: 12000, alimentacion: 8000 },
+        gastos_missing_confirmed: false,
+        deudas: [{
+          tipo: "financiera",
+          acreedor: "Creditel",
+          monto: "40000",
+          pago: "10000",
+          situacion_ui: "pagando_normal",
+          debt_confidence: "high",
+        }],
+        snap: { plan_id: 2 },
+        diag: null,
+      },
+      expected: {
+        planId: 3,
+        profileTier: "standard",
+        whatIsHappeningText: null,
+        heroProblemOverride: null,
+        nextStepKey: "ordenar_panorama",
+        showRetry: false,
+        suppressOrdenarPanorama: false,
+      },
+    },
+    {
+      id: "P6",
+      label: "P6 critical Plan 4",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 35000,
+      state: {
+        gastos: { vivienda: 12000, alimentacion: 7000 },
+        gastos_missing_confirmed: false,
+        deudas: [{
+          tipo: "tarjeta",
+          acreedor: "OCA",
+          monto: "90000",
+          pago: "0",
+          situacion_ui: "mora_reclamo",
+          debt_confidence: "high",
+        }],
+        snap: { plan_id: 2 },
+        diag: null,
+      },
+      expected: {
+        planId: 4,
+        profileTier: "critical",
+        whatIsHappeningText: null,
+        heroProblemOverride: null,
+        nextStepKey: "confirmar_saldo_stock_deuda",
+        showRetry: false,
+        suppressOrdenarPanorama: false,
+      },
+    },
+    {
+      id: "P7",
+      label: "P7 incomplete profile",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 80000,
+      state: {
+        gastos: {},
+        gastos_missing_confirmed: true,
+        no_debts_declared: true,
+        deudas: [],
+        snap: { plan_id: 1 },
+        diag: null,
+      },
+      expected: {
+        planId: 1,
+        profileTier: "standard",
+        whatIsHappeningText: null,
+        heroProblemOverride: null,
+        nextStepKey: "ordenar_panorama",
+        showRetry: false,
+        suppressOrdenarPanorama: false,
+      },
+    },
+    {
+      id: "P8",
+      label: "P8 critical Plan 5",
+      search: PLAN5_SURVEY,
+      ingreso: 25000,
+      state: {
+        gastos: { vivienda: 10000, alimentacion: 6000 },
+        gastos_missing_confirmed: false,
+        deudas: [
+          {
+            tipo: "tarjeta",
+            acreedor: "OCA",
+            monto: "120000",
+            pago: "0",
+            situacion_ui: "mora_reclamo",
+            debt_confidence: "high",
+          },
+          {
+            tipo: "financiera",
+            acreedor: "Pronto",
+            monto: "80000",
+            pago: "0",
+            situacion_ui: "mora_reclamo",
+            debt_confidence: "high",
+          },
+        ],
+        snap: { plan_id: 5 },
+        diag: null,
+      },
+      assertFn: assertP8,
+    },
+    {
+      id: "P9",
+      label: "P9 healthy_organized blocked by confidence low",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 70000,
+      state: {
+        gastos: { vivienda: 15000, alimentacion: 8000 },
+        gastos_missing_confirmed: false,
+        deudas: [{
+          tipo: "prestamo",
+          acreedor: "BROU",
+          monto: "50000",
+          pago: "3000",
+          situacion_ui: "pagando_normal",
+          debt_confidence: "low",
+        }],
+        snap: { plan_id: 1 },
+        diag: null,
+      },
+      expected: {
+        planId: 3,
+        profileTier: "standard",
+        whatIsHappeningText: null,
+        heroProblemOverride: null,
+        nextStepKey: "ordenar_panorama",
+        showRetry: false,
+        suppressOrdenarPanorama: false,
+      },
+      assertFn: assertP9,
+    },
+    {
+      id: "P10",
+      label: "P10 incomplete profile no income declared",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 0,
+      state: {
+        gastos: {},
+        deudas: [],
+        diag: null,
+      },
+      assertFn: assertP10,
+    },
+    {
+      id: "P11",
+      label: "P11 cancelled debt only",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 60000,
+      state: {
+        gastos: { vivienda: 12000, alimentacion: 7000 },
+        gastos_missing_confirmed: false,
+        deudas: [{
+          cancelada: true,
+          monto: "50000",
+          pago: "5000",
+        }],
+        snap: { plan_id: 1 },
+        diag: null,
+      },
+      assertFn: assertP11,
+    },
+    {
+      id: "P12",
+      label: "P12 debt with pago zero in healthy profile",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 80000,
+      state: {
+        gastos: { vivienda: 15000, alimentacion: 8000 },
+        gastos_missing_confirmed: false,
+        deudas: [{
+          tipo: "prestamo",
+          monto: "20000",
+          pago: "0",
+          situacion_ui: "pagando_normal",
+          debt_confidence: "high",
+        }],
+        snap: { plan_id: 1 },
+        diag: null,
+      },
+      assertFn: assertP12,
+    },
+    {
+      id: "P13",
+      label: "P13 mixed debts one active one cancelled",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 65000,
+      state: {
+        gastos: { vivienda: 14000, alimentacion: 8000 },
+        gastos_missing_confirmed: false,
+        deudas: [
+          {
+            tipo: "tarjeta",
+            monto: "30000",
+            pago: "2000",
+            situacion_ui: "pagando_normal",
+            cancelada: false,
+            debt_confidence: "high",
+          },
+          {
+            tipo: "prestamo",
+            monto: "50000",
+            pago: "5000",
+            cancelada: true,
+          },
+        ],
+        snap: { plan_id: 1 },
+        diag: null,
+      },
+      assertFn: assertP13,
+    },
+  ];
+
+  PROFILES.forEach(function(profile) {
+    var result = runPipeline(profile);
+    if (profile.assertFn) {
+      profile.assertFn(profile.label, result, profile.expected);
+    } else {
+      assertProfile(profile.label, result, profile.expected);
+    }
+  });
+
+  var total = passed + failed;
+  console.log("\ndashboard-e2e-qa — " + passed + "/" + total
+    + (failed ? " (" + failed + " FAIL)" : " PASS"));
+  if (failed) process.exit(1);
+})();
