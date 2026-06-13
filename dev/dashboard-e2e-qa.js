@@ -11,9 +11,19 @@
   var passed = 0;
   var failed = 0;
 
-  function ok(label, cond) {
+  function ok(label, cond, details) {
     console.log((cond ? "[PASS]" : "[FAIL]") + " " + label);
-    if (cond) passed++; else failed++;
+    if (!cond) {
+      if (details) {
+        if (details.profileId) console.log("  profile: " + details.profileId);
+        if (details.field) console.log("  field: " + details.field);
+        if (details.expected !== undefined) console.log("  expected: " + JSON.stringify(details.expected));
+        if (details.actual !== undefined) console.log("  actual: " + JSON.stringify(details.actual));
+      }
+      failed++;
+    } else {
+      passed++;
+    }
   }
 
   function load(file) {
@@ -59,20 +69,31 @@
     return { diag: diag, coherence: coherence };
   }
 
-  function assertProfile(label, result, expected) {
+  function assertProfile(label, result, expected, profileId) {
+    profileId = profileId || ((label.match(/^(P\d+)/) || [])[1]) || label;
     var diag = result.diag;
     var coh = result.coherence;
-    ok(label + " planId " + expected.planId, diag.planId === expected.planId);
-    ok(label + " profileTier " + expected.profileTier, coh.profileTier === expected.profileTier);
-    ok(label + " whatIsHappeningText", coh.whatIsHappeningText === expected.whatIsHappeningText);
-    ok(label + " heroProblemOverride", coh.heroProblemOverride === expected.heroProblemOverride);
-    ok(label + " nextStepKey " + expected.nextStepKey, coh.nextStepKey === expected.nextStepKey);
-    ok(label + " showRetry " + expected.showRetry, coh.showRetry === expected.showRetry);
-    ok(label + " suppressOrdenarPanorama " + expected.suppressOrdenarPanorama,
-      coh.suppressOrdenarPanorama === expected.suppressOrdenarPanorama);
+
+    function check(field, actual, exp, labelSuffix) {
+      ok(profileId + (labelSuffix ? " " + labelSuffix : "") + " " + field, actual === exp, {
+        profileId: profileId,
+        field: field,
+        expected: exp,
+        actual: actual,
+      });
+    }
+
+    check("planId", diag.planId, expected.planId, String(expected.planId));
+    check("profileTier", coh.profileTier, expected.profileTier, expected.profileTier);
+    check("whatIsHappeningText", coh.whatIsHappeningText, expected.whatIsHappeningText);
+    check("heroProblemOverride", coh.heroProblemOverride, expected.heroProblemOverride);
+    check("nextStepKey", coh.nextStepKey, expected.nextStepKey, expected.nextStepKey);
+    check("showRetry", coh.showRetry, expected.showRetry, String(expected.showRetry));
+    check("suppressOrdenarPanorama", coh.suppressOrdenarPanorama, expected.suppressOrdenarPanorama,
+      String(expected.suppressOrdenarPanorama));
     if (expected.statusLabel != null) {
-      ok(label + " statusLabel " + expected.statusLabel,
-        resolvePlanStatusLabel(diag, window.CZState, coh).text === expected.statusLabel);
+      check("statusLabel", resolvePlanStatusLabel(diag, window.CZState, coh).text,
+        expected.statusLabel, expected.statusLabel);
     }
   }
 
@@ -544,6 +565,87 @@
       },
       assertFn: assertP13,
     },
+    // P14: Virgin total — ingreso=0, empty gastos/deudas. isIncompleteFinancialProfile returns false
+    // (no declared income short-circuits before incomplete checks), so motor assigns planId 4,
+    // profileTier critical, statusLabel "Prioridad alta" (not "Diagnóstico pendiente").
+    {
+      id: "P14",
+      label: "P14 virgin total profile",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 0,
+      state: {
+        gastos: {},
+        gastos_missing_confirmed: false,
+        no_debts_declared: false,
+        deudas: [],
+        snap: { plan_id: 1 },
+        diag: null,
+      },
+      expected: {
+        planId: 4,
+        profileTier: "critical",
+        statusLabel: "Prioridad alta",
+        whatIsHappeningText: null,
+        heroProblemOverride: null,
+        nextStepKey: "ordenar_panorama",
+        showRetry: false,
+        suppressOrdenarPanorama: false,
+      },
+    },
+    // P15: Three active moras with pago 0 → planId 4, profileTier critical, statusLabel "Prioridad alta".
+    // Multiple mora_reclamo/mora_judicial debts trigger critical tier; healthy_organized narrative/status
+    // overrides do not apply.
+    {
+      id: "P15",
+      label: "P15 rejected user multiple active moras",
+      search: "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
+      ingreso: 30000,
+      state: {
+        gastos: { vivienda: 10000, alimentacion: 6000 },
+        gastos_missing_confirmed: false,
+        deudas: [
+          {
+            tipo: "tarjeta",
+            acreedor: "OCA",
+            monto: "80000",
+            pago: "0",
+            situacion_ui: "mora_reclamo",
+            debt_confidence: "high",
+            cancelada: false,
+          },
+          {
+            tipo: "financiera",
+            acreedor: "Creditel",
+            monto: "45000",
+            pago: "0",
+            situacion_ui: "mora_reclamo",
+            debt_confidence: "high",
+            cancelada: false,
+          },
+          {
+            tipo: "prestamo",
+            acreedor: "BROU",
+            monto: "30000",
+            pago: "0",
+            situacion_ui: "mora_judicial",
+            debt_confidence: "high",
+            cancelada: false,
+          },
+        ],
+        snap: { plan_id: 1 },
+        diag: null,
+      },
+      expected: {
+        planId: 4,
+        profileTier: "critical",
+        statusLabel: "Prioridad alta",
+        whatIsHappeningText: null,
+        heroProblemOverride: null,
+        nextStepKey: "confirmar_saldo_stock_deuda",
+        showRetry: false,
+        suppressOrdenarPanorama: false,
+      },
+    },
   ];
 
   PROFILES.forEach(function(profile) {
@@ -551,7 +653,7 @@
     if (profile.assertFn) {
       profile.assertFn(profile.label, result, profile.expected);
     } else {
-      assertProfile(profile.label, result, profile.expected);
+      assertProfile(profile.label, result, profile.expected, profile.id);
     }
   });
 
