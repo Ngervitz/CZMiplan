@@ -1897,6 +1897,34 @@ function renderConfianzaDiagnostico(diag) {
     + '</div>';
 }
 
+function _hasRealBlockers(diag) {
+  return Array.isArray(diag && diag.bloqueadores)
+    && diag.bloqueadores.length > 0;
+}
+
+function _shouldHideBlockersContent(diag, coherence) {
+  coherence = coherence || resolveDashboardCoherence(diag, _st());
+  return coherence.profileTier === "healthy_organized" && !_hasRealBlockers(diag);
+}
+
+function _shouldShowRelacionDeudaIngresoSection(diag) {
+  var ingreso = PRE.ingreso || 0;
+  if (ingreso <= 0) return false;
+  var st = _st();
+  var deudas = st.deudas || [];
+  if (typeof deudasActivasParaCalculo === "function") {
+    return deudasActivasParaCalculo(deudas).length > 0;
+  }
+  var fin = _finFromDiag(diag);
+  return (fin.totalDeuda || 0) > 0;
+}
+
+function _shouldRenderFrenandoSection(diag, coherence) {
+  coherence = coherence || resolveDashboardCoherence(diag, _st());
+  return !_shouldHideBlockersContent(diag, coherence)
+    || _shouldShowRelacionDeudaIngresoSection(diag);
+}
+
 function renderBloqueadores(diag) {
   var st = _st();
   if (isIncompleteFinancialProfile(diag, st) && _expensesMissing(st) && !_hasNoDeclaredDebts(st)) {
@@ -3239,15 +3267,21 @@ function renderTabPlan() {
     + _dashIaSectionClose()
     + _dashZoneClose()
 
-    // 4 — Qué está frenando tu perfil
-    + _dashZoneOpen("frenando", CZ_DASH_ZONE_GAP, "dash-zone-density")
-    + _dashIaSectionOpen(false, "frenando")
-    + _dashIaLabel("Qué está frenando tu perfil", "frenando")
-    + renderBloqueadores(diag)
-    + renderPlan4SinDeudaActivaExplicacion(diag)
-    + renderRelacionDeudaIngreso(diag)
-    + _dashIaSectionClose()
-    + _dashZoneClose()
+    // 4 — Qué está frenando tu perfil (+ relación deuda/ingreso)
+    + (_shouldRenderFrenandoSection(diag, coherence)
+        ? _dashZoneOpen("frenando", CZ_DASH_ZONE_GAP, "dash-zone-density")
+          + _dashIaSectionOpen(false, "frenando")
+          + (!_shouldHideBlockersContent(diag, coherence)
+              ? _dashIaLabel("Qué está frenando tu perfil", "frenando")
+                + renderBloqueadores(diag)
+                + renderPlan4SinDeudaActivaExplicacion(diag)
+              : "")
+          + (_shouldShowRelacionDeudaIngresoSection(diag)
+              ? renderRelacionDeudaIngreso(diag)
+              : "")
+          + _dashIaSectionClose()
+          + _dashZoneClose()
+        : "")
 
     // 5 — Mi Plan Plus
     + _dashZoneOpen("plus", CZ_DASH_ZONE_GAP)
@@ -5443,6 +5477,10 @@ window.CredizonaUI = {
   updateGastosTotalDisplay: updateGastosTotalDisplay,
   updateCustomExpenseClassificationUI: updateCustomExpenseClassificationUI,
   resolveDashboardCoherence: resolveDashboardCoherence,
+  _hasRealBlockers: _hasRealBlockers,
+  _shouldHideBlockersContent: _shouldHideBlockersContent,
+  _shouldShowRelacionDeudaIngresoSection: _shouldShowRelacionDeudaIngresoSection,
+  _shouldRenderFrenandoSection: _shouldRenderFrenandoSection,
   _resolveNextStepKeyFromDiag: _resolveNextStepKeyFromDiag,
   _isRetryCompatibleNextStep: _isRetryCompatibleNextStep,
   getRetryCtaState: getRetryCtaState,
