@@ -2057,6 +2057,8 @@ function isIncompleteFinancialProfile(diag, st) {
 // Sprint B2e — Plan 1 complete profile with debt history but zero active debts.
 var _ZERO_ACTIVE_DEBT_HERO_PROBLEMA = "No registrás deudas activas actualmente. El objetivo es mantener un equilibrio saludable entre ingresos y gastos para conservar tu estabilidad financiera.";
 var _ZERO_ACTIVE_DEBT_NEXT_STEP = "Revisá periódicamente tus gastos y tu margen disponible para mantener una situación financiera saludable.";
+var _REVISAR_INGRESOS_NEXT_STEP =
+  "El primer paso es revisar tu situación de ingresos para confirmar si actualmente contás con una fuente de ingresos estable o si necesitás generar una nueva.";
 
 function _isZeroActiveDebtCompleteProfile(diag, st) {
   diag = diag || {};
@@ -2179,6 +2181,11 @@ function resolveDashboardCoherence(diag, st) {
       heroProblemOverride = "Tu perfil financiero está en orden. Mantener la disciplina de pagos es lo que consolida la recuperación.";
     }
     suppressOrdenarPanorama = true;
+  } else if (diag.plan_guardrail_reason === "ingreso_cero") {
+    nextStepKey = "revisar_ingresos";
+    nextStepText = _REVISAR_INGRESOS_NEXT_STEP;
+    heroProblemOverride = null;
+    suppressOrdenarPanorama = false;
   } else {
     nextStepKey = _resolveNextStepKeyFromDiag(diag, st);
     nextStepText = _resolveDashboardNextStepText(diag, st);

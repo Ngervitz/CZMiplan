@@ -567,7 +567,7 @@
     },
     // P14: Virgin total — ingreso=0, empty gastos/deudas. isIncompleteFinancialProfile returns false
     // (no declared income short-circuits before incomplete checks), so motor assigns planId 4,
-    // profileTier critical, statusLabel "Prioridad alta" (not "Diagnóstico pendiente").
+    // profileTier critical, statusLabel "Prioridad alta"; coherence overrides nextStepKey to revisar_ingresos.
     {
       id: "P14",
       label: "P14 virgin total profile",
@@ -587,7 +587,7 @@
         statusLabel: "Prioridad alta",
         whatIsHappeningText: null,
         heroProblemOverride: null,
-        nextStepKey: "ordenar_panorama",
+        nextStepKey: "revisar_ingresos",
         showRetry: false,
         suppressOrdenarPanorama: false,
       },
