@@ -1442,14 +1442,13 @@ function resolvePlanStatusLabel(diag, st) {
 
 function _renderProfileScoreLabelHtml(labelObj) {
   labelObj = labelObj || {};
-  var html = '<div style="display:inline-flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;max-width:100%;">'
-    + '<div style="font-size:22px;font-weight:800;color:' + (labelObj.color || "#8390b5") + ';line-height:1.35;">'
+  var html = '<div class="profile-composition-score">'
+    + '<div class="profile-composition-score__text" style="color:' + (labelObj.color || "#8390b5") + ';">'
     + (labelObj.emoji ? labelObj.emoji + " " : "")
     + (labelObj.text || "")
     + "</div>";
   if (labelObj.tooltip) {
-    html += '<span title="' + String(labelObj.tooltip).replace(/"/g, "&quot;") + '" '
-      + 'style="font-size:13px;color:#8390b5;cursor:help;line-height:1;" '
+    html += '<span class="profile-composition-score__info" title="' + String(labelObj.tooltip).replace(/"/g, "&quot;") + '" '
       + 'role="img" aria-label="Información adicional">ⓘ</span>';
   }
   html += "</div>";
@@ -1554,8 +1553,21 @@ function _shouldShowZeroPaymentDebtClarification(st) {
 }
 
 function _renderZeroPaymentDebtClarificationHtml() {
-  return '<div style="font-size:13px;color:#8390b5;line-height:1.55;margin-top:10px;padding:0 4px;">'
+  return '<p class="profile-composition-card__clarification">'
     + _ZERO_PAYMENT_DEBT_CLARIFICATION
+    + "</p>";
+}
+
+function renderProfileCompositionCard(title, valueHtml, desc, extraHtml) {
+  return '<div class="profile-composition-card">'
+    + '<div class="profile-composition-card__title">' + title + "</div>"
+    + '<div class="profile-composition-card__body">'
+    + '<div class="profile-composition-card__value">' + (valueHtml || "") + "</div>"
+    + '<div class="profile-composition-card__desc">' + (desc || "") + "</div>"
+    + "</div>"
+    + (extraHtml
+        ? '<div class="profile-composition-card__extra">' + extraHtml + "</div>"
+        : "")
     + "</div>";
 }
 
@@ -3316,24 +3328,22 @@ function renderTabPlan() {
       })()
 
     // 11. Composicion del perfil + progreso (contexto analitico)
-    + '<div class="plan-card">'
-    + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;">Composicion de tu perfil</div>'
-    + '<div class="grid">'
-    + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
-    + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Situacion financiera</div>'
-    + _renderProfileScoreLabelHtml(_finScoreLabel)
-    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">'
-    + (_incompleteProfile ? "faltan datos para estimarla" : "gastos y deudas")
+    + '<div class="plan-card profile-composition-section">'
+    + '<div class="profile-composition-heading">Composicion de tu perfil</div>'
+    + '<div class="profile-composition-grid">'
+    + renderProfileCompositionCard(
+        "Situacion financiera",
+        _renderProfileScoreLabelHtml(_finScoreLabel),
+        _incompleteProfile ? "faltan datos para estimarla" : "gastos y deudas",
+        _zeroPaymentDebtClarification
+      )
+    + renderProfileCompositionCard(
+        "Perfil conductual",
+        _renderProfileScoreLabelHtml(_behScoreLabel),
+        hasBehav && behEnc && _behScoreLabel.valid ? "analisis conductual" : "sin datos adicionales",
+        ""
+      )
     + "</div>"
-    + _zeroPaymentDebtClarification
-    + '</div></div>'
-    + '<div style="text-align:center;padding:18px;background:rgba(255,255,255,.04);border-radius:16px;">'
-    + '<div style="font-size:14px;color:#8390b5;margin-bottom:8px;">Perfil conductual</div>'
-    + _renderProfileScoreLabelHtml(_behScoreLabel)
-    + '<div style="font-size:14px;color:#8390b5;margin-top:6px;">'
-    + (hasBehav && behEnc && _behScoreLabel.valid ? "analisis conductual" : "sin datos adicionales")
-    + '</div></div>'
-    + '</div>'
     + '<div style="margin-top:14px;font-size:15px;color:#8390b5;text-align:center;">Revision sugerida en <strong style="color:rgba(255,255,255,.8);">' + diag.plan.reevaluacion + '</strong></div>'
     + (showBehavCta
         ? '<div style="margin-top:18px;padding:16px 18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;">'
@@ -5441,6 +5451,7 @@ window.CredizonaUI = {
   _scoreFinancieroLabel: _scoreFinancieroLabel,
   _scoreConductualLabel: _scoreConductualLabel,
   resolvePlanStatusLabel: resolvePlanStatusLabel,
+  renderProfileCompositionCard: renderProfileCompositionCard,
   _renderProfileScoreLabelHtml: _renderProfileScoreLabelHtml,
   renderNarrativaInterpretacion: renderNarrativaInterpretacion,
   isIncompleteFinancialProfile: isIncompleteFinancialProfile,

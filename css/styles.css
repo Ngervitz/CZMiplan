@@ -150,6 +150,57 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 select option{background:#0a1026;}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 
+/* Sprint B6d — profile composition cards (Tus números) */
+.profile-composition-section{max-width:100%;box-sizing:border-box;}
+.profile-composition-heading{
+  font-size:14px;color:#8390b5;font-weight:700;
+  text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px;
+}
+.profile-composition-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;align-items:stretch;
+}
+.profile-composition-card{
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+  padding:18px 16px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.07);border-radius:16px;
+  height:100%;min-width:0;box-sizing:border-box;
+}
+.profile-composition-card__title{
+  font-size:14px;color:#8390b5;margin-bottom:10px;line-height:1.4;
+  width:100%;
+}
+.profile-composition-card__body{
+  flex:1 1 auto;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;width:100%;min-width:0;
+}
+.profile-composition-card__value{
+  width:100%;display:flex;justify-content:center;align-items:center;
+  min-width:0;margin-bottom:8px;
+}
+.profile-composition-card__desc{
+  font-size:14px;color:#8390b5;line-height:1.5;width:100%;
+  word-break:break-word;
+}
+.profile-composition-card__extra{
+  width:100%;margin-top:auto;padding-top:12px;min-width:0;
+}
+.profile-composition-card__clarification{
+  margin:0;font-size:13px;color:#8390b5;line-height:1.55;
+  word-break:break-word;
+}
+.profile-composition-score{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:4px;flex-wrap:wrap;max-width:100%;
+}
+.profile-composition-score__text{
+  font-size:22px;font-weight:800;line-height:1.35;
+  word-break:break-word;
+}
+.profile-composition-score__info{
+  font-size:13px;color:#8390b5;cursor:help;line-height:1;flex-shrink:0;
+}
+
 /* ACCORDION */
 .accordion-item{border:1px solid rgba(255,255,255,.08);border-radius:18px;margin-bottom:12px;overflow:hidden;}
 .accordion-trigger{
@@ -1501,7 +1552,7 @@ body.modal-open{
   .step-title{font-size:26px;}
   .step-text{font-size:19px;}
   .section-title{font-size:38px;}
-  .grid,.metrics,.pricing-grid{grid-template-columns:1fr;}
+  .grid,.metrics,.pricing-grid,.profile-composition-grid{grid-template-columns:1fr;}
   .metric strong{font-size:34px;}
   .score-big{font-size:42px;}
   .plan-title-big{font-size:34px;}

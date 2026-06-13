@@ -149,7 +149,7 @@
   var heroFn = uiSrc.slice(uiSrc.indexOf("function _renderDashboardHeroCard"), uiSrc.indexOf("// TAB: MI PLAN"));
   ok("I Hero fn has no Situación financiera string", heroFn.indexOf("Situación financiera:") < 0);
   ok("I Hero fn has no finLabel variable", !/\bfinLabel\b/.test(heroFn));
-  ok("I composicion still uses _finScoreLabel", uiSrc.indexOf("Situacion financiera</div>") >= 0 && uiSrc.indexOf("_renderProfileScoreLabelHtml(_finScoreLabel)") >= 0);
+  ok("I composicion still uses _finScoreLabel", uiSrc.indexOf('"Situacion financiera"') >= 0 && uiSrc.indexOf("_renderProfileScoreLabelHtml(_finScoreLabel)") >= 0);
 
   console.log("\nHero fin label B4b QA: " + passed + "/" + (passed + failed) + " PASS");
   process.exit(failed > 0 ? 1 : 0);
