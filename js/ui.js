@@ -2077,6 +2077,33 @@ var _RETRY_COMPATIBLE_NEXT_STEPS = {
   preparar_reintento: true,
 };
 
+var _WHAT_IS_HAPPENING_HEALTHY_ALTO =
+  "Tu situación declarada muestra un perfil ordenado y con margen disponible. "
+  + "El principal ajuste no es ordenar más información, sino reducir el costo "
+  + "de la deuda que ya estás pagando.";
+var _WHAT_IS_HAPPENING_HEALTHY_MEDIO_BAJO =
+  "Tu situación declarada muestra un perfil ordenado, con pagos controlados y margen disponible. "
+  + "El foco ahora es mantener la disciplina y evitar que la deuda vuelva a crecer.";
+var _WHAT_IS_HAPPENING_HEALTHY_ZERO_DEBT =
+  "No registrás deudas activas actualmente. El foco es mantener el equilibrio entre ingresos "
+  + "y gastos para sostener tu estabilidad financiera.";
+
+function _hasActiveDebtsFromState(st) {
+  st = st || _st();
+  var deudas = st.deudas || [];
+  if (typeof deudasActivasParaCalculo === "function") {
+    return deudasActivasParaCalculo(deudas).length > 0;
+  }
+  return false;
+}
+
+function _resolveWhatIsHappeningText(profileTier, costoNivel, hasActiveDebts) {
+  if (profileTier !== "healthy_organized") return null;
+  if (!hasActiveDebts) return _WHAT_IS_HAPPENING_HEALTHY_ZERO_DEBT;
+  if (costoNivel === "alto") return _WHAT_IS_HAPPENING_HEALTHY_ALTO;
+  return _WHAT_IS_HAPPENING_HEALTHY_MEDIO_BAJO;
+}
+
 function _confidenceLevelFromDiag(diag) {
   if (!diag) return null;
   if (diag.confidence_level != null) return diag.confidence_level;
@@ -2159,6 +2186,8 @@ function resolveDashboardCoherence(diag, st) {
   var retryCompatible = _isRetryCompatibleNextStep(nextStepKey);
   var eligible = typeof isRetryEligible === "function" && isRetryEligible(diag, st);
   var showRetry = eligible && retryCompatible;
+  var hasActiveDebts = _hasActiveDebtsFromState(st);
+  var whatIsHappeningText = _resolveWhatIsHappeningText(profileTier, costoNivel, hasActiveDebts);
 
   return {
     profileTier: profileTier,
@@ -2169,6 +2198,7 @@ function resolveDashboardCoherence(diag, st) {
     retryCompatible: retryCompatible,
     suppressOrdenarPanorama: suppressOrdenarPanorama,
     hideAccionPrioritaria: hideAccionPrioritaria,
+    whatIsHappeningText: whatIsHappeningText,
   };
 }
 
@@ -2767,6 +2797,9 @@ function renderNarrativaInterpretacion(diag, st, coherence) {
   var textoPaso = coherence.suppressOrdenarPanorama
     ? coherence.nextStepText
     : (coherence.nextStepText || _resolveDashboardNextStepText(diag, st));
+  var textoPrincipal = coherence.whatIsHappeningText != null
+    ? coherence.whatIsHappeningText
+    : (nPrincipal ? nPrincipal.texto : null);
   var injectedCtaHtml = _resolveDiagnosisInjectedCtaHtml(diag, st);
 
   var block = function(label, text) {
@@ -2804,7 +2837,7 @@ function renderNarrativaInterpretacion(diag, st, coherence) {
 
   return '<div class="plan-card">'
     + renderRecuperabilidadBadge(iv2)
-    + block("Qué está pasando",        nPrincipal ? nPrincipal.texto : null)
+    + block("Qué está pasando",        textoPrincipal)
     + (showPresion ? block("Presión principal",          nPresion  ? nPresion.texto  : null) : "")
     + block("Capacidad de recuperación", nRecup     ? nRecup.texto    : null)
     + block("Primer paso recomendado",   textoPaso)
