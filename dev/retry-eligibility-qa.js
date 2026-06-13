@@ -213,7 +213,7 @@
 
 
 
-  // D — Plan 2 healthy profile
+  // D — healthy profile with expensive debt - B6a separation
 
   boot();
 
@@ -241,7 +241,9 @@
 
   var diagD = calcularMotor();
 
-  ok("D planId is 1 or 2", diagD.planId === 1 || diagD.planId === 2);
+  ok("D planId is 1 2 or 3", diagD.planId === 1 || diagD.planId === 2 || diagD.planId === 3);
+
+  ok("D costoDeudaNivel Alto with healthy plan", diagD.fin.costoDeudaNivel === "Alto");
 
   ok("D retry unlocked", getRetryCtaState(diagD, window.CZState) === "unlocked");
 

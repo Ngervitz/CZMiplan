@@ -120,6 +120,14 @@ function etiquetaStockDeuda(dti_ratio) {
 // =============================================================================
 // MOTOR FINANCIERO
 // =============================================================================
+// Sprint B6a — debt cost (interesProm) vs financial stress (nivelRiesgo) are separate.
+// costoDeudaNivel feeds recommendations/prioritization; nivelRiesgo feeds plan stress gates.
+function evaluarCostoDeuda(interesProm) {
+  if (interesProm > 90) return "Alto";
+  if (interesProm > 60) return "Medio";
+  return "Bajo";
+}
+
 function calcularFinanciero() {
   const gastos = _gastos();
   const deudas = deudasActivasParaCalculo(_deudas());
@@ -160,13 +168,16 @@ function calcularFinanciero() {
   // Escala 0-30 para unificar con encuesta
   score = clamp(Math.round(score / 100 * 30), 0, 30);
 
+  // Affordability / payment-burden only — NOT debt cost (see costoDeudaNivel).
   let nivelRiesgo = "Bajo";
-  if (totalPago > 50000 || interesProm > 90) nivelRiesgo = "Critico";
-  else if (totalPago > 25000 || interesProm > 60) nivelRiesgo = "Medio";
+  if (totalPago > 50000) nivelRiesgo = "Critico";
+  else if (totalPago > 25000) nivelRiesgo = "Medio";
+
+  var costoDeudaNivel = evaluarCostoDeuda(interesProm);
 
   var fin = {
     totalGastos, totalDeuda, totalPago, flujoLibre, ratio,
-    interesProm, scoreFinanciero: score, nivelRiesgo,
+    interesProm, costoDeudaNivel, scoreFinanciero: score, nivelRiesgo,
     cantMoras: moras, cantInformales: informales,
   };
 
@@ -212,6 +223,8 @@ function deudaPrioritaria() {
 
 // =============================================================================
 // ASIGNACION DE PLAN
+// fin.nivelRiesgo = affordability stress (pagos absolutos), not debt cost.
+// fin.costoDeudaNivel = weighted rate tier — recommendations only (Sprint B6a).
 // =============================================================================
 function asignarPlan(enc, fin) {
   const r = PRE.respuestas;

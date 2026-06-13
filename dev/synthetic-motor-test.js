@@ -66,7 +66,7 @@
       deudas: [{ acreedor: "OCA", saldo: 30000, pago: 2000, situacion_ui: "pagando_normal" }],
       gastos: { vivienda: 10000, alimentacion: 6000 },
       encuesta: "mostly_ab",
-      expected: "1-2",
+      expected: "1-3",
     },
     {
       id: 3,
@@ -136,7 +136,7 @@
       deudas: buildTwentyDebts(),
       gastos: { vivienda: 10000, alimentacion: 6000 },
       encuesta: null,
-      expected: "3-4",
+      expected: "2-3",
     },
     {
       id: 10,
