@@ -70,6 +70,10 @@
     ok(label + " showRetry " + expected.showRetry, coh.showRetry === expected.showRetry);
     ok(label + " suppressOrdenarPanorama " + expected.suppressOrdenarPanorama,
       coh.suppressOrdenarPanorama === expected.suppressOrdenarPanorama);
+    if (expected.statusLabel != null) {
+      ok(label + " statusLabel " + expected.statusLabel,
+        resolvePlanStatusLabel(diag, window.CZState, coh).text === expected.statusLabel);
+    }
   }
 
   var HERO_ALTO =
@@ -108,6 +112,8 @@
     ok(label + " nextStepKey confirmar_saldo_stock_deuda", coh.nextStepKey === "confirmar_saldo_stock_deuda");
     ok(label + " showRetry false", coh.showRetry === false);
     ok(label + " suppressOrdenarPanorama false", coh.suppressOrdenarPanorama === false);
+    ok(label + " statusLabel Prioridad alta",
+      resolvePlanStatusLabel(diag, window.CZState, coh).text === "Prioridad alta");
   }
 
   function assertP9(label, result, expected) {
@@ -115,11 +121,14 @@
   }
 
   function assertP10(label, result) {
+    var diag = result.diag;
     var coh = result.coherence;
     ok(label + " whatIsHappeningText null", coh.whatIsHappeningText === null);
     ok(label + " showRetry false", coh.showRetry === false);
     ok(label + " profileTier standard", coh.profileTier === "standard"
       || (PRE.ingreso === 0 && coh.profileTier === "critical"));
+    ok(label + " statusLabel Prioridad alta",
+      resolvePlanStatusLabel(diag, window.CZState, coh).text === "Prioridad alta");
   }
 
   function assertP11(label, result) {
@@ -138,6 +147,10 @@
       ok(label + " whatIsHappeningText null when standard", coh.whatIsHappeningText === null);
     }
     ok(label + " motor planId " + diag.planId, diag.planId === 1);
+    if (coh.profileTier === "healthy_organized") {
+      ok(label + " statusLabel En buen camino",
+        resolvePlanStatusLabel(diag, window.CZState, coh).text === "En buen camino");
+    }
   }
 
   function assertP12(label, result) {
@@ -152,6 +165,10 @@
     } else {
       ok(label + " whatIsHappeningText null or CASE 2", coh.whatIsHappeningText === null
         || coh.whatIsHappeningText.indexOf(CASE2_PREFIX) === 0);
+    }
+    if (coh.profileTier === "healthy_organized") {
+      ok(label + " statusLabel En buen camino",
+        resolvePlanStatusLabel(diag, window.CZState, coh).text === "En buen camino");
     }
   }
 
@@ -170,6 +187,8 @@
     }
     ok(label + " profileTier healthy_organized", coh.profileTier === "healthy_organized");
     ok(label + " costoDeudaNivel Alto", costo === "alto");
+    ok(label + " statusLabel En buen camino",
+      resolvePlanStatusLabel(diag, window.CZState, coh).text === "En buen camino");
   }
 
   var PROFILES = [
@@ -203,6 +222,7 @@
         nextStepKey: "optimizar_deuda_cara",
         showRetry: true,
         suppressOrdenarPanorama: true,
+        statusLabel: "En buen camino",
       },
     },
     {
@@ -234,6 +254,7 @@
         nextStepKey: "mantener_disciplina",
         showRetry: false,
         suppressOrdenarPanorama: true,
+        statusLabel: "En buen camino",
       },
     },
     {
@@ -265,6 +286,7 @@
         nextStepKey: "mantener_disciplina",
         showRetry: true,
         suppressOrdenarPanorama: true,
+        statusLabel: "En buen camino",
       },
     },
     {
@@ -294,6 +316,7 @@
         nextStepKey: "ordenar_panorama",
         showRetry: false,
         suppressOrdenarPanorama: false,
+        statusLabel: "En proceso",
       },
     },
     {
@@ -323,6 +346,7 @@
         nextStepKey: "ordenar_panorama",
         showRetry: false,
         suppressOrdenarPanorama: false,
+        statusLabel: "Requiere acción",
       },
     },
     {
@@ -352,6 +376,7 @@
         nextStepKey: "confirmar_saldo_stock_deuda",
         showRetry: false,
         suppressOrdenarPanorama: false,
+        statusLabel: "Prioridad alta",
       },
     },
     {
@@ -375,6 +400,7 @@
         nextStepKey: "ordenar_panorama",
         showRetry: false,
         suppressOrdenarPanorama: false,
+        statusLabel: "Diagnóstico pendiente",
       },
     },
     {
@@ -435,6 +461,7 @@
         nextStepKey: "ordenar_panorama",
         showRetry: false,
         suppressOrdenarPanorama: false,
+        statusLabel: "Requiere acción",
       },
       assertFn: assertP9,
     },
@@ -527,6 +554,24 @@
       assertProfile(profile.label, result, profile.expected);
     }
   });
+
+  (function assertBackwardCompatStatusLabel() {
+    var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
+    var result = runPipeline(p4Profile);
+    var labelWithoutCoherence = null;
+    var threw = false;
+    try {
+      labelWithoutCoherence = resolvePlanStatusLabel(result.diag, window.CZState);
+    } catch (e) {
+      threw = true;
+    }
+    ok("backward compat resolvePlanStatusLabel(diag,st) no throw", !threw && labelWithoutCoherence != null);
+    ok("backward compat resolvePlanStatusLabel(diag,st) En proceso",
+      labelWithoutCoherence && labelWithoutCoherence.text === "En proceso");
+    ok("backward compat standard profile unchanged with coherence",
+      resolvePlanStatusLabel(result.diag, window.CZState, result.coherence).text
+        === labelWithoutCoherence.text);
+  })();
 
   var total = passed + failed;
   console.log("\ndashboard-e2e-qa — " + passed + "/" + total

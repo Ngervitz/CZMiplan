@@ -1423,11 +1423,14 @@ function _planStatusLabelFromTier(tier) {
   return { emoji: "", text: "Datos insuficientes para mostrar", color: "#8390b5" };
 }
 
-function resolvePlanStatusLabel(diag, st) {
+function resolvePlanStatusLabel(diag, st, coherence) {
   diag = diag || {};
   st = st || _st();
   if (isIncompleteFinancialProfile(diag, st)) {
     return _incompletePlanStatusLabel();
+  }
+  if (coherence && coherence.profileTier === "healthy_organized") {
+    return { emoji: "🟢", text: "En buen camino", color: "#34ffaf" };
   }
   var sev = typeof _severityFromDiag === "function" ? _severityFromDiag(diag) : {};
   var severityLevel = sev.severity_level
@@ -3128,7 +3131,7 @@ function _renderDashboardHeroCard(diag, st, coherence) {
   var heroProblema = coherence.heroProblemOverride != null
     ? coherence.heroProblemOverride
     : _resolveZeroActiveDebtHeroProblema(diag, st, plan.problema);
-  var statusLabel = resolvePlanStatusLabel(diag, st);
+  var statusLabel = resolvePlanStatusLabel(diag, st, coherence);
   var nextAction = _resolveHeroNextActionText(diag, st, coherence);
 
   return '<div class="cz-hero-card plan-card" id="cz-dashboard-hero" style="border-color:' + pc + '55;'
