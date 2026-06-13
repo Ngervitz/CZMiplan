@@ -1943,6 +1943,107 @@ function _resolveZeroActiveDebtHeroProblema(diag, st, planProblema) {
   return planProblema || null;
 }
 
+var _RETRY_COMPATIBLE_NEXT_STEPS = {
+  mantener_disciplina: true,
+  optimizar_deuda_cara: true,
+  preparar_reintento: true,
+};
+
+function _confidenceLevelFromDiag(diag) {
+  if (!diag) return null;
+  if (diag.confidence_level != null) return diag.confidence_level;
+  var iv2 = diag.interpretacion_v2;
+  if (iv2 && iv2.confidence_level != null) return iv2.confidence_level;
+  return null;
+}
+
+function _resolveNextStepKeyFromDiag(diag, st) {
+  diag = diag || {};
+  st = st || _st();
+  if (_isZeroActiveDebtCompleteProfile(diag, st)) return "mantener_disciplina";
+  var finAccion = _finFromDiag(diag);
+  if ((finAccion.dti_ratio || 0) >= 1) return "confirmar_saldo_stock_deuda";
+  var iv2 = diag.interpretacion_v2;
+  if (!iv2) return "ordenar_panorama";
+  if (iv2.next_best_action) return iv2.next_best_action;
+  var nPaso = iv2.narrativa_jerarquizada
+    ? getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso")
+    : null;
+  if (nPaso && nPaso.accion) return nPaso.accion;
+  return "ordenar_panorama";
+}
+
+function _isRetryCompatibleNextStep(nextStepKey) {
+  return !!(_RETRY_COMPATIBLE_NEXT_STEPS[nextStepKey]);
+}
+
+function resolveDashboardCoherence(diag, st) {
+  diag = diag || {};
+  st = st || _st();
+  var fin = diag.fin || {};
+  var planId = parseInt(diag.planId, 10);
+  if (isNaN(planId)) planId = 1;
+
+  var ratio = fin.ratio != null ? fin.ratio : 1;
+  var flujoLibre = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  var cantMoras = fin.cantMoras != null ? fin.cantMoras : 0;
+  var costoNivel = String(fin.costoDeudaNivel || "").toLowerCase();
+  var confidenceLevel = _confidenceLevelFromDiag(diag);
+
+  var profileTier = "standard";
+  if (planId === 4 || planId === 5 || flujoLibre < 0 || cantMoras > 0) {
+    profileTier = "critical";
+  } else if (
+    (planId === 1 || planId === 2 || planId === 3)
+    && ratio <= 0.15
+    && flujoLibre > 0
+    && cantMoras === 0
+    && !isIncompleteFinancialProfile(diag, st)
+    && confidenceLevel !== "low"
+  ) {
+    profileTier = "healthy_organized";
+  }
+
+  var nextStepKey = null;
+  var nextStepText = null;
+  var heroProblemOverride = null;
+  var suppressOrdenarPanorama = false;
+  var hideAccionPrioritaria = true;
+
+  if (profileTier === "healthy_organized") {
+    if (costoNivel === "alto") {
+      nextStepKey = "optimizar_deuda_cara";
+      nextStepText = "Priorizá la deuda de mayor costo para reducir intereses innecesarios.";
+      heroProblemOverride = "Tu perfil financiero está en orden. El próximo paso es optimizar el costo de tu deuda.";
+    } else {
+      nextStepKey = "mantener_disciplina";
+      nextStepText = "Mantené el ritmo de pagos actual y utilizá el margen disponible para reducir deuda más rápido si te resulta conveniente.";
+      heroProblemOverride = "Tu perfil financiero está en orden. Mantener la disciplina de pagos es lo que consolida la recuperación.";
+    }
+    suppressOrdenarPanorama = true;
+  } else {
+    nextStepKey = _resolveNextStepKeyFromDiag(diag, st);
+    nextStepText = _resolveDashboardNextStepText(diag, st);
+    heroProblemOverride = null;
+    suppressOrdenarPanorama = false;
+  }
+
+  var retryCompatible = _isRetryCompatibleNextStep(nextStepKey);
+  var eligible = typeof isRetryEligible === "function" && isRetryEligible(diag, st);
+  var showRetry = eligible && retryCompatible;
+
+  return {
+    profileTier: profileTier,
+    nextStepKey: nextStepKey,
+    nextStepText: nextStepText,
+    heroProblemOverride: heroProblemOverride,
+    showRetry: showRetry,
+    retryCompatible: retryCompatible,
+    suppressOrdenarPanorama: suppressOrdenarPanorama,
+    hideAccionPrioritaria: hideAccionPrioritaria,
+  };
+}
+
 function _resolveDashboardNextStepText(diag, st) {
   diag = diag || {};
   st = st || _st();
@@ -2292,10 +2393,11 @@ function _renderMideudaFallbackCtaHtml(hierarchy) {
   return html;
 }
 
-function _retryHorizonAddonHtml(diag, st) {
+function _retryHorizonAddonHtml(diag, st, coherence) {
   diag = diag || {};
   st = st || (typeof window !== "undefined" ? window.CZState : null) || _st();
-  if (typeof isRetryEligible === "function" && isRetryEligible(diag, st)) {
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+  if (coherence.showRetry) {
     return renderRetryCtaHorizonAddon(diag, st);
   }
   return renderRetryBlockedFallbackCta(diag, st);
@@ -2350,8 +2452,9 @@ function renderRetryBlockedFallbackCta(diag, st) {
     + '</div>';
 }
 
-function renderHorizonteRecalificacion(diag, st) {
+function renderHorizonteRecalificacion(diag, st, coherence) {
   st = st || (typeof window !== "undefined" ? window.CZState : null) || _st();
+  coherence = coherence || resolveDashboardCoherence(diag, st);
   var incomplete = isIncompleteFinancialProfile(diag, st);
   if (incomplete && _expensesMissing(st)) {
     return _renderIncompleteHorizonHtml(diag, st);
@@ -2390,7 +2493,7 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable sin estabilización previa</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Cuando el perfil está en estabilización crítica, primero hay que ordenar la situación y confirmar el saldo actualizado. Recién después se puede estimar un horizonte de recalificación.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Este diagnóstico se basa exclusivamente en la información que declaraste.</div>'
-      + _retryHorizonAddonHtml(diag, st)
+      + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
   }
 
@@ -2416,7 +2519,7 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable con flujo mensual negativo</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-      + _retryHorizonAddonHtml(diag, st)
+      + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
   }
 
@@ -2431,7 +2534,7 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:13px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:10px;">El total de deuda que declaraste supera tu ingreso mensual. Aunque no tengas pagos activos registrados, este nivel de deuda puede influir en una futura evaluación.</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Como este diagnóstico parte de una solicitud rechazada, conviene revisar si esta deuda tiene pagos, refinanciaciones o información adicional que todavía no fue incorporada.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-      + _retryHorizonAddonHtml(diag, st)
+      + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
   }
 
@@ -2447,7 +2550,7 @@ function renderHorizonteRecalificacion(diag, st) {
         + '<div style="font-size:14px;color:rgba(255,255,255,.85);line-height:1.55;margin-bottom:8px;">'
         + "Completá la información pendiente para obtener una evaluación más precisa."
         + "</div>"
-        + _retryHorizonAddonHtml(diag, st)
+        + _retryHorizonAddonHtml(diag, st, coherence)
         + "</div>";
     }
     return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);")
@@ -2456,7 +2559,7 @@ function renderHorizonteRecalificacion(diag, st) {
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Hay señales positivas en la información que registraste, pero todavía faltan datos para estimar con confianza si estás en condiciones de presentar una nueva solicitud.</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Completá la información pendiente para obtener una evaluación más precisa.</div>'
       + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-      + _retryHorizonAddonHtml(diag, st)
+      + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
   }
 
@@ -2468,7 +2571,7 @@ function renderHorizonteRecalificacion(diag, st) {
     + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + horizonLabel + '</div>'
     + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Basado en la información declarada, sin nuevas deudas y siguiendo el plan. El historial del sistema financiero puede incluir elementos que esta simulación no alcanza a ver.</div>'
     + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
-    + _retryHorizonAddonHtml(diag, st)
+    + _retryHorizonAddonHtml(diag, st, coherence)
     + '</div>';
 }
 
@@ -2520,10 +2623,11 @@ function renderRecuperabilidadBadge(iv2) {
 // Uses getNarrativaByTipo() — never accesses array by index.
 // Confidence note is rendered AFTER all four blocks, separate from card content.
 // Optional st — when hierarchy primary is complete_expenses, injects contextual CTA after primer paso.
-function renderNarrativaInterpretacion(diag, st) {
+function renderNarrativaInterpretacion(diag, st, coherence) {
   var iv2 = diag.interpretacion_v2;
   if (!iv2 || !iv2.narrativa_jerarquizada) return "";
   st = st || _st();
+  coherence = coherence || resolveDashboardCoherence(diag, st);
 
   if (isIncompleteFinancialProfile(diag, st)) {
     return _renderIncompleteProfileNarrativeHtml(diag, st);
@@ -2532,7 +2636,9 @@ function renderNarrativaInterpretacion(diag, st) {
   var nPrincipal = getNarrativaByTipo(iv2.narrativa_jerarquizada, "problema_principal");
   var nPresion   = getNarrativaByTipo(iv2.narrativa_jerarquizada, "presion_dominante");
   var nRecup     = getNarrativaByTipo(iv2.narrativa_jerarquizada, "recuperabilidad");
-  var textoPaso = _resolveDashboardNextStepText(diag, st);
+  var textoPaso = coherence.suppressOrdenarPanorama
+    ? coherence.nextStepText
+    : (coherence.nextStepText || _resolveDashboardNextStepText(diag, st));
   var injectedCtaHtml = _resolveDiagnosisInjectedCtaHtml(diag, st);
 
   var block = function(label, text) {
@@ -2815,13 +2921,17 @@ function _renderNumerosAccordionShell(innerHtml) {
     + "</div>";
 }
 
-function _resolveHeroNextActionText(diag, st) {
+function _resolveHeroNextActionText(diag, st, coherence) {
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+  if (isIncompleteFinancialProfile(diag, st)) return null;
+  if (coherence.nextStepText) return coherence.nextStepText;
   return _resolveDashboardNextStepText(diag, st);
 }
 
-function _renderDashboardHeroCard(diag, st) {
+function _renderDashboardHeroCard(diag, st, coherence) {
   diag = diag || _diag();
   st = st || _st();
+  coherence = coherence || resolveDashboardCoherence(diag, st);
   var pc = (diag.plan && diag.plan.color) ? diag.plan.color : "#40d7ff";
 
   if (isIncompleteFinancialProfile(diag, st)) {
@@ -2854,9 +2964,11 @@ function _renderDashboardHeroCard(diag, st) {
   }
 
   var plan = diag.plan || {};
-  var heroProblema = _resolveZeroActiveDebtHeroProblema(diag, st, plan.problema);
+  var heroProblema = coherence.heroProblemOverride != null
+    ? coherence.heroProblemOverride
+    : _resolveZeroActiveDebtHeroProblema(diag, st, plan.problema);
   var statusLabel = resolvePlanStatusLabel(diag, st);
-  var nextAction = _resolveHeroNextActionText(diag, st);
+  var nextAction = _resolveHeroNextActionText(diag, st, coherence);
 
   return '<div class="cz-hero-card plan-card" id="cz-dashboard-hero" style="border-color:' + pc + '55;'
     + 'background:linear-gradient(165deg,' + pc + '18 0%,rgba(255,255,255,.04) 58%);'
@@ -2918,6 +3030,7 @@ function renderLowExpensesConfirmCard(diag, st) {
 function renderTabPlan() {
   var diag   = _diag();
   var st     = _st();
+  var coherence = resolveDashboardCoherence(diag, st);
   var fin    = diag.fin;
   var pc     = diag.plan.color;
   var prio   = diag.prio;
@@ -2964,7 +3077,7 @@ function renderTabPlan() {
 
     // 1 — Hero Card
     + _dashZoneOpen("hero")
-    + _renderDashboardHeroCard(diag, st)
+    + _renderDashboardHeroCard(diag, st, coherence)
     + _dashZoneClose()
 
     // 2 — Tu situación actual (primary diagnosis)
@@ -2992,7 +3105,7 @@ function renderTabPlan() {
               : '')
           + '</div>'
         : '')
-    + renderNarrativaInterpretacion(diag, st)
+    + renderNarrativaInterpretacion(diag, st, coherence)
     + _dashIaSectionClose()
     + _dashZoneClose()
 
@@ -3005,12 +3118,13 @@ function renderTabPlan() {
     + _dashZoneOpen("accion", CZ_DASH_ZONE_GAP, _incompleteProfile ? "dash-accion-compact" : "")
     + _dashIaSectionOpen(true, "accion")
     + _dashIaLabel("Qué hacer ahora", "accion")
-    + renderHorizonteRecalificacion(diag, st)
+    + renderHorizonteRecalificacion(diag, st, coherence)
     // Sprint B3a — Hidden Factor inline card removed; dash-zone-plus is canonical Plus offer.
     // detectHiddenFactorOpportunity() preserved for future use outside this tab.
     + '<div style="display:none;height:0;overflow:hidden;">' + renderAccionPrioritaria(diag) + '</div>'
     + (function() {
-        var textoAccion = _resolveDashboardNextStepText(diag, st);
+        if (coherence.hideAccionPrioritaria) return "";
+        var textoAccion = coherence.nextStepText || _resolveDashboardNextStepText(diag, st);
         if (!textoAccion) return "";
         return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);'
           + _dashSectionAccentCss("accion") + '">'
@@ -5236,6 +5350,9 @@ window.CredizonaUI = {
   mostrarEvaluacion: mostrarEvaluacion,
   updateGastosTotalDisplay: updateGastosTotalDisplay,
   updateCustomExpenseClassificationUI: updateCustomExpenseClassificationUI,
+  resolveDashboardCoherence: resolveDashboardCoherence,
+  _resolveNextStepKeyFromDiag: _resolveNextStepKeyFromDiag,
+  _isRetryCompatibleNextStep: _isRetryCompatibleNextStep,
   getRetryCtaState: getRetryCtaState,
   renderRetryCta: renderRetryCta,
   resolveDashboardCtaHierarchy: resolveDashboardCtaHierarchy,
