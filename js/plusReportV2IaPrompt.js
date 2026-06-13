@@ -1,5 +1,11 @@
-/** Server-side Mi Plan Plus IA system prompt (mirror of js/plusReportV2IaPrompt.js) */
-export const CZ_PLUS_SYSTEM_PROMPT = [
+/**
+ * plusReportV2IaPrompt.js — Mi Plan Plus IA system prompt (Sprint P2b)
+ * Generates ONLY secciones 1–6. Reconciliation engine owns summary + seccion_7.
+ */
+(function(global) {
+  "use strict";
+
+  var CZ_PLUS_IA_SYSTEM_PROMPT = [
     "SYSTEM PROMPT — Mi Plan Plus / Informe Financiero",
     "Versión Plus Report V2 — IA v2.2",
     "",
@@ -310,3 +316,7 @@ export const CZ_PLUS_SYSTEM_PROMPT = [
     "proveedor; en narrativa decí \"registros consultados\" o \"Clearing\".",
     "",
   ].join("\n");
+
+  global.CZ_PLUS_IA_SYSTEM_PROMPT = CZ_PLUS_IA_SYSTEM_PROMPT;
+  global.CZ_PLUS_PROMPT_VERSION = "plus_report_v2_ia_v2.2";
+})(typeof window !== "undefined" ? window : global);

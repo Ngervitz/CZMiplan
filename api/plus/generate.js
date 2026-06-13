@@ -83,7 +83,10 @@ function buildAnthropicPayload(context) {
     system: CZ_PLUS_SYSTEM_PROMPT,
     messages: [{
       role: "user",
-      content: "Generá el informe Mi Plan Plus completo según el schema JSON. "
+      content: "Generá SOLO las secciones 1 a 6 del informe Mi Plan Plus según el schema IA V2. "
+        + "NO incluyas seccion_7, metadata, reconciliation_summary, alignment_label "
+        + "ni porcentajes de coincidencia del perfil.\n"
+        + "Usá reconciliation_engine del input (solo lectura) para alinear tono y hechos.\n"
         + "Datos de entrada:\n"
         + JSON.stringify(context, null, 2),
     }],
