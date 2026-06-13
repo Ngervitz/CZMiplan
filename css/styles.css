@@ -232,6 +232,46 @@ select option{background:#0a1026;}
   font-size:14px;font-weight:600;color:#ff8fa8;line-height:1.5;
   max-width:100%;box-sizing:border-box;word-break:break-word;
 }
+.deuda-save-success-banner{
+  display:flex;align-items:center;gap:10px;
+  margin:0 0 12px;padding:14px 16px;border-radius:14px;
+  background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.28);
+  font-size:15px;font-weight:700;color:#34ffaf;line-height:1.45;
+  max-width:100%;box-sizing:border-box;
+}
+.deuda-save-success-icon{
+  flex-shrink:0;width:26px;height:26px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(52,255,175,.18);font-size:14px;font-weight:900;
+}
+.deuda-flow-actions{
+  display:flex;flex-direction:column;gap:10px;
+  margin:12px 0 4px;max-width:100%;
+}
+.deuda-flow-actions .btn{
+  width:100%;max-width:100%;box-sizing:border-box;margin-bottom:0;
+}
+.deuda-flow-actions--edit .btn-primary{
+  height:60px;font-size:18px;
+}
+.deuda-flow-actions--edit .btn-secondary{
+  height:52px;font-size:16px;
+}
+.deuda-flow-actions--add .btn{
+  height:56px;font-size:17px;
+}
+.deuda-save-confirmed{
+  height:56px!important;font-size:17px!important;
+  background:rgba(52,255,175,.18)!important;
+  border-color:rgba(52,255,175,.35)!important;
+  color:#34ffaf!important;opacity:1!important;cursor:default!important;
+  box-shadow:none!important;
+}
+.deuda-continue-hint{
+  margin-top:4px;font-size:13px;color:#8390b5;line-height:1.55;
+  max-width:100%;
+}
+.deuda-continue-hint strong{color:rgba(255,255,255,.75);font-weight:700;}
 .deudas-historial-toggle{
   display:block;width:100%;margin:8px 0 4px;padding:14px 18px;
   border-radius:14px;border:1.5px solid rgba(255,255,255,.12);

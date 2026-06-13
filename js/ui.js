@@ -670,32 +670,120 @@ function renderGastos() {
 // =============================================================================
 // STEP 2 — DEUDAS
 // =============================================================================
+function _deudaSaveFeedbackMessage(feedback) {
+  if (!feedback) return "";
+  return feedback.mode === "edited"
+    ? "Cambios guardados correctamente"
+    : "Deuda agregada correctamente";
+}
+
+function _deudaSaveConfirmedLabel(feedback) {
+  if (!feedback) return "";
+  return feedback.mode === "edited"
+    ? "Cambios guardados ✓"
+    : "Deuda guardada ✓";
+}
+
+function renderDeudaSaveSuccessBanner(st) {
+  var feedback = st && st._deuda_save_feedback;
+  if (!feedback || st.editing_debt_index != null) return "";
+  return '<div class="deuda-save-success-banner" role="status" aria-live="polite">'
+    + '<span class="deuda-save-success-icon" aria-hidden="true">✓</span>'
+    + '<span>' + _deudaSaveFeedbackMessage(feedback) + "</span>"
+    + "</div>";
+}
+
+function _deudaActivasCount(st) {
+  var deudas = (st && st.deudas) || [];
+  var stats = _deudasResumenStats(deudas);
+  return stats.activaCount;
+}
+
+function renderDeudaFlowActionBar(st, opts) {
+  opts = opts || {};
+  st = st || _st();
+  var editing = st.editing_debt_index;
+  var feedback = st._deuda_save_feedback;
+  var addButtonId = opts.addButtonId || "btn-add-debt";
+  var activaCount = _deudaActivasCount(st);
+  var html = "";
+
+  if (feedback && editing == null) {
+    html += renderDeudaSaveSuccessBanner(st);
+  }
+
+  if (editing != null) {
+    var saveLabel = st._deuda_is_new_add ? "Guardar deuda" : "Guardar cambios";
+    html += '<div class="deuda-flow-actions deuda-flow-actions--edit">'
+      + '<button type="button" class="btn btn-primary" id="btn-guardar-deuda-edicion">'
+      + saveLabel + "</button>"
+      + '<button type="button" class="btn btn-secondary" id="btn-cancelar-edicion-deuda">'
+      + (opts.cancelLabel || "Cancelar edición") + "</button>"
+      + "</div>";
+    return html;
+  }
+
+  if (feedback) {
+    html += '<div class="deuda-flow-actions deuda-flow-actions--saved">'
+      + '<button type="button" class="btn btn-primary deuda-save-confirmed" disabled>'
+      + _deudaSaveConfirmedLabel(feedback) + "</button>"
+      + "</div>";
+  }
+
+  if (activaCount > 0 || feedback) {
+    html += '<div class="deuda-flow-actions deuda-flow-actions--add">'
+      + '<button type="button" class="btn btn-secondary" id="' + addButtonId + '">'
+      + "+ Agregar otra deuda</button>"
+      + "</div>";
+  } else {
+    html += '<div class="deuda-flow-actions deuda-flow-actions--add">'
+      + '<button type="button" class="btn btn-secondary" id="' + addButtonId + '">'
+      + "+ Agregar deuda</button>"
+      + "</div>";
+  }
+
+  if (opts.showContinueHint) {
+    html += '<div class="deuda-continue-hint">'
+      + "Cuando termines de cargar tus deudas, usá <strong>Continuar análisis</strong> abajo para seguir."
+      + "</div>";
+  }
+
+  return html;
+}
+
 function renderDeudas() {
   var html = SEGMENTO === 1
     ? renderStepPills(1, 3)
     : renderStepPills(1, 3, ["Perfil", "Deudas", "Gastos"]);
   var st     = _st();
   var deudas = st.deudas || [];
-  var editing = st.editing_debt_index;
-  var btnPrimaryId    = editing != null ? "btn-guardar-deuda-edicion" : "btn-agregar-deuda";
-  var btnPrimaryLabel = editing != null ? "Guardar cambios" : "+ Agregar deuda";
+  var ingreso = PRE.ingreso || 0;
+  var stats  = _deudasResumenStats(deudas);
 
   html += '<div class="card">'
     + '<div class="section-title">Tus deudas actuales</div>'
     + '<div class="section-text">Identificamos el acreedor, el monto y el comportamiento de pago para detectar donde esta hoy la mayor presion financiera.</div>'
-    + '<div id="deudas-container">' + deudas.map(renderDeudaCard).join("") + '</div>'
-    + '<div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">'
-    + '<button class="btn btn-secondary" style="height:68px;font-size:20px;margin-bottom:0;" id="' + btnPrimaryId + '">' + btnPrimaryLabel + '</button>'
-    + (editing != null
-        ? '<button type="button" class="btn btn-secondary" id="btn-cancelar-edicion-deuda" style="height:52px;font-size:17px;">Cancelar edición</button>'
-        : "")
-    + '</div>'
+    + '<div id="deudas-container">' + deudas.map(function(d, i) {
+        var isDraft = typeof isDebtDraftAdd === "function"
+          ? isDebtDraftAdd(d)
+          : !!(d && d._is_draft_add);
+        if (isDraft && st.editing_debt_index !== i) return "";
+        if (st.editing_debt_index === i) {
+          return '<div id="debt-card-wrap-' + i + '">' + renderDeudaCard(d, i) + "</div>";
+        }
+        return renderDeudaLive(d, i, stats.totalActiva, ingreso);
+      }).join("") + '</div>'
+    + renderDeudaFlowActionBar(st, {
+        addButtonId: "btn-agregar-deuda",
+        showContinueHint: true,
+        cancelLabel: "Cancelar edición",
+      })
     + '<div class="metrics" id="metrics-live">' + renderMetricsLive() + '</div>'
     + '<div class="result" id="result-live"><h3 id="result-title">Todavia no analizamos tus deudas</h3>'
     + '<p id="result-text">Completa tus deudas para detectar que acreedor esta generando mas presion financiera.</p></div>'
     + '</div>';
 
-  if (deudas.length === 0 && editing == null) {
+  if (deudas.length === 0 && st.editing_debt_index == null) {
     html += '<div class="card no-debts-alt" style="margin-top:16px;border:1px dashed rgba(64,215,255,.22);'
       + 'background:rgba(64,215,255,.04);">'
       + '<div style="text-align:center;padding:4px 0 2px;">'
@@ -1017,7 +1105,7 @@ function renderDeudaCard(d, i) {
   var editBanner  = "";
   if (st.editing_debt_index === i) {
     if (st._deuda_is_new_add) {
-      editBanner = '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.22);border-radius:12px;font-size:15px;font-weight:700;color:#40d7ff;">Nueva deuda — completá los datos y guardá los cambios</div>';
+      editBanner = '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.22);border-radius:12px;font-size:15px;font-weight:700;color:#40d7ff;">Nueva deuda — completá los datos y tocá Guardar deuda</div>';
     } else {
       editBanner = '<div style="margin-bottom:14px;padding:12px 16px;background:rgba(64,215,255,.08);border:1px solid rgba(64,215,255,.22);border-radius:12px;font-size:15px;font-weight:700;color:#40d7ff;">Editando deuda: ' + _deudaDisplayName(d, i) + '</div>';
     }
@@ -3489,21 +3577,14 @@ function renderDeudasEmptyActivas() {
 }
 
 function renderDeudaTabAddBar(st) {
-  var busy = st.editing_debt_index != null;
-  return '<div class="deuda-tab-add-bar">'
-    + '<button type="button" class="btn btn-secondary" id="btn-add-debt"'
-    + (busy ? ' disabled style="opacity:.45;cursor:not-allowed;"' : "")
-    + ">➕ Agregar deuda</button>"
-    + "</div>";
+  return "";
 }
 
 function renderDeudaTabEditActions(st) {
-  if (st.editing_debt_index == null) return "";
-  return '<div class="deuda-tab-edit-actions">'
-    + '<button type="button" class="btn btn-secondary" id="btn-guardar-deuda-edicion">'
-    + (st._deuda_is_new_add ? "Guardar deuda" : "Guardar cambios") + "</button>"
-    + '<button type="button" class="btn btn-secondary" id="btn-cancelar-edicion-deuda">Cancelar</button>'
-    + "</div>";
+  return renderDeudaFlowActionBar(st, {
+    addButtonId: "btn-add-debt",
+    cancelLabel: "Cancelar",
+  });
 }
 
 function renderDeudasHistorialToggle(pagadaCount) {
@@ -3579,7 +3660,6 @@ function renderTabDeudas() {
     + _deudasSubtitleCounter(stats.activaCount, stats.pagadaCount)
     + '<div class="section-text">Actualiza tus saldos a medida que vas pagando. El plan y el puntaje se recalculan solos.</div>'
     + renderDeudasResumen(deudas)
-    + renderDeudaTabAddBar(st)
     + activasHtml
     + renderDeudaTabEditActions(st)
     + renderDeudasHistorialToggle(stats.pagadaCount)
@@ -5342,6 +5422,8 @@ window.CredizonaUI = {
     renderTab();
   },
   focusDeudaQuickEditInput: focusDeudaQuickEditInput,
+  renderDeudaFlowActionBar: renderDeudaFlowActionBar,
+  renderDeudaSaveSuccessBanner: renderDeudaSaveSuccessBanner,
   renderDeudaCard: renderDeudaCard,
   actualizarMetrics: actualizarMetrics,
   bindTabEvents: bindTabEvents,

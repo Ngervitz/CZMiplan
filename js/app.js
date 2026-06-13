@@ -17,6 +17,7 @@ window.CZState = {
   _deuda_quick_edit_prev_monto: null,
   _deuda_is_new_add:            false,
   _deuda_validation_error:      null,
+  _deuda_save_feedback:         null,
   diag:          null,
   snap:          null,
   saldoIni:      0,
@@ -723,6 +724,10 @@ function finalizeDebtEdit(saveIdx) {
   st._deuda_edit_snapshot = null;
   st._deuda_delete_confirm_index = null;
   st._deuda_is_new_add = false;
+  st._deuda_save_feedback = {
+    mode: wasNewAdd ? "added" : "edited",
+    at: Date.now(),
+  };
 
   if (wasNewAdd) {
     if (!st.temporal.first_debt_added_at) {
@@ -747,12 +752,19 @@ function finalizeDebtEdit(saveIdx) {
     if (wasNewAdd && typeof showToast === "function") {
       showToast("Deuda agregada. Tu diagnóstico se actualizó.", 3200);
     }
+    scrollDeudaCardIntoView(saveIdx);
   } else {
     refreshDebtCardsUI();
     if (typeof window.CredizonaUI.actualizarMetrics === "function") {
       window.CredizonaUI.actualizarMetrics();
     }
+    scrollDeudaCardIntoView(saveIdx);
   }
+}
+
+function clearDeudaSaveFeedback(st) {
+  st = st || window.CZState;
+  if (st) st._deuda_save_feedback = null;
 }
 
 // =============================================================================
@@ -1160,6 +1172,7 @@ function handleNoDebtsDeclared() {
   st._deuda_edit_snapshot = null;
   st._deuda_validation_error = null;
   st._deuda_delete_confirm_index = null;
+  st._deuda_save_feedback = null;
 
   setRecoveryState("debt_refinement_completed");
   setRecoveryState("expense_refinement_started");
@@ -3540,6 +3553,7 @@ document.addEventListener("DOMContentLoaded", function() {
         st._deuda_delete_confirm_index = null;
         st._deuda_is_new_add = false;
         st._deuda_validation_error = null;
+        clearDeudaSaveFeedback(st);
         window.guardarLocal();
         if (st.step === 3) {
           window.CredizonaUI.renderTab();
@@ -3552,6 +3566,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Sprint 14.8 — agregar deuda desde tab Tus deudas (dashboard)
       if (e.target.id === "btn-add-debt") {
         if (st.step !== 3 || st.editing_debt_index != null) return;
+        clearDeudaSaveFeedback(st);
         st.deudas.push(createEmptyDebtObject());
         var newIdx = st.deudas.length - 1;
         st.editing_debt_index = newIdx;
@@ -3570,6 +3585,7 @@ document.addEventListener("DOMContentLoaded", function() {
       // Agregar deuda (flujo inicial — step deudas)
       if (e.target.id === "btn-agregar-deuda") {
         if (st.editing_debt_index != null) return;
+        clearDeudaSaveFeedback(st);
         clearNoDebtsDeclaredState(st);
         st.deudas.push(createEmptyDebtObject());
         st.editing_debt_index = st.deudas.length - 1;
@@ -3671,6 +3687,7 @@ document.addEventListener("DOMContentLoaded", function() {
           st._deuda_is_new_add = false;
           st._deuda_validation_error = null;
           st._deuda_delete_confirm_index = null;
+          clearDeudaSaveFeedback(st);
           if (st.step === 3) {
             st.tab = "deudas";
             window.CredizonaUI.renderAll();
