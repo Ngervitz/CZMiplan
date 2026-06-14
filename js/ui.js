@@ -2492,9 +2492,17 @@ function _shouldSuppressDebtOrderingCopy(diag, st, nPaso) {
   return isIncompleteFinancialProfile(diag, st);
 }
 
+function _hasDebtForIncompleteNarrative(st) {
+  st = st || {};
+  if (st.no_debts_declared === true) {
+    return false;
+  }
+  return !_hasNoDeclaredDebts(st);
+}
+
 function _renderIncompleteProfileNarrativeHtml(diag, st) {
   st = st || _st();
-  var hasDebt = !_hasNoDeclaredDebts(st);
+  var hasDebt = _hasDebtForIncompleteNarrative(st);
   var expensesMissing = _expensesMissing(st);
   var showCta = expensesMissing && !_heroShowsExpensesCta(diag, st);
   var ctaHtml = showCta

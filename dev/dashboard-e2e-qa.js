@@ -801,6 +801,80 @@
     }, { expectFullAlignment: false });
   })();
 
+  (function assertNoDebtsDeclaredNarrativeAlignment() {
+    boot("?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B");
+    PRE.ingreso = 50000;
+
+    var stP19 = {
+      step: 3,
+      tab: "plan",
+      gastos: {},
+      gastos_missing_confirmed: true,
+      financial_debts_complete: false,
+      no_debts_declared: true,
+      declared_ingreso: 50000,
+      deudas: [],
+      diag: null,
+      temporal: {},
+      snap: { plan_id: 1 },
+    };
+    window.CZState = stP19;
+    var diagP19 = calcularMotor();
+    stP19.diag = diagP19;
+    var statsP19 = (function(deudas) {
+      deudas = deudas || [];
+      var activas = deudasActivasParaCalculo(deudas);
+      var pagadaCount = 0;
+      for (var i = 0; i < deudas.length; i++) {
+        if (typeof isDeudaPagada === "function" && isDeudaPagada(deudas[i])) pagadaCount++;
+      }
+      return { activaCount: activas.length, pagadaCount: pagadaCount };
+    })(stP19.deudas);
+    var narrP19 = renderNarrativaInterpretacion(diagP19, stP19);
+    var debtPhrase = "Registraste una deuda importante";
+
+    ok("P19 zero active debts", statsP19.activaCount === 0);
+    ok("P19 zero paid debts", statsP19.pagadaCount === 0);
+    ok("P19 incomplete profile path", isIncompleteFinancialProfile(diagP19, stP19) === true);
+    ok("P19 narrative renders", narrP19.length > 0);
+    ok("P19 narrative excludes debt phrase", narrP19.indexOf(debtPhrase) < 0);
+    ok("P19 hasDebtForIncompleteNarrative false",
+      typeof _hasDebtForIncompleteNarrative === "function"
+        && _hasDebtForIncompleteNarrative(stP19) === false);
+
+    var stP20 = {
+      step: 3,
+      tab: "plan",
+      gastos: {},
+      gastos_missing_confirmed: true,
+      financial_debts_complete: true,
+      no_debts_declared: false,
+      declared_ingreso: 50000,
+      deudas: [{
+        tipo: "tarjeta",
+        acreedor: "OCA",
+        monto: "50000",
+        pago: "3000",
+        situacion_ui: "pagando_normal",
+        cancelada: false,
+      }],
+      diag: null,
+      temporal: {},
+      snap: { plan_id: 1 },
+    };
+    window.CZState = stP20;
+    var diagP20 = calcularMotor();
+    stP20.diag = diagP20;
+    var narrP20 = renderNarrativaInterpretacion(diagP20, stP20);
+
+    ok("P20 active debt present", deudasActivasParaCalculo(stP20.deudas).length > 0);
+    ok("P20 incomplete profile path", isIncompleteFinancialProfile(diagP20, stP20) === true);
+    ok("P20 hasDebtForIncompleteNarrative true",
+      typeof _hasDebtForIncompleteNarrative === "function"
+        && _hasDebtForIncompleteNarrative(stP20) === true);
+    ok("P20 narrative includes debt phrase", narrP20.indexOf(debtPhrase) >= 0);
+  })();
+
   (function assertBackwardCompatStatusLabel() {
     var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
     var result = runPipeline(p4Profile);
