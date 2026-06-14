@@ -113,7 +113,7 @@
   }, 80000);
   ok("B helper false", _isZeroActiveDebtCompleteProfile(rB.diag, window.CZState) === false);
   ok("B planId 2", rB.diag.planId === 2);
-  ok("B hero keeps plan problema", rB.hero.indexOf("Estas pagando demasiado") >= 0);
+  ok("B hero keeps plan problema", rB.hero.indexOf(PLANES[2].problema) >= 0);
   ok("B no approved override", rB.hero.indexOf(APPROVED_PROBLEMA) < 0);
 
   // C — no_debts_declared = true (complete gastos; not zero-active-debt profile)
@@ -131,7 +131,7 @@
   ok("C helper false", _isZeroActiveDebtCompleteProfile(rC.diag, window.CZState) === false);
   ok("C complete hero not incomplete card", rC.hero.indexOf("Tu diagnóstico todavía no está completo") < 0);
   ok("C no approved override", rC.hero.indexOf(APPROVED_PROBLEMA) < 0);
-  ok("C keeps plan1 default problema", rC.hero.indexOf(OLD_PROBLEMA) >= 0);
+  ok("C keeps plan1 default problema", rC.hero.indexOf(PLANES[1].problema) >= 0);
 
   // D — no debt ever declared (empty array, not no_debts_declared)
   boot();
@@ -169,7 +169,7 @@
   ok("E helper false", _isZeroActiveDebtCompleteProfile(rE.diag, window.CZState) === false);
   ok("E no approved hero override", rE.hero.indexOf(APPROVED_PROBLEMA) < 0);
 
-  // F — Acción prioritaria (reuse A)
+  // F — Acción prioritaria / next-step coherence (reuse zero-active profile)
   boot();
   rA = runProfile({
     step: 3,
@@ -180,12 +180,22 @@
     snap: { plan_id: 1 },
     diag: null,
   }, 80000);
-  ok("F accion block approved copy", rA.tab.indexOf("Acción prioritaria") >= 0
-    && rA.tab.indexOf(APPROVED_NEXT) >= 0);
+  var cohF = resolveDashboardCoherence(rA.diag, window.CZState);
+  if (cohF.profileTier === "healthy_organized") {
+    ok("F accion hidden on healthy_organized", cohF.hideAccionPrioritaria === true
+      && rA.tab.indexOf("Acción prioritaria") < 0);
+  } else {
+    ok("F accion block approved copy", rA.tab.indexOf("Acción prioritaria") >= 0
+      && rA.tab.indexOf(APPROVED_NEXT) >= 0);
+  }
   ok("F accion no ordenar panorama", rA.tab.indexOf(OLD_NEXT) < 0);
 
   // G — Narrativa primer paso
-  ok("G narrativa approved next step", rA.narr.indexOf(APPROVED_NEXT) >= 0);
+  if (cohF.profileTier === "healthy_organized") {
+    ok("G narrativa B6b next step", rA.narr.indexOf("Mantené el ritmo de pagos actual") >= 0);
+  } else {
+    ok("G narrativa approved next step", rA.narr.indexOf(APPROVED_NEXT) >= 0);
+  }
   ok("G narrativa no ordenar panorama", rA.narr.indexOf(OLD_NEXT) < 0);
 
   // H — SyntheticMotorQA

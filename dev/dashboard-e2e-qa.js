@@ -456,7 +456,7 @@
         nextStepKey: "ordenar_panorama",
         showRetry: false,
         suppressOrdenarPanorama: false,
-        statusLabel: "Diagnóstico pendiente",
+        statusLabel: "Diagnóstico incompleto",
       },
     },
     {

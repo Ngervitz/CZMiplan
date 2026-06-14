@@ -96,9 +96,9 @@ function updateSticky() {
   // step 0: SEGMENTO 1 keeps its own sticky; diagnosis/bridge screens have inline CTAs
   if (step === 0 && SEGMENTO === 1) {
     if (bar) { bar.style.display = ""; bar.classList.remove("dashboard"); }
-    lbl.textContent  = "Tu situacion inicial";
-    stEl.textContent = "Analizamos las senales principales de tu perfil.";
-    cta.textContent  = "Ver evaluacion";
+    lbl.textContent  = "Tu situación inicial";
+    stEl.textContent = "Analizamos las señales principales de tu perfil.";
+    cta.textContent  = "Ver evaluación";
     cta.className    = "sticky-btn";
     return;
   }
@@ -114,15 +114,15 @@ function updateSticky() {
     // step 1 = deudas — primary recovery interpretation layer
     if (bar) bar.classList.remove("dashboard");
     lbl.textContent  = "Tus deudas actuales";
-    stEl.textContent = "Identificamos donde esta hoy la mayor presion financiera.";
-    cta.textContent  = "Continuar analisis";
+    stEl.textContent = "Identificamos dónde está hoy la mayor presión financiera.";
+    cta.textContent  = "Continuar análisis";
     cta.className    = "sticky-btn";
   } else if (step === 2) {
     // step 2 = gastos — financial context
     if (bar) bar.classList.remove("dashboard");
     lbl.textContent  = "Tus gastos mensuales";
     stEl.textContent = "Completamos el contexto real de tu flujo.";
-    cta.textContent  = "Ver diagnostico completo";
+    cta.textContent  = "Ver diagnóstico completo";
     cta.className    = "sticky-btn";
   } else {
     // step 3 = dashboard — sticky hidden entirely.
@@ -173,7 +173,7 @@ function updateHeader() {
 function renderStepPills(cur, total, customLabels) {
   // Flow: Ingreso (seg 2/3) or Situacion inicial (seg 1) → Deudas → Gastos
   var labels = customLabels || (SEGMENTO === 1
-    ? ["Situacion inicial", "Deudas", "Gastos"]
+    ? ["Situación inicial", "Deudas", "Gastos"]
     : ["Perfil", "Deudas", "Gastos"]);
   var t = total || labels.length;
   var html = '<div class="step-pills">';
@@ -197,43 +197,43 @@ function renderDiagInicial() {
   var r = PRE.respuestas;
   var signals = [], good = [];
 
-  if (r.p1 === "C" || r.p1 === "D") signals.push({ i: "⚠️", t: "Sin claridad financiera",       d: "No tenes claro cuanto entra y sale cada mes. Eso hace casi imposible priorizar correctamente." });
-  if (r.p6 === "D")                  signals.push({ i: "⚠️", t: "Prestamos informales detectados", d: "Los prestamos informales son los que mas rapido destruyen el flujo mensual." });
-  if (r.p5 === "D")                  signals.push({ i: "⚠️", t: "Estres financiero maximo",        d: "Tu nivel de estres financiero es maximo. Eso afecta directamente las decisiones que tomas." });
-  if (r.p7 === "C" || r.p7 === "D") signals.push({ i: "⚠️", t: "Deudas sin plan de salida",      d: "No sabes cuanto tiempo te llevaria salir de tus deudas. Esa falta de claridad es una senal importante." });
-  if (r.p8 === "A")                  good.push({ i: "✅", t: "Ya tomaste acciones recientes",     d: "Eso es una ventaja real. El sistema valora que ya estes haciendo algo al respecto." });
+  if (r.p1 === "C" || r.p1 === "D") signals.push({ i: "⚠️", t: "Sin claridad financiera",       d: "No tenés claro cuánto entra y sale cada mes. Eso hace casi imposible priorizar correctamente." });
+  if (r.p6 === "D")                  signals.push({ i: "⚠️", t: "Préstamos informales detectados", d: "Los préstamos informales son los que más rápido destruyen el flujo mensual." });
+  if (r.p5 === "D")                  signals.push({ i: "⚠️", t: "Estrés financiero máximo",        d: "Tu nivel de estrés financiero es máximo. Eso afecta directamente las decisiones que tomás." });
+  if (r.p7 === "C" || r.p7 === "D") signals.push({ i: "⚠️", t: "Deudas sin plan de salida",      d: "No sabés cuánto tiempo te llevaría salir de tus deudas. Esa falta de claridad es una señal importante." });
+  if (r.p8 === "A")                  good.push({ i: "✅", t: "Ya tomaste acciones recientes",     d: "Eso es una ventaja real. El sistema valora que ya estés haciendo algo al respecto." });
   if (r.p3 === "A" || r.p3 === "B") good.push({ i: "✅", t: "Responsabilidad financiera alta",   d: "Tu nivel de responsabilidad es bueno. Con un plan claro, eso se traduce en resultados." });
   if (signals.length === 0)          signals.push({ i: "⚠️", t: "Posible carga mensual alta",     d: "Puede haber demasiados pagos compitiendo con tus ingresos. Necesitamos tus datos para confirmarlo." });
 
-  return '<div class="badge"><div class="dot"></div>Tu evaluacion inicial esta lista</div>'
+  return '<div class="badge"><div class="dot"></div>Tu evaluación inicial está lista</div>'
     + '<h1>Ya analizamos tus respuestas.<br><span class="gradient">Ahora veamos el plan.</span></h1>'
-    + '<div class="lead">Encontramos factores que podrian estar afectando hoy tu perfil financiero y tus posibilidades de aprobacion.</div>'
-    + '<div class="sub">La idea no es pedirte otro formulario de cero. Primero te mostramos una lectura inicial. Despues, si queres mas precision, completas gastos y deudas.</div>'
+    + '<div class="lead">Encontramos factores que podrían estar afectando hoy tu perfil financiero y tus posibilidades de aprobación.</div>'
+    + '<div class="sub">La idea no es pedirte otro formulario de cero. Primero te mostramos una lectura inicial. Después, si querés más precisión, completás gastos y deudas.</div>'
     + '<div class="btn-wrap" style="margin-bottom:20px;">'
-    + '<button class="btn btn-primary" id="btn-ver-evaluacion">Ver mi evaluacion inicial</button>'
-    + '<button class="btn btn-secondary" id="btn-analisis-profundo">Completar analisis profundo</button>'
+    + '<button class="btn btn-primary" id="btn-ver-evaluacion">Ver mi evaluación inicial</button>'
+    + '<button class="btn btn-secondary" id="btn-analisis-profundo">Completar análisis profundo</button>'
     + '</div>'
     + '<div class="disclaimer">No afecta futuras solicitudes. No es un score crediticio oficial.</div>'
     + '<div id="eval-card" class="hidden" style="margin-top:26px;">'
     + '<div class="card">'
-    + '<div class="card-top"><div class="card-label">Evaluacion inicial</div>'
+    + '<div class="card-top"><div class="card-label">Evaluación inicial</div>'
     + (signals.length > 0 ? '<div class="alert-badge">ATENCION</div>' : '<div class="alert-badge" style="border-color:rgba(52,255,175,.35);color:#34ffaf;">TODO BIEN</div>')
     + '</div>'
-    + '<div class="card-title">Perfil con senales de presion financiera</div>'
+    + '<div class="card-title">Perfil con señales de presión financiera</div>'
     + signals.map(function(s) {
         return '<div class="signal"><div class="signal-icon">' + s.i + '</div><div><div class="signal-title">' + s.t + '</div><div class="signal-text">' + s.d + '</div></div></div>';
       }).join("")
     + good.map(function(s) {
         return '<div class="signal" style="border-color:rgba(52,255,175,.2);background:rgba(52,255,175,.05);"><div class="signal-icon">' + s.i + '</div><div><div class="signal-title">' + s.t + '</div><div class="signal-text">' + s.d + '</div></div></div>';
       }).join("")
-    + '<div class="good-news"><strong>La buena noticia:</strong> con algunos ajustes podes mejorar progresivamente tu situacion y aumentar tus posibilidades futuras de aprobacion.</div>'
+    + '<div class="good-news"><strong>La buena noticia:</strong> con algunos ajustes podés mejorar progresivamente tu situación y aumentar tus posibilidades futuras de aprobación.</div>'
     + '<div style="margin-top:26px;"><button class="btn btn-primary" id="btn-ver-plan-personalizado">Ver mi plan personalizado</button></div>'
     + '</div>'
     + '<div class="card">'
-    + '<div class="section-title">Para darte un diagnostico mas preciso necesitamos 2 minutos mas.</div>'
-    + '<div class="section-text">No necesitas montos exactos. Una estimacion alcanza para detectar que deuda te esta danando mas.</div>'
+    + '<div class="section-title">Para darte un diagnóstico más preciso necesitamos 2 minutos más.</div>'
+    + '<div class="section-text">No necesitás montos exactos. Una estimación alcanza para detectar qué deuda te está dañando más.</div>'
     + '<div class="steps">'
-    + [["1","Deudas","Identificamos donde esta hoy la mayor presion financiera."],["2","Gastos","Completamos el contexto real de tu flujo."],["3","Diagnostico","Interpretacion completa de tu situacion financiera actual."]]
+    + [["1","Deudas","Identificamos dónde está hoy la mayor presión financiera."],["2","Gastos","Completamos el contexto real de tu flujo."],["3","Diagnóstico","Interpretación completa de tu situación financiera actual."]]
       .map(function(x) { return '<div class="step"><div class="step-num">' + x[0] + '</div><div class="step-title">' + x[1] + '</div><div class="step-text">' + x[2] + '</div></div>'; }).join("")
     + '</div></div></div>';
 }
@@ -607,7 +607,7 @@ function renderGastos() {
     : renderStepPills(2, 3, ["Perfil", "Deudas", "Gastos"]);
 
   html += '<div style="font-size:15px;color:#8390b5;line-height:1.6;margin-bottom:20px;padding:0 4px;">'
-    + 'El banco ya tiene informacion sobre vos. Este diagnostico te ayuda a entenderla.'
+    + 'El banco ya tiene información sobre vos. Este diagnóstico te ayuda a entenderla.'
     + '</div>';
 
   if (SEGMENTO <= 2) {
@@ -762,7 +762,7 @@ function renderDeudas() {
 
   html += '<div class="card">'
     + '<div class="section-title">Tus deudas actuales</div>'
-    + '<div class="section-text">Identificamos el acreedor, el monto y el comportamiento de pago para detectar donde esta hoy la mayor presion financiera.</div>'
+    + '<div class="section-text">Identificamos el acreedor, el monto y el comportamiento de pago para detectar dónde está hoy la mayor presión financiera.</div>'
     + '<div id="deudas-container">' + deudas.map(function(d, i) {
         var isDraft = typeof isDebtDraftAdd === "function"
           ? isDebtDraftAdd(d)
@@ -780,7 +780,7 @@ function renderDeudas() {
       })
     + '<div class="metrics" id="metrics-live">' + renderMetricsLive() + '</div>'
     + '<div class="result" id="result-live"><h3 id="result-title">Todavia no analizamos tus deudas</h3>'
-    + '<p id="result-text">Completa tus deudas para detectar que acreedor esta generando mas presion financiera.</p></div>'
+    + '<p id="result-text">Completá tus deudas para detectar qué acreedor está generando más presión financiera.</p></div>'
     + '</div>';
 
   if (deudas.length === 0 && st.editing_debt_index == null) {
@@ -970,10 +970,10 @@ function _renderPresionNote(d) {
     // Informal debt — flow pressure note overrides situacion copy
     if (d.tipo === "informal") {
       if (pago > 0) {
-        return wrap('Este prestamo no siempre figura en Clearing o BCU, pero genera una presion de '
+        return wrap('Este préstamo no siempre figura en Clearing o BCU, pero genera una presión de '
           + '<strong style="color:rgba(255,255,255,.8);">' + fmt(pago) + '</strong>/mes sobre tu flujo.');
       }
-      return wrap('Este prestamo no siempre figura en Clearing o BCU, pero puede seguir generando presion sobre tu flujo real.');
+      return wrap('Este préstamo no siempre figura en Clearing o BCU, pero puede seguir generando presión sobre tu flujo real.');
     }
 
     if (sit === "pagando_normal") {
@@ -2429,7 +2429,7 @@ function _incompleteFinancialScoreLabel() {
 }
 
 function _incompletePlanStatusLabel() {
-  return { emoji: "⚠️", text: "Diagnóstico pendiente", color: "#ffd447" };
+  return { emoji: "⚠️", text: "Diagnóstico incompleto", color: "#ffd447" };
 }
 
 var _FLOUJO_DEPENDENT_ACCION_IDS = {

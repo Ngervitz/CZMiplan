@@ -25,58 +25,58 @@ function isDeudaPagada(d) {
 const PLANES = {
   1: {
     id: 1, icon: "🗂️", titulo: "Orden Financiero", color: "#5b7cff",
-    problema:  "No tenes claro cuanto entra, cuanto sale ni cuanto debes. Sin eso, cualquier plan es a ciegas.",
-    objetivo:  "Entender exactamente tu situacion financiera antes de tomar cualquier decision.",
+    problema:  "No tenés claro cuánto entra, cuánto sale ni cuánto debés. Sin eso, cualquier plan es a ciegas.",
+    objetivo:  "Entender exactamente tu situación financiera antes de tomar cualquier decisión.",
     prioridades: [
-      "Anotar todo lo que entra y todo lo que sale este mes, sin excepcion.",
-      "Separar lo que no podes dejar de pagar de lo que podes reducir.",
-      "Calcular cuanta plata te queda libre cada mes despues de pagar todo.",
+      "Anotar todo lo que entra y todo lo que sale este mes, sin excepción.",
+      "Separar lo que no podés dejar de pagar de lo que podés reducir.",
+      "Calcular cuánta plata te queda libre cada mes después de pagar todo.",
     ],
-    cta: "Completar mapa financiero", reevaluacion: "30 dias",
+    cta: "Completar mapa financiero", reevaluacion: "30 días",
   },
   2: {
-    id: 2, icon: "📉", titulo: "Reduccion de Deuda", color: "#ff4e72",
-    problema:  "Estas pagando demasiado en relacion a lo que ganas. Cada mes es un esfuerzo y no alcanzas a salir.",
-    objetivo:  "Bajar lo que pagas por mes y atacar primero las deudas que mas te estan frenando.",
+    id: 2, icon: "📉", titulo: "Reducción de Deuda", color: "#ff4e72",
+    problema:  "Estás pagando demasiado en relación a lo que ganás. Cada mes es un esfuerzo y no alcanzás a salir.",
+    objetivo:  "Bajar lo que pagás por mes y atacar primero las deudas que más te están frenando.",
     prioridades: [
-      "Atacar primero la deuda que mas dano te hace — la que esta en mora o la mas cara.",
-      "No sacar ninguna deuda nueva por al menos 30 dias.",
+      "Atacar primero la deuda que más daño te hace — la que está en mora o la más cara.",
+      "No sacar ninguna deuda nueva por al menos 30 días.",
       "Llamar al banco o financiera para negociar. Muchas veces aceptan planes que no publicitan.",
     ],
-    cta: "Ver deuda prioritaria", reevaluacion: "60 a 90 dias",
+    cta: "Ver deuda prioritaria", reevaluacion: "60 a 90 días",
   },
   3: {
-    id: 3, icon: "🚀", titulo: "Recuperacion Rapida", color: "#34ffaf",
-    problema:  "Tu situacion esta bien encaminada. Hay algunos detalles que corregir para que el banco te diga que si.",
-    objetivo:  "Hacer los ajustes puntuales que faltan para que el banco te apruebe en la proxima solicitud.",
+    id: 3, icon: "🚀", titulo: "Recuperación Rápida", color: "#34ffaf",
+    problema:  "Tu situación está bien encaminada. Hay algunos detalles que corregir para que el banco te diga que sí.",
+    objetivo:  "Hacer los ajustes puntuales que faltan para que el banco te apruebe en la próxima solicitud.",
     prioridades: [
-      "Pagar todo en fecha. Un solo atraso puede echarte atras meses de progreso.",
-      "Bajar lo que pagas en deudas para que sea menos del 30% de lo que ganas.",
-      "En 30-60 dias volver a evaluar el perfil para ver si ya podes aplicar.",
+      "Pagar todo en fecha. Un solo atraso puede echarte atrás meses de progreso.",
+      "Bajar lo que pagás en deudas para que sea menos del 30% de lo que ganás.",
+      "En 30-60 días volver a evaluar el perfil para ver si ya podés aplicar.",
     ],
-    cta: "Activar plan 30-60 dias", reevaluacion: "30 a 60 dias",
+    cta: "Activar plan 30-60 dias", reevaluacion: "30 a 60 días",
   },
   4: {
-    id: 4, icon: "🚨", titulo: "Estabilizacion Critica", color: "#ff4e72",
-    problema:  "Tu situacion esta en un punto critico. Antes de pedir otro credito, hay que estabilizar lo que tenes.",
-    objetivo:  "Parar la caida primero. Estabilizarte. Despues, con la situacion ordenada, pensar en el credito.",
+    id: 4, icon: "🚨", titulo: "Estabilización Crítica", color: "#ff4e72",
+    problema:  "Tu situación está en un punto crítico. Antes de pedir otro crédito, hay que estabilizar lo que tenés.",
+    objetivo:  "Parar la caída primero. Estabilizarte. Después, con la situación ordenada, pensar en el crédito.",
     prioridades: [
       "No tomar ninguna deuda nueva en este periodo.",
-      "Ordenar las deudas informales y las que estan en mora. Son las que mas dano hacen.",
+      "Ordenar las deudas informales y las que están en mora. Son las que más daño hacen.",
       "Lograr que cada mes te sobre aunque sea un poco. Eso es la base de todo.",
     ],
-    cta: "Empezar primeros auxilios", reevaluacion: "90 a 120 dias",
+    cta: "Empezar primeros auxilios", reevaluacion: "90 a 120 días",
   },
   5: {
     id: 5, icon: "🔄", titulo: "Reperfilamiento", color: "#a78bfa",
-    problema:  "Tu historial financiero esta danado, pero tu actitud muestra que queres salir. Eso es recuperable.",
-    objetivo:  "Reconstruir el perfil con habitos sostenidos, menor presion de deuda y seguimiento.",
+    problema:  "Tu historial financiero está dañado, pero tu actitud muestra que querés salir. Eso es recuperable.",
+    objetivo:  "Reconstruir el perfil con hábitos sostenidos, menor presión de deuda y seguimiento.",
     prioridades: [
-      "Hacer lo mismo bien durante 60-90 dias seguidos. La constancia es lo que reconstruye el historial.",
+      "Hacer lo mismo bien durante 60-90 días seguidos. La constancia es lo que reconstruye el historial.",
       "Regularizar o negociar los atrasos que figuran reportados. Eso limpia el perfil.",
-      "En 90 dias, volver a medir el avance antes de pedir el credito.",
+      "En 90 días, volver a medir el avance antes de pedir el crédito.",
     ],
-    cta: "Iniciar seguimiento 90 dias", reevaluacion: "90 dias",
+    cta: "Iniciar seguimiento 90 dias", reevaluacion: "90 días",
   },
 };
 
@@ -249,34 +249,34 @@ function interpretarSituacion(fin) {
   // Caso 1 — flujo negativo o cero (dominante)
   if (fin.flujoLibre <= 0) {
     return {
-      principal:  "Con los numeros que ingresaste, hoy no hay margen para asumir otra cuota.",
-      secundaria: "Pedir mas plata puede dar alivio corto, pero aumenta el riesgo de atrasarte mas.",
+      principal:  "Con los números que ingresaste, hoy no hay margen para asumir otra cuota.",
+      secundaria: "Pedir más plata puede dar alivio corto, pero aumenta el riesgo de atrasarte más.",
     };
   }
   // Caso 2 — flujo positivo pero con atrasos activos
   if (fin.cantMoras > 0) {
     return {
-      principal:  "Tus ingresos todavia dejan algo de margen, pero los atrasos actuales ya estan afectando tu perfil.",
-      secundaria: "Antes de pedir mas credito, conviene regularizar lo que ya figura atrasado.",
+      principal:  "Tus ingresos todavía dejan algo de margen, pero los atrasos actuales ya están afectando tu perfil.",
+      secundaria: "Antes de pedir más crédito, conviene regularizar lo que ya figura atrasado.",
     };
   }
   // Caso 3 — deuda informal presente (sin caso 1 ni 2)
   if (fin.cantInformales > 0) {
     return {
-      principal:  "Tenes deuda informal activa que puede estar presionando tu flujo mensual.",
+      principal:  "Tenés deuda informal activa que puede estar presionando tu flujo mensual.",
       secundaria: "No siempre figura en Clearing o BCU, pero puede complicar el resto de tus pagos.",
     };
   }
   // Caso 4 — ratio alto sin atrasos
   if (fin.ratio > 0.35) {
     return {
-      principal:  "Hoy venis cumpliendo, pero una parte alta de tus ingresos ya esta comprometida en cuotas.",
+      principal:  "Hoy venís cumpliendo, pero una parte alta de tus ingresos ya está comprometida en cuotas.",
       secundaria: "Una cuota nueva puede dejarte sin margen ante cualquier imprevisto.",
     };
   }
   // Caso 5 — default
   return {
-    principal:  "Tu situacion necesita orden, pero todavia hay margen para corregir sin tomar decisiones apuradas.",
+    principal:  "Tu situación necesita orden, pero todavía hay margen para corregir sin tomar decisiones apuradas.",
     secundaria: null,
   };
 }
@@ -337,11 +337,11 @@ function calcularHorizonte(fin, ing) {
   }
   let banda, label;
   if (meses <= 1)       { banda = "inmediato"; label = "Ya hay condiciones para considerar una solicitud"; }
-  else if (meses <= 3)  { banda = "corto";     label = "Proximos 2 a 3 meses"; }
-  else if (meses <= 6)  { banda = "corto";     label = "Proximos 4 a 6 meses"; }
+  else if (meses <= 3)  { banda = "corto";     label = "Próximos 2 a 3 meses"; }
+  else if (meses <= 6)  { banda = "corto";     label = "Próximos 4 a 6 meses"; }
   else if (meses <= 12) { banda = "medio";     label = "Dentro de 6 a 12 meses"; }
-  else if (meses <= 24) { banda = "medio";     label = "Dentro de 1 a 2 anos"; }
-  else                  { banda = "largo";     label = "Mas de 2 anos"; }
+  else if (meses <= 24) { banda = "medio";     label = "Dentro de 1 a 2 años"; }
+  else                  { banda = "largo";     label = "Más de 2 años"; }
   return { meses, banda, label };
 }
 
@@ -1503,7 +1503,7 @@ function interpretarDiagnostico(diag) {
     bloqueadores.push({
       tipo:        "fragmentacion_cuotas",
       severidad:   "media",
-      descripcion: "Muchas deudas fragmentan el flujo mensual y dificultan la priorizacion.",
+      descripcion: "Muchas deudas fragmentan el flujo mensual y dificultan la priorización.",
     });
   }
 
@@ -1520,7 +1520,7 @@ function interpretarDiagnostico(diag) {
     bloqueadores.push({
       tipo:        "datos_insuficientes",
       severidad:   "baja",
-      descripcion: "La informacion declarada sobre las deudas es parcial. El diagnostico puede ser impreciso.",
+      descripcion: "La información declarada sobre las deudas es parcial. El diagnóstico puede ser impreciso.",
     });
   }
 
@@ -1803,7 +1803,7 @@ function _pesoCategoriaAccion(categoria, planId) {
 
 var _BANCO_ACCIONES_MAESTRO = [
   { id: "verificar_aplicacion_pagos", categoria: 1, situacion: "pagando_normal",
-    texto: "Preguntale a [acreedor] cómo se están aplicando tus pagos — si van a intereses primero y no a capital, la deuda no baja aunque pagues.",
+    texto: "Preguntále a [acreedor] cómo se están aplicando tus pagos — si van a intereses primero y no a capital, la deuda no baja aunque pagues.",
     tipo: "accion", urgencia: "media" },
   { id: "refinanciacion_temprana", categoria: 1, situacion: "atrasado_pagando",
     texto: "Contactá a [acreedor] y consultá opciones de refinanciación temprana — los intereses corren igual, pero restructurar antes suele evitar que la situación escale.",
