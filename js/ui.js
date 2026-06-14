@@ -2060,6 +2060,198 @@ var _ZERO_ACTIVE_DEBT_NEXT_STEP = "Revisá periódicamente tus gastos y tu marge
 var _REVISAR_INGRESOS_NEXT_STEP =
   "El primer paso es revisar tu situación de ingresos para confirmar si actualmente contás con una fuente de ingresos estable o si necesitás generar una nueva.";
 
+// Sprint B7b — contextual action layer (labor × income × active debt)
+var _B7_SEGMENTS = Object.freeze({
+  S0: Object.freeze({
+    segmentId: "S0",
+    title: null,
+    actions: Object.freeze([]),
+    isInconsistency: false,
+  }),
+  S1: Object.freeze({
+    segmentId: "S1",
+    title: "Tu ingreso es tu principal herramienta",
+    actions: Object.freeze([
+      "Priorizá pagar las deudas con mayor tasa de interés primero",
+      "Destiná un porcentaje fijo del sueldo al pago de deuda cada mes",
+      "Evitá usar crédito rotativo para gastos corrientes",
+      "Evaluá consolidar varias deudas en una sola cuota",
+      "Revisá si tu empresa o sindicato tiene convenios con BROU o cooperativas como ANDA o COFAC — suelen ofrecer tasas menores a las financieras",
+    ]),
+    isInconsistency: false,
+  }),
+  S2: Object.freeze({
+    segmentId: "S2",
+    title: "Tu situación es sólida — el foco es mantenerla",
+    actions: Object.freeze([
+      "Construí un fondo de emergencia equivalente a tres meses de gastos",
+      "Evitá endeudarte para consumo",
+      "Compará tasas antes de tomar crédito",
+      "Documentá tus ingresos para mejorar tu perfil financiero",
+      "Revisá tus gastos fijos periódicamente",
+    ]),
+    isInconsistency: false,
+  }),
+  S3: Object.freeze({
+    segmentId: "S3",
+    title: "Tu ingreso variable requiere una estrategia diferente",
+    actions: Object.freeze([
+      "Calculá tu ingreso promedio de los últimos meses",
+      "Aprovechá los meses fuertes para acelerar pagos",
+      "Evitá cuotas basadas en tu mejor mes",
+      "Avisá al acreedor antes de caer en mora",
+      "Separá una cuenta exclusiva para deuda",
+    ]),
+    isInconsistency: false,
+  }),
+  S4: Object.freeze({
+    segmentId: "S4",
+    title: "Sin deudas, pero tu ingreso variable es tu mayor riesgo",
+    actions: Object.freeze([
+      "Construí una reserva equivalente a cuatro o seis meses de gastos",
+      "Evitá comprometerte con cuotas rígidas",
+      "Documentá ingresos mediante transferencias o comprobantes",
+      "Evaluá opciones de crédito flexibles",
+      "Considerá coberturas de salud y accidentes",
+    ]),
+    isInconsistency: false,
+  }),
+  S5: Object.freeze({
+    segmentId: "S5",
+    title: "Tu ingreso es estable — el foco es no comprometer más de lo necesario",
+    actions: Object.freeze([
+      "Verificá que las cuotas no superen una parte razonable de tus ingresos",
+      "Revisá descuentos automáticos vigentes",
+      "Evitá actuar como garante para terceros",
+      "Evaluá refinanciar deuda cara",
+      "Consultá con alguien de confianza antes de firmar nuevos créditos",
+    ]),
+    isInconsistency: false,
+  }),
+  S6: Object.freeze({
+    segmentId: "S6",
+    title: "Estás en buena posición — protegé lo que construiste",
+    actions: Object.freeze([
+      "Evitá salir de garante para terceros",
+      "Consultá antes de firmar créditos nuevos",
+      "Revisá gastos fijos innecesarios",
+      "Utilizá crédito solo cuando sea realmente necesario",
+      "Organizá tu información financiera para tu familia",
+    ]),
+    isInconsistency: false,
+  }),
+  S7: Object.freeze({
+    segmentId: "S7",
+    title: "Tu prioridad ahora es generar ingresos",
+    actions: Object.freeze([
+      "Contactá ex empleadores o conocidos para trabajos temporales",
+      "Registrate en BuscoJobs, LinkedIn o el portal Vía Trabajo del MTSS",
+      "Considerá actividades de ingreso inmediato",
+      "Informá tu situación a los acreedores antes de entrar en mora",
+      "Evitá asumir nuevas deudas hasta recuperar ingresos",
+    ]),
+    isInconsistency: false,
+  }),
+  S8: Object.freeze({
+    segmentId: "S8",
+    title: "Estás sin deudas — aprovechá para construir una base sólida",
+    actions: Object.freeze([
+      "Abrí una cuenta bancaria si aún no tenés una",
+      "Construí historial financiero gradualmente",
+      "Registrate en BuscoJobs, LinkedIn o el portal Vía Trabajo del MTSS",
+      "Documentá cualquier ingreso que generes",
+      "Evitá endeudarte antes de estabilizar ingresos",
+    ]),
+    isInconsistency: false,
+  }),
+  S9: Object.freeze({
+    segmentId: "S9",
+    title: "Hay algo que no coincide en tu perfil",
+    actions: Object.freeze([
+      "Revisá si completaste correctamente tu ingreso",
+      "Actualizá el monto si cambió recientemente",
+      "Confirmá que seguís trabajando actualmente",
+      "Revisá si tu situación laboral cambió",
+      "Actualizá el dato para recibir recomendaciones más precisas",
+    ]),
+    isInconsistency: true,
+  }),
+  S10: Object.freeze({
+    segmentId: "S10",
+    title: "Tu ingreso independiente no está registrado",
+    actions: Object.freeze([
+      "Ingresá un promedio mensual estimado",
+      "Indicá si actualmente no tenés actividad",
+      "Utilizá el ingreso más representativo de los últimos meses",
+      "Registrá el ingreso que realmente podés documentar",
+      "Actualizá el dato para obtener un diagnóstico más preciso",
+    ]),
+    isInconsistency: true,
+  }),
+  S11: Object.freeze({
+    segmentId: "S11",
+    title: "Tu jubilación no está registrada",
+    actions: Object.freeze([
+      "Verificá si ingresaste correctamente el monto de tu jubilación o pensión",
+      "Si todavía no estás cobrando, indicá el monto estimado que esperás recibir",
+      "Si tenés más de una pasividad, sumá el total mensual",
+      "Consultá en BPS si hay algún problema con el cobro de tu pasividad",
+      "Actualizá el dato para recibir recomendaciones ajustadas a tu situación",
+    ]),
+    isInconsistency: true,
+  }),
+});
+
+function resolveContextualActionSegment(diag, st) {
+  st = st || _st();
+  var laboral = (typeof PRE !== "undefined" && PRE.laboral != null ? PRE.laboral : "") || "";
+  var ingreso = parseFloat((typeof PRE !== "undefined" && PRE.ingreso != null ? PRE.ingreso : 0) || 0);
+  var hasActiveDebts = deudasActivasParaCalculo((st.deudas || [])).length > 0;
+
+  if (laboral === "relacion_dependencia" && ingreso > 0 && hasActiveDebts) return _B7_SEGMENTS.S1;
+  if (laboral === "relacion_dependencia" && ingreso > 0 && !hasActiveDebts) return _B7_SEGMENTS.S2;
+  if (laboral === "monotributista" && ingreso > 0 && hasActiveDebts) return _B7_SEGMENTS.S3;
+  if (laboral === "monotributista" && ingreso > 0 && !hasActiveDebts) return _B7_SEGMENTS.S4;
+  if (laboral === "jubilado" && ingreso > 0 && hasActiveDebts) return _B7_SEGMENTS.S5;
+  if (laboral === "jubilado" && ingreso > 0 && !hasActiveDebts) return _B7_SEGMENTS.S6;
+  if (laboral === "desempleado" && ingreso <= 0 && hasActiveDebts) return _B7_SEGMENTS.S7;
+  if (laboral === "desempleado" && ingreso <= 0 && !hasActiveDebts) return _B7_SEGMENTS.S8;
+  if (laboral === "relacion_dependencia" && ingreso <= 0) return _B7_SEGMENTS.S9;
+  if (laboral === "monotributista" && ingreso <= 0) return _B7_SEGMENTS.S10;
+  if (laboral === "jubilado" && ingreso <= 0) return _B7_SEGMENTS.S11;
+
+  return _B7_SEGMENTS.S0;
+}
+
+function renderContextualActionBlock(segment) {
+  if (!segment || segment.segmentId === "S0" || !_B7_SEGMENTS[segment.segmentId]) return "";
+
+  var esc = typeof _plusEsc === "function"
+    ? _plusEsc
+    : function(s) {
+        if (s == null) return "";
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      };
+
+  var sectionTitle = "💡 Recomendaciones para tu situación laboral";
+  var title = esc(segment.title || "");
+  var actionsHtml = (segment.actions || []).map(function(a) {
+    return "<li>" + esc(a) + "</li>";
+  }).join("");
+
+  return [
+    '<div class="cz-contextual-action-block" data-b7-segment="' + esc(segment.segmentId) + '" data-b7-inconsistency="' + (segment.isInconsistency ? "true" : "false") + '" style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.28);border-radius:14px;padding:16px 18px;margin-top:14px;">',
+    '<div class="cz-contextual-action-header" style="font-size:13px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">' + esc(sectionTitle) + "</div>",
+    '<div class="cz-contextual-action-title" style="font-size:17px;font-weight:800;color:rgba(255,255,255,.92);line-height:1.45;margin-bottom:12px;">' + title + "</div>",
+    '<ul class="cz-contextual-action-list" style="margin:0;padding-left:20px;font-size:15px;color:rgba(255,255,255,.82);line-height:1.65;">' + actionsHtml + "</ul>",
+    "</div>",
+  ].join("");
+}
+
 function _isZeroActiveDebtCompleteProfile(diag, st) {
   diag = diag || {};
   st = st || _st();
@@ -3338,6 +3530,7 @@ function renderTabPlan() {
     // 6 — Acciones recomendadas (visible by default)
     + _dashZoneOpen("acciones-recom", CZ_DASH_ZONE_GAP)
     + renderHerramientas()
+    + renderContextualActionBlock(resolveContextualActionSegment(diag, st))
     + _dashZoneClose()
 
     // 7 — Tu situación hoy
@@ -5538,6 +5731,9 @@ window.CredizonaUI = {
   isIncompleteFinancialProfile: isIncompleteFinancialProfile,
   _isZeroActiveDebtCompleteProfile: _isZeroActiveDebtCompleteProfile,
   _resolveDashboardNextStepText: _resolveDashboardNextStepText,
+  resolveContextualActionSegment: resolveContextualActionSegment,
+  renderContextualActionBlock: renderContextualActionBlock,
+  _B7_SEGMENTS: _B7_SEGMENTS,
   _resolveZeroActiveDebtHeroProblema: _resolveZeroActiveDebtHeroProblema,
   _renderDashboardHeroCard: _renderDashboardHeroCard,
   renderVerticalProfilingBlock: renderVerticalProfilingBlock,

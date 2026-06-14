@@ -62,11 +62,46 @@
   function runPipeline(profile) {
     boot(profile.search);
     PRE.ingreso = profile.ingreso;
+    if (profile.laboral != null) PRE.laboral = profile.laboral;
     window.CZState = profile.state;
     var diag = calcularMotor();
     window.CZState.diag = diag;
     var coherence = resolveDashboardCoherence(diag, window.CZState);
     return { diag: diag, coherence: coherence };
+  }
+
+  function assertContextual(profileId, result, contextualSegmentId) {
+    var diag = result.diag;
+    var st = window.CZState;
+    var seg = resolveContextualActionSegment(diag, st);
+    var html = renderContextualActionBlock(seg);
+    var laboral = PRE.laboral || "";
+
+    function check(field, actual, exp, labelSuffix) {
+      ok(profileId + (labelSuffix ? " " + labelSuffix : "") + " " + field, actual === exp, {
+        profileId: profileId,
+        field: field,
+        expected: exp,
+        actual: actual,
+      });
+    }
+
+    check("contextualSegment exists", seg != null, true);
+    check("contextualSegmentId", typeof seg.segmentId, "string");
+    check("contextualSegmentId expected", seg.segmentId, contextualSegmentId, contextualSegmentId);
+    if (!laboral || ["relacion_dependencia", "monotributista", "jubilado", "desempleado"].indexOf(laboral) < 0) {
+      check("contextualSegmentId S0 when laboral empty/unknown", seg.segmentId, "S0", "S0");
+    } else if (contextualSegmentId !== "S0") {
+      check("contextualSegmentId not S0 when laboral valid", seg.segmentId !== "S0", true);
+    }
+    if (contextualSegmentId === "S0") {
+      check("contextual render empty", html, "");
+    } else {
+      check("contextual render has block", html.indexOf("cz-contextual-action-block") >= 0, true);
+      check("contextual list items", (html.match(/<li>/g) || []).length, seg.actions.length);
+      var incFlag = seg.isInconsistency ? "true" : "false";
+      check("contextual inconsistency flag", html.indexOf('data-b7-inconsistency="' + incFlag + '"') >= 0, true);
+    }
   }
 
   function assertProfile(label, result, expected, profileId) {
@@ -648,12 +683,33 @@
     },
   ];
 
+  var CONTEXTUAL_EXPECTED = {
+    P1: "S1",
+    P2: "S1",
+    P3: "S2",
+    P4: "S1",
+    P5: "S1",
+    P6: "S1",
+    P7: "S2",
+    P8: "S1",
+    P9: "S1",
+    P10: "S9",
+    P11: "S2",
+    P12: "S1",
+    P13: "S1",
+    P14: "S9",
+    P15: "S1",
+  };
+
   PROFILES.forEach(function(profile) {
     var result = runPipeline(profile);
     if (profile.assertFn) {
       profile.assertFn(profile.label, result, profile.expected);
     } else {
       assertProfile(profile.label, result, profile.expected, profile.id);
+    }
+    if (CONTEXTUAL_EXPECTED[profile.id]) {
+      assertContextual(profile.id, result, CONTEXTUAL_EXPECTED[profile.id]);
     }
   });
 
