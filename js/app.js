@@ -230,6 +230,23 @@ function recalcDiagYGuardar() {
   _maybeCelebratePositiveFlow(st, prevFlujo);
 }
 
+// Sprint B7b-fix — clear stale debt-step completion when no active debts remain
+function resetDebtCompletionFlagIfNoActiveDebts(st) {
+  var targetState = st || window.CZState;
+  if (!targetState) return false;
+
+  var debts = Array.isArray(targetState.deudas) ? targetState.deudas : [];
+  var activeDebtCount = typeof deudasActivasParaCalculo === "function"
+    ? deudasActivasParaCalculo(debts).length
+    : 0;
+
+  if (activeDebtCount === 0 && targetState.financial_debts_complete === true) {
+    targetState.financial_debts_complete = false;
+  }
+
+  return targetState.financial_debts_complete;
+}
+
 function isDebtDraftAdd(d) {
   return !!(d && d._is_draft_add);
 }
@@ -741,6 +758,7 @@ function finalizeDebtEdit(saveIdx) {
     });
   }
 
+  resetDebtCompletionFlagIfNoActiveDebts(st);
   recalcDiagYGuardar();
   if (st.step === 3) {
     st.tab = "deudas";
@@ -3554,6 +3572,7 @@ document.addEventListener("DOMContentLoaded", function() {
         st._deuda_is_new_add = false;
         st._deuda_validation_error = null;
         clearDeudaSaveFeedback(st);
+        resetDebtCompletionFlagIfNoActiveDebts(st);
         window.guardarLocal();
         if (st.step === 3) {
           window.CredizonaUI.renderTab();
@@ -3643,6 +3662,7 @@ document.addEventListener("DOMContentLoaded", function() {
           st._deuda_delete_confirm_index = null;
           st.temporal.last_debt_update_at = new Date().toISOString();
           trackCRMDebtEvent("debt_deleted", { debt_index: deleteConfirmIdx });
+          resetDebtCompletionFlagIfNoActiveDebts(st);
           recalcDiagYGuardar();
           if (st.step === 3) {
             window.CredizonaUI.renderTab();
@@ -3849,6 +3869,7 @@ document.addEventListener("DOMContentLoaded", function() {
               action: "mark_paid",
             });
           }
+          resetDebtCompletionFlagIfNoActiveDebts(st);
           recalcDiagYGuardar();
 
           _safeCelebration({

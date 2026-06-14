@@ -713,6 +713,94 @@
     }
   });
 
+  (function assertDebtCompletionFlagAlignment() {
+    boot("?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B");
+    load("js/app.js");
+    PRE.ingreso = 50000;
+
+    function assertZeroActiveDebtScenario(profileId, debt, mutateFn, opts) {
+      opts = opts || {};
+      var expectFullAlignment = opts.expectFullAlignment !== false;
+      var st = {
+        step: 3,
+        tab: "plan",
+        gastos: {},
+        gastos_missing_confirmed: true,
+        financial_debts_complete: true,
+        no_debts_declared: false,
+        declared_ingreso: 50000,
+        deudas: [debt],
+        diag: null,
+        temporal: {},
+        snap: { plan_id: 1 },
+      };
+      window.CZState = st;
+      var noDebtsBefore = st.no_debts_declared;
+      mutateFn(st);
+
+      ok(profileId + " active count 0", deudasActivasParaCalculo(st.deudas).length === 0);
+      ok(profileId + " financial_debts_complete false", st.financial_debts_complete === false);
+      ok(profileId + " no_debts_declared unchanged", st.no_debts_declared === noDebtsBefore);
+
+      if (expectFullAlignment) {
+        ok(profileId + " _hasNoDeclaredDebts true",
+          typeof _hasNoDeclaredDebts === "function" && _hasNoDeclaredDebts(st) === true);
+        var diag = calcularMotor();
+        st.diag = diag;
+        var narr = renderNarrativaInterpretacion(diag, st);
+        ok(profileId + " narrative no deuda importante",
+          narr.indexOf("Registraste una deuda importante") < 0);
+      } else {
+        ok(profileId + " historial may remain in st.deudas",
+          st.deudas.length > 0 && deudasActivasParaCalculo(st.deudas).length === 0);
+        ok(profileId + " completion flag cleared despite historial",
+          st.financial_debts_complete === false);
+      }
+    }
+
+    assertZeroActiveDebtScenario("P16", {
+      tipo: "tarjeta",
+      acreedor: "OCA",
+      monto: "50000",
+      pago: "3000",
+      situacion_ui: "vigente",
+      cancelada: false,
+    }, function(st) {
+      st.deudas.splice(0, 1);
+      resetDebtCompletionFlagIfNoActiveDebts(st);
+    });
+
+    assertZeroActiveDebtScenario("P17", {
+      tipo: "tarjeta",
+      acreedor: "OCA",
+      monto: "50000",
+      pago: "3000",
+      situacion_ui: "vigente",
+      cancelada: false,
+    }, function(st) {
+      var dPag = st.deudas[0];
+      dPag.monto_original = parseFloat(dPag.monto) || 50000;
+      dPag.situacion_ui = "pagada";
+      dPag.pago = 0;
+      dPag.pago_fuente = "pagada";
+      dPag.cancelada = true;
+      dPag.estado = "al_dia";
+      resetDebtCompletionFlagIfNoActiveDebts(st);
+    }, { expectFullAlignment: false });
+
+    assertZeroActiveDebtScenario("P18", {
+      tipo: "prestamo",
+      acreedor: "BROU",
+      monto: "40000",
+      pago: "2500",
+      situacion_ui: "vigente",
+      cancelada: false,
+    }, function(st) {
+      st.deudas[0].cancelada = true;
+      resetDebtCompletionFlagIfNoActiveDebts(st);
+    }, { expectFullAlignment: false });
+  })();
+
   (function assertBackwardCompatStatusLabel() {
     var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
     var result = runPipeline(p4Profile);
