@@ -190,11 +190,15 @@
   }
   ok("F accion no ordenar panorama", rA.tab.indexOf(OLD_NEXT) < 0);
 
-  // G — Narrativa primer paso
+  // G — Narrativa primer paso (UX-1d: hero owns next step; narrativa deduped)
   if (cohF.profileTier === "healthy_organized") {
-    ok("G narrativa B6b next step", rA.narr.indexOf("Mantené el ritmo de pagos actual") >= 0);
+    ok("G hero owns B6b next step not narr duplicate",
+      rA.hero.indexOf("Mantené el ritmo de pagos actual") >= 0
+      && rA.narr.indexOf("Primer paso recomendado") < 0);
   } else {
-    ok("G narrativa approved next step", rA.narr.indexOf(APPROVED_NEXT) >= 0);
+    ok("G hero owns approved next step not narr duplicate",
+      rA.hero.indexOf(APPROVED_NEXT) >= 0
+      && rA.narr.indexOf("Primer paso recomendado") < 0);
   }
   ok("G narrativa no ordenar panorama", rA.narr.indexOf(OLD_NEXT) < 0);
 

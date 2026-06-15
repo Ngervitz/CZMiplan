@@ -875,6 +875,58 @@
     ok("P20 narrative includes debt phrase", narrP20.indexOf(debtPhrase) >= 0);
   })();
 
+  (function assertUx1dDuplicateCleanup() {
+    var DISCLAIMER_PHRASE = "se basa exclusivamente en la información que declaraste";
+    var INNER_ACCIONES_HEADER = "Acciones recomendadas para tu situación";
+
+    ["P2", "P3", "P4", "P5"].forEach(function(pid) {
+      var profile = PROFILES.filter(function(p) { return p.id === pid; })[0];
+      if (!profile) return;
+      var result = runPipeline(profile);
+      var diag = result.diag;
+      var st = window.CZState;
+      var coh = result.coherence;
+      var hero = _renderDashboardHeroCard(diag, st, coh);
+      var narr = renderNarrativaInterpretacion(diag, st, coh);
+      var tab = renderTabPlan();
+      var incomplete = isIncompleteFinancialProfile(diag, st);
+      var heroOwns = !!(coh && coh.nextStepText && !incomplete);
+
+      if (heroOwns) {
+        ok(pid + " UX-1d hero Próximo paso", hero.indexOf("Próximo paso recomendado") >= 0);
+        ok(pid + " UX-1d hero nextStepText", coh.nextStepText && hero.indexOf(coh.nextStepText) >= 0);
+        ok(pid + " UX-1d narr no Primer paso", narr.indexOf("Primer paso recomendado") < 0);
+      }
+
+      var disclaimerMatches = tab.match(new RegExp(
+        DISCLAIMER_PHRASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"));
+      ok(pid + " UX-1d disclaimer once", (disclaimerMatches || []).length <= 1);
+
+      var accionesHtml = typeof renderAccionesRecomendadasHtml === "function"
+        ? renderAccionesRecomendadasHtml(diag) : "";
+      ok(pid + " UX-1d no inner acciones header", accionesHtml.indexOf(INNER_ACCIONES_HEADER) < 0);
+    });
+
+    boot("?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B");
+    PRE.ingreso = 80000;
+    window.CZState = {
+      gastos: {},
+      gastos_missing_confirmed: false,
+      deudas: [],
+      diag: null,
+    };
+    var diagInc = calcularMotor();
+    window.CZState.diag = diagInc;
+    var narrInc = renderNarrativaInterpretacion(diagInc, window.CZState);
+    var heroInc = _renderDashboardHeroCard(diagInc, window.CZState);
+    ok("UX-1d incomplete narr present", narrInc.length > 0);
+    ok("UX-1d incomplete hero path", heroInc.indexOf("Tu diagnóstico todavía no está completo") >= 0);
+    ok("UX-1d incomplete narr guidance",
+      narrInc.indexOf("Información insuficiente") >= 0
+        || narrInc.indexOf("Diagnóstico incompleto") >= 0
+        || narrInc.indexOf("datos necesarios") >= 0);
+  })();
+
   (function assertBackwardCompatStatusLabel() {
     var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
     var result = runPipeline(p4Profile);

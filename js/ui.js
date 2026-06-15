@@ -2875,8 +2875,7 @@ function renderHorizonteRecalificacion(diag, st, coherence) {
     return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);")
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable sin estabilización previa</div>'
-      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Cuando el perfil está en estabilización crítica, primero hay que ordenar la situación y confirmar el saldo actualizado. Recién después se puede estimar un horizonte de recalificación.</div>'
-      + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Este diagnóstico se basa exclusivamente en la información que declaraste.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Cuando el perfil está en estabilización crítica, primero hay que ordenar la situación y confirmar el saldo actualizado. Recién después se puede estimar un horizonte de recalificación.</div>'
       + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
   }
@@ -2901,8 +2900,7 @@ function renderHorizonteRecalificacion(diag, st, coherence) {
     return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);")
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">No estimable con flujo mensual negativo</div>'
-      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
-      + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Antes de proyectar una recalificación, primero hay que recuperar margen mensual positivo. Con flujo negativo, el horizonte no puede calcularse de forma responsable.</div>'
       + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
   }
@@ -2916,8 +2914,7 @@ function renderHorizonteRecalificacion(diag, st, coherence) {
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:24px;font-weight:900;color:#ffd36f;line-height:1.3;margin-bottom:12px;">Tu deuda acumulada ya puede estar pesando en la evaluación</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:10px;">El total de deuda que declaraste supera tu ingreso mensual. Aunque no tengas pagos activos registrados, este nivel de deuda puede influir en una futura evaluación.</div>'
-      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Como este diagnóstico parte de una solicitud rechazada, conviene revisar si esta deuda tiene pagos, refinanciaciones o información adicional que todavía no fue incorporada.</div>'
-      + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Como este diagnóstico parte de una solicitud rechazada, conviene revisar si esta deuda tiene pagos, refinanciaciones o información adicional que todavía no fue incorporada.</div>'
       + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
   }
@@ -2941,8 +2938,7 @@ function renderHorizonteRecalificacion(diag, st, coherence) {
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">Necesitamos completar tu diagnóstico</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Hay señales positivas en la información que registraste, pero todavía faltan datos para estimar con confianza si estás en condiciones de presentar una nueva solicitud.</div>'
-      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Completá la información pendiente para obtener una evaluación más precisa.</div>'
-      + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Completá la información pendiente para obtener una evaluación más precisa.</div>'
       + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
   }
@@ -2953,8 +2949,7 @@ function renderHorizonteRecalificacion(diag, st, coherence) {
   return _horizonPlanCardOpen(diag, st, "border-color:" + bord + ";background:" + bg + ";")
     + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
     + '<div style="font-size:26px;font-weight:900;color:' + col + ';line-height:1.25;margin-bottom:10px;">' + horizonLabel + '</div>'
-    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Basado en la información declarada, sin nuevas deudas y siguiendo el plan. El historial del sistema financiero puede incluir elementos que esta simulación no alcanza a ver.</div>'
-    + '<div style="font-size:12px;color:#8390b5;line-height:1.55;margin-bottom:14px;">⚠️ Esta proyección se basa exclusivamente en la información que declaraste.</div>'
+    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Basado en la información declarada, sin nuevas deudas y siguiendo el plan. El historial del sistema financiero puede incluir elementos que esta simulación no alcanza a ver.</div>'
     + _retryHorizonAddonHtml(diag, st, coherence)
     + '</div>';
 }
@@ -3042,6 +3037,12 @@ function renderNarrativaInterpretacion(diag, st, coherence) {
   // Skip presion_dominante if patron is sin_patron AND confidence is not low.
   var showPresion = !(iv2.patron_deuda === "sin_patron" && iv2.confidence_level !== "low");
 
+  var heroOwnsNextStep = !!(
+    coherence &&
+    coherence.nextStepText &&
+    !isIncompleteFinancialProfile(diag, st)
+  );
+
   var confidenceNote = "";
   if (injectedCtaHtml && st.gastos_missing_confirmed) {
     confidenceNote = '<div style="margin-top:14px;padding-top:14px;'
@@ -3068,7 +3069,7 @@ function renderNarrativaInterpretacion(diag, st, coherence) {
     + block("Qué está pasando",        textoPrincipal, true)
     + (showPresion ? block("Presión principal",          nPresion  ? nPresion.texto  : null) : "")
     + block("Capacidad de recuperación", nRecup     ? nRecup.texto    : null)
-    + block("Primer paso recomendado",   textoPaso)
+    + (heroOwnsNextStep ? "" : block("Primer paso recomendado", textoPaso))
     + injectedCtaHtml
     + confidenceNote
     + '</div>';
@@ -4861,10 +4862,6 @@ function renderAccionesRecomendadasHtml(diag) {
     : "";
 
   return '<div class="acciones-recomendadas-wrap" style="margin-top:8px;">'
-    + '<div style="margin-bottom:12px;">'
-    + '<div style="font-size:17px;font-weight:800;color:rgba(255,255,255,.9);">Acciones recomendadas para tu situación</div>'
-    + '<div style="font-size:15px;color:#8390b5;margin-top:4px;line-height:1.4;">Basadas en tu diagnóstico actual.</div>'
-    + '</div>'
     + acciones.map(function(a, idx) { return renderAccionRecomendadaItem(a, idx); }).join("")
     + verMasBtn
     + (allDone
