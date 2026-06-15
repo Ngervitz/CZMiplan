@@ -1279,6 +1279,17 @@ function _dashAccent(key) {
   return CZ_DASH_ACCENTS[key] || CZ_DASH_ACCENTS.sugerencias;
 }
 
+function _dashPlanColorStyle(planColor) {
+  var c = planColor && String(planColor).trim ? String(planColor).trim() : "#5b7cff";
+  return "--cz-plan-color:" + c + ";";
+}
+
+function _dashIaEmojiTierClass(sectionKey) {
+  if (sectionKey === "situacion" || sectionKey === "accion") return "dash-ia-emoji--a";
+  if (sectionKey === "frenando") return "dash-ia-emoji--b";
+  return "dash-ia-emoji--c";
+}
+
 function _dashSectionAccentCss(key) {
   var a = _dashAccent(key);
   return "border-left:3px solid " + a.border + ";padding-left:14px;max-width:100%;box-sizing:border-box;";
@@ -1324,9 +1335,11 @@ function _dashIaIcon(key) {
 }
 
 function _dashIaLabel(text, sectionKey) {
-  return '<span style="font-size:24px;line-height:1;display:block;margin-bottom:8px;opacity:.95;max-width:100%;" aria-hidden="true">'
+  return '<div class="dash-ia-section-label">'
+    + '<span class="dash-ia-emoji ' + _dashIaEmojiTierClass(sectionKey) + '" aria-hidden="true">'
     + _dashIaIcon(sectionKey) + "</span>"
-    + '<div style="' + CZ_DASH_IA_LABEL_STYLE + '">' + text + "</div>";
+    + '<div class="dash-ia-label-text">' + text + "</div>"
+    + "</div>";
 }
 
 function _dashIaSectionOpen(isFirst, sectionKey) {
@@ -1769,7 +1782,7 @@ function renderRelacionDeudaIngreso(diag) {
   var totalDeuda = fin.totalDeuda != null ? fin.totalDeuda : 0;
   var dtiRatio   = fin.dti_ratio;
 
-  var cardOpen = '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);'
+  var cardOpen = '<div class="plan-card dash-tier-b dash-relacion-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);'
     + _dashSectionAccentCss("dti") + '">'
     + _dashCardTitle("⚖️", "Relación deuda / ingreso", "dti");
 
@@ -1891,13 +1904,16 @@ function renderConfianzaDiagnostico(diag) {
       + "</div>"
     : "";
 
-  return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.03);'
-    + _dashSectionAccentCss("confianza") + '">'
-    + _dashCardTitle("🎯", "Confianza del diagnóstico", "confianza")
-    + '<div style="font-size:20px;font-weight:800;color:rgba(255,255,255,.92);margin-bottom:10px;">' + nivelLabel + '</div>'
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.65;">' + explicacion + '</div>'
+  return '<div class="plan-card dash-tier-c dash-confianza-compact" style="' + _dashPlanColorStyle(null) + '">'
+    + '<div class="dash-confianza-compact__head">'
+    + '<span class="dash-confianza-compact__emoji" aria-hidden="true">🎯</span>'
+    + '<div class="dash-confianza-compact__title-wrap">'
+    + '<div class="dash-confianza-compact__title">Confianza del diagnóstico</div>'
+    + "</div></div>"
+    + '<div class="dash-confianza-compact__level">' + nivelLabel + "</div>"
+    + '<div class="dash-confianza-compact__text">' + explicacion + "</div>"
     + missingPayMsg
-    + '</div>';
+    + "</div>";
 }
 
 function _hasRealBlockers(diag) {
@@ -2244,10 +2260,10 @@ function renderContextualActionBlock(segment) {
   }).join("");
 
   return [
-    '<div class="cz-contextual-action-block" data-b7-segment="' + esc(segment.segmentId) + '" data-b7-inconsistency="' + (segment.isInconsistency ? "true" : "false") + '" style="background:rgba(167,139,250,.07);border:1px solid rgba(167,139,250,.28);border-radius:14px;padding:16px 18px;margin-top:14px;">',
-    '<div class="cz-contextual-action-header" style="font-size:13px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">' + esc(sectionTitle) + "</div>",
-    '<div class="cz-contextual-action-title" style="font-size:17px;font-weight:800;color:rgba(255,255,255,.92);line-height:1.45;margin-bottom:12px;">' + title + "</div>",
-    '<ul class="cz-contextual-action-list" style="margin:0;padding-left:20px;font-size:15px;color:rgba(255,255,255,.82);line-height:1.65;">' + actionsHtml + "</ul>",
+    '<div class="cz-contextual-action-block dash-b7-tier-b" data-b7-segment="' + esc(segment.segmentId) + '" data-b7-inconsistency="' + (segment.isInconsistency ? "true" : "false") + '">',
+    '<div class="cz-contextual-action-header">' + esc(sectionTitle) + "</div>",
+    '<div class="cz-contextual-action-title">' + title + "</div>",
+    '<ul class="cz-contextual-action-list">' + actionsHtml + "</ul>",
     "</div>",
   ].join("");
 }
@@ -2518,10 +2534,10 @@ function _renderIncompleteProfileNarrativeHtml(diag, st) {
   var bodyHtml;
   if (hasDebt && expensesMissing) {
     title = "Diagnóstico incompleto";
-    bodyHtml = '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.65;margin-bottom:12px;">'
+    bodyHtml = '<div class="dash-narrativa-body dash-narrativa-body--lead" style="margin-bottom:12px;">'
       + "Registraste una deuda importante, pero todavía faltan tus gastos mensuales para entender tu capacidad real de pago."
       + "</div>"
-      + '<div style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;margin-bottom:12px;">'
+      + '<div class="dash-narrativa-body" style="margin-bottom:12px;">'
       + "Antes de definir si conviene estabilizar, refinanciar o atacar una deuda primero, necesitamos saber cuánto dinero te queda realmente cada mes."
       + "</div>"
       + '<div style="padding:14px 16px;background:rgba(255,196,0,.08);border:1px solid rgba(255,196,0,.2);border-radius:12px;font-size:15px;color:#ffd447;font-weight:700;line-height:1.65;">'
@@ -2529,15 +2545,15 @@ function _renderIncompleteProfileNarrativeHtml(diag, st) {
       + "</div>";
   } else {
     title = "Información insuficiente para completar el diagnóstico";
-    bodyHtml = '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.65;">'
+    bodyHtml = '<div class="dash-narrativa-body">'
       + "Todavía no registraste todos los datos necesarios para estimar tu situación financiera real."
       + "<br><br>Antes de tomar decisiones, necesitamos conocer mejor tus gastos mensuales."
       + "</div>";
   }
-  return '<div class="plan-card">'
-    + '<div style="margin-bottom:16px;">'
-    + '<div style="font-size:11px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Qué está pasando</div>'
-    + '<div style="font-size:16px;font-weight:800;color:rgba(255,255,255,.92);line-height:1.4;margin-bottom:10px;">'
+  return '<div class="plan-card dash-tier-a dash-narrativa-card" style="' + _dashPlanColorStyle(diag.plan && diag.plan.color) + '">'
+    + '<div class="dash-narrativa-block">'
+    + '<div class="dash-narrativa-block-label">Qué está pasando</div>'
+    + '<div class="dash-narrativa-incomplete-title">'
     + title
     + "</div>"
     + bodyHtml
@@ -3012,13 +3028,15 @@ function renderNarrativaInterpretacion(diag, st, coherence) {
     : (nPrincipal ? nPrincipal.texto : null);
   var injectedCtaHtml = _resolveDiagnosisInjectedCtaHtml(diag, st);
 
-  var block = function(label, text) {
+  var block = function(label, text, isLead) {
     if (!text) return "";
-    return '<div style="margin-bottom:16px;">'
-      + '<div style="font-size:11px;font-weight:800;color:#8390b5;'
-      + 'text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">' + label + '</div>'
-      + '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.65;">' + text + '</div>'
-      + '</div>';
+    var bodyClass = isLead
+      ? "dash-narrativa-body dash-narrativa-body--lead"
+      : "dash-narrativa-body";
+    return '<div class="dash-narrativa-block">'
+      + '<div class="dash-narrativa-block-label">' + label + "</div>"
+      + '<div class="' + bodyClass + '">' + text + "</div>"
+      + "</div>";
   };
 
   // Skip presion_dominante if patron is sin_patron AND confidence is not low.
@@ -3045,9 +3063,9 @@ function renderNarrativaInterpretacion(diag, st, coherence) {
       + '</div>';
   }
 
-  return '<div class="plan-card">'
+  return '<div class="plan-card dash-tier-a dash-narrativa-card" style="' + _dashPlanColorStyle(diag.plan && diag.plan.color) + '">'
     + renderRecuperabilidadBadge(iv2)
-    + block("Qué está pasando",        textoPrincipal)
+    + block("Qué está pasando",        textoPrincipal, true)
     + (showPresion ? block("Presión principal",          nPresion  ? nPresion.texto  : null) : "")
     + block("Capacidad de recuperación", nRecup     ? nRecup.texto    : null)
     + block("Primer paso recomendado",   textoPaso)
@@ -3273,7 +3291,7 @@ function _dashZoneClose() {
 
 function _horizonPlanCardOpen(diag, st, inlineStyle) {
   var compact = isIncompleteFinancialProfile(diag, st);
-  return '<div class="plan-card' + (compact ? " dash-horizon-compact" : "") + '" style="' + (inlineStyle || "") + '">';
+  return '<div class="plan-card dash-tier-b dash-horizon-card' + (compact ? " dash-horizon-compact" : "") + '" style="' + (inlineStyle || "") + '">';
 }
 
 function _renderNumerosAccordionShell(innerHtml) {
@@ -3315,7 +3333,7 @@ function _renderDashboardHeroCard(diag, st, coherence) {
           buttonLabel: "Completar gastos",
         })
       : (showDebtsCta ? _renderHeroDebtsCtaHtml() : "");
-    return '<div class="cz-hero-card plan-card" id="cz-dashboard-hero" style="border-color:rgba(255,211,111,.45);'
+    return '<div class="cz-hero-card plan-card dash-tier-a" id="cz-dashboard-hero" style="border-color:rgba(255,211,111,.45);'
       + 'background:linear-gradient(165deg,rgba(255,211,111,.12) 0%,rgba(255,255,255,.04) 55%);'
       + 'padding:24px 22px;margin-bottom:4px;">'
       + '<div style="font-size:12px;font-weight:800;color:#ffd447;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">'
@@ -3341,7 +3359,7 @@ function _renderDashboardHeroCard(diag, st, coherence) {
   var statusLabel = resolvePlanStatusLabel(diag, st, coherence);
   var nextAction = _resolveHeroNextActionText(diag, st, coherence);
 
-  return '<div class="cz-hero-card plan-card" id="cz-dashboard-hero" style="border-color:' + pc + '55;'
+  return '<div class="cz-hero-card plan-card dash-tier-a" id="cz-dashboard-hero" style="border-color:' + pc + '55;'
     + 'background:linear-gradient(165deg,' + pc + '18 0%,rgba(255,255,255,.04) 58%);'
     + 'padding:24px 22px;margin-bottom:4px;">'
     + '<div style="font-size:12px;font-weight:800;color:' + pc + ';text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">'
@@ -3497,7 +3515,7 @@ function renderTabPlan() {
         if (coherence.hideAccionPrioritaria) return "";
         var textoAccion = coherence.nextStepText || _resolveDashboardNextStepText(diag, st);
         if (!textoAccion) return "";
-        return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);'
+        return '<div class="plan-card dash-tier-b dash-accion-prioritaria-card" style="border-color:rgba(255,255,255,.1);'
           + _dashSectionAccentCss("accion") + '">'
           + _dashCardTitle("📍", "Acción prioritaria", "accion")
           + '<div style="padding:14px 16px;background:rgba(255,255,255,.04);'
@@ -3528,10 +3546,10 @@ function renderTabPlan() {
 
     // 5 — Mi Plan Plus
     + _dashZoneOpen("plus", CZ_DASH_ZONE_GAP)
-    + '<div class="plan-card" id="cz-plus-entry" style="background:rgba(64,215,255,.05);border-color:rgba(64,215,255,.2);">'
-    + '<div style="font-size:13px;font-weight:800;color:#40d7ff;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">★ Mi Plan Plus</div>'
-    + '<div style="font-size:16px;color:rgba(255,255,255,.8);line-height:1.65;margin-bottom:20px;">Mi Plan Plus contrasta esta información con registros de BCU y Clearing para detectar diferencias, acreedores no declarados y otros factores que podrían estar afectando tu perfil financiero.</div>'
-    + '<button class="btn btn-primary" id="btn-conocer-plus" style="width:100%;height:60px;font-size:18px;">Ver mi situación real</button>'
+    + '<div class="plan-card dash-plus-lite" id="cz-plus-entry">'
+    + '<div class="dash-plus-kicker">★ Mi Plan Plus</div>'
+    + '<div class="dash-plus-body">Mi Plan Plus contrasta esta información con registros de BCU y Clearing para detectar diferencias, acreedores no declarados y otros factores que podrían estar afectando tu perfil financiero.</div>'
+    + '<button class="btn btn-primary" id="btn-conocer-plus" style="width:100%;">Ver mi situación real</button>'
     + '</div>'
     + _dashZoneClose()
 
@@ -3670,7 +3688,7 @@ function renderMiPlanSuggestionBox() {
       + '</label>';
   }).join("");
 
-  return '<div class="plan-card dash-sugerencias-card" id="cz-feedback-box" style="border-color:rgba(255,255,255,.1);'
+  return '<div class="plan-card dash-sugerencias-card dash-tier-c" id="cz-feedback-box" style="border-color:rgba(255,255,255,.1);'
     + _dashSectionAccentCss("sugerencias") + '">'
     + _dashCardTitle("💬", "Sugerencias", "sugerencias")
     + '<div style="font-size:15px;color:#8390b5;line-height:1.55;margin-bottom:14px;">'
@@ -4725,9 +4743,9 @@ function renderHerramientas() {
   var pid  = diag.planId;
 
   var html = '<div style="margin-top:4px;">'
-    + '<div style="margin-bottom:18px;">'
-    + '<div style="font-size:20px;font-weight:900;">Acciones recomendadas</div>'
-    + '<div style="font-size:15px;color:#8390b5;margin-top:2px;">Pasos concretos basados en tu diagnóstico actual.</div>'
+    + '<div class="dash-herramientas-header">'
+    + '<div class="dash-herramientas-title">Acciones recomendadas</div>'
+    + '<div class="dash-herramientas-sub">Pasos concretos basados en tu diagnóstico actual.</div>'
     + '</div>';
 
   if      (pid === 1) html += renderHerramientasPlan1();

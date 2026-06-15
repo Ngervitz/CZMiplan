@@ -668,6 +668,223 @@ select option{background:#0a1026;}
   margin-bottom:10px;
 }
 
+/* Sprint UX-1b — visual hierarchy tiers (presentation only) */
+.dash-ia-section-label{
+  max-width:100%;
+  box-sizing:border-box;
+  margin-bottom:4px;
+}
+.dash-ia-emoji{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  line-height:1;
+  margin-bottom:8px;
+  opacity:.95;
+  max-width:100%;
+  overflow:visible;
+}
+.dash-ia-emoji--a{font-size:32px;min-height:32px;}
+.dash-ia-emoji--b{font-size:28px;min-height:28px;}
+.dash-ia-emoji--c{font-size:22px;min-height:22px;}
+.dash-ia-label-text{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.08em;
+  color:rgba(255,255,255,.35);
+  text-transform:uppercase;
+  margin-bottom:12px;
+  max-width:100%;
+  line-height:1.4;
+}
+
+/* Tier A — critical narrative */
+.dash-tier-a.dash-narrativa-card{
+  border-left:4px solid var(--cz-plan-color, #5b7cff);
+  background:rgba(255,255,255,.04);
+  background:linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--cz-plan-color, #5b7cff) 14%, transparent) 0%,
+    rgba(255,255,255,.035) 58%
+  );
+  box-shadow:0 10px 36px rgba(0,0,0,.2);
+}
+.dash-narrativa-block{margin-bottom:16px;}
+.dash-narrativa-block-label{
+  font-size:11px;
+  font-weight:800;
+  color:#8390b5;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  margin-bottom:6px;
+}
+.dash-narrativa-body{
+  font-size:17px;
+  color:rgba(255,255,255,.88);
+  line-height:1.65;
+}
+.dash-narrativa-body--lead{
+  font-size:17px;
+  font-weight:600;
+  color:rgba(255,255,255,.92);
+  line-height:1.65;
+}
+.dash-narrativa-incomplete-title{
+  font-size:17px;
+  font-weight:800;
+  color:rgba(255,255,255,.92);
+  line-height:1.45;
+  margin-bottom:10px;
+}
+
+/* Tier B — primary action surfaces */
+.dash-tier-b.dash-horizon-card,
+.dash-tier-b.dash-accion-prioritaria-card,
+.dash-tier-b.dash-relacion-card{
+  border-left:3px solid rgba(210,180,110,.55);
+  background:rgba(255,255,255,.038);
+  box-shadow:0 6px 24px rgba(0,0,0,.12);
+}
+.dash-herramientas-header{
+  margin-bottom:18px;
+}
+.dash-herramientas-title{
+  font-size:20px;
+  font-weight:900;
+  line-height:1.25;
+  color:rgba(255,255,255,.92);
+}
+.dash-herramientas-sub{
+  font-size:15px;
+  color:#8390b5;
+  margin-top:2px;
+  line-height:1.5;
+}
+
+/* Tier C — informational */
+.dash-tier-c.dash-confianza-compact{
+  padding:16px 18px;
+  background:rgba(255,255,255,.025);
+  border-color:rgba(255,255,255,.07);
+  box-shadow:none;
+}
+.dash-confianza-compact__head{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  margin-bottom:10px;
+}
+.dash-confianza-compact__emoji{
+  font-size:22px;
+  line-height:1;
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  min-height:28px;
+}
+.dash-confianza-compact__title-wrap{flex:1;min-width:0;}
+.dash-confianza-compact__title{
+  font-size:12px;
+  font-weight:800;
+  color:rgba(131,144,181,.95);
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  line-height:1.35;
+}
+.dash-confianza-compact__level{
+  font-size:16px;
+  font-weight:800;
+  color:rgba(255,255,255,.82);
+  margin-bottom:8px;
+  line-height:1.35;
+}
+.dash-confianza-compact__text{
+  font-size:14px;
+  color:#8390b5;
+  line-height:1.6;
+}
+.dash-tier-c.dash-sugerencias-card{
+  background:rgba(255,255,255,.025);
+  border-color:rgba(255,255,255,.07);
+  box-shadow:none;
+}
+
+/* Mi Plan Plus — lighter upsell */
+.dash-plus-lite{
+  background:rgba(64,215,255,.025);
+  border-color:rgba(64,215,255,.16);
+  box-shadow:none;
+  padding:18px 20px;
+}
+.dash-plus-lite .dash-plus-kicker{
+  font-size:12px;
+  font-weight:800;
+  color:rgba(64,215,255,.88);
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  margin-bottom:10px;
+  line-height:1.35;
+}
+.dash-plus-lite .dash-plus-body{
+  font-size:15px;
+  color:rgba(255,255,255,.72);
+  line-height:1.6;
+  margin-bottom:14px;
+}
+.dash-plus-lite #btn-conocer-plus{
+  height:52px;
+  font-size:16px;
+}
+
+/* B7 contextual block — stronger identity */
+.cz-contextual-action-block.dash-b7-tier-b{
+  background:rgba(167,139,250,.09);
+  border:1px solid rgba(167,139,250,.38);
+  border-left:4px solid rgba(167,139,250,.78);
+  border-radius:14px;
+  padding:16px 18px;
+  margin-top:14px;
+}
+.cz-contextual-action-block.dash-b7-tier-b .cz-contextual-action-header{
+  font-size:14px;
+  font-weight:800;
+  color:#c4b5fd;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+  margin-bottom:10px;
+  line-height:1.45;
+}
+.cz-contextual-action-block.dash-b7-tier-b .cz-contextual-action-title{
+  font-size:17px;
+  font-weight:800;
+  color:rgba(255,255,255,.94);
+  line-height:1.45;
+  margin-bottom:12px;
+}
+.cz-contextual-action-block.dash-b7-tier-b .cz-contextual-action-list{
+  margin:0;
+  padding-left:20px;
+  font-size:15px;
+  color:rgba(255,255,255,.84);
+  line-height:1.65;
+}
+
+.dash-zone-accion .dash-ia-emoji--a,
+.dash-zone-diagnostico .dash-ia-emoji--a{
+  margin-bottom:6px;
+}
+.dash-numeros-trigger-icon{
+  font-size:22px;
+  line-height:1;
+  min-width:24px;
+  min-height:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
 /* SCORE */
 .score-display{
   display:flex;align-items:center;gap:24px;
