@@ -1316,7 +1316,7 @@ var CZ_DASH_IA_SECTION_GAP =
   "margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);";
 
 var CZ_DASH_ZONE_GAP =
-  "margin-top:20px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06);";
+  "margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);";
 
 var CZ_DASH_IA_ICONS = {
   situacion: "🎯",

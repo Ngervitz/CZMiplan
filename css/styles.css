@@ -590,7 +590,7 @@ select option{background:#0a1026;}
 .dash-zone-numeros{order:9;}
 .dash-zone-confianza{order:10;}
 .dash-zone-sugerencias{order:11;}
-.dash-hierarchy .plan-card{margin-bottom:14px;}
+.dash-hierarchy .plan-card{margin-bottom:10px;}
 .cz-hero-card{
   box-shadow:0 18px 60px rgba(0,0,0,.28);
 }
@@ -885,6 +885,12 @@ select option{background:#0a1026;}
   justify-content:center;
 }
 
+/* Sprint UX-1c — density & scroll reduction (spacing only) */
+.dash-tier-a.plan-card{padding:28px;}
+.dash-tier-b.plan-card{padding:22px;}
+.dash-tier-c.plan-card{padding:20px;}
+.dash-tier-b.dash-horizon-card:not(.dash-horizon-compact){padding:16px 18px;}
+
 /* SCORE */
 .score-display{
   display:flex;align-items:center;gap:24px;
@@ -898,7 +904,7 @@ select option{background:#0a1026;}
 /* PRIORITY CARD */
 .priority-card{
   background:rgba(255,211,111,.05);border:1px solid rgba(255,211,111,.18);
-  border-radius:20px;padding:22px;margin-bottom:18px;
+  border-radius:20px;padding:16px 18px;margin-bottom:18px;
 }
 
 /* PROGRESS */
@@ -921,9 +927,9 @@ select option{background:#0a1026;}
 /* HERRAMIENTAS */
 .tool-card{
   background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
-  border-radius:22px;padding:22px;margin-bottom:14px;
+  border-radius:22px;padding:16px 18px;margin-bottom:14px;
 }
-.tool-header{display:flex;gap:14px;align-items:flex-start;margin-bottom:16px;}
+.tool-header{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;}
 .tool-num{
   width:32px;height:32px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
