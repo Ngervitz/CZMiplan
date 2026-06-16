@@ -1041,6 +1041,79 @@
       diagScreenNeutral.indexOf("El rechazo puede estar relacionado") < 0);
   })();
 
+  (function assertFix01B2PlanTitleAlignment() {
+    var p11 = PROFILES.filter(function(p) { return p.id === "P11"; })[0];
+    var r11 = runPipeline(p11);
+    var heroP11 = _renderDashboardHeroCard(r11.diag, window.CZState, r11.coherence);
+    ok("FIX-01B-2 T1 planId 1", r11.diag.planId === 1);
+    ok("FIX-01B-2 T1 Claridad Financiera appears", heroP11.indexOf("Claridad Financiera") >= 0);
+    ok("FIX-01B-2 T1 Orden Financiero absent", heroP11.indexOf("Orden Financiero") < 0);
+
+    var p3 = PROFILES.filter(function(p) { return p.id === "P3"; })[0];
+    var r3 = runPipeline(p3);
+    var heroP3 = _renderDashboardHeroCard(r3.diag, window.CZState, r3.coherence);
+    ok("FIX-01B-2 T2 healthy planId 1", r3.diag.planId === 1);
+    ok("FIX-01B-2 T2 healthy_organized tier", r3.coherence.profileTier === "healthy_organized");
+    ok("FIX-01B-2 T2 Claridad Financiera appears", heroP3.indexOf("Claridad Financiera") >= 0);
+    ok("FIX-01B-2 T2 Orden Financiero absent", heroP3.indexOf("Orden Financiero") < 0);
+
+    var p8 = PROFILES.filter(function(p) { return p.id === "P8"; })[0];
+    var r8 = runPipeline(p8);
+    ok("FIX-01B-2 T3 P8 assigned_plan_raw 5 path",
+      r8.diag.assigned_plan_raw === 5 || r8.diag.planId === 5);
+
+    boot("?p1=B&p2=B&p3=B&p4=B&p5=B&p6=B&p7=B&p8=B&p9=B&p10=B");
+    PRE.ingreso = 55000;
+    window.CZState = {
+      gastos: { vivienda: 12000, alimentacion: 8000 },
+      gastos_missing_confirmed: false,
+      deudas: [{
+        tipo: "prestamo",
+        acreedor: "BROU",
+        monto: "30000",
+        pago: "5000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      diag: null,
+    };
+    var diagP5 = calcularMotor();
+    window.CZState.diag = diagP5;
+    var cohP5 = resolveDashboardCoherence(diagP5, window.CZState);
+    var heroP5Plan = _renderDashboardHeroCard(diagP5, window.CZState, cohP5);
+    ok("FIX-01B-2 T3 planId 5", diagP5.planId === 5);
+    ok("FIX-01B-2 T3 Reconstrucción Crediticia appears",
+      heroP5Plan.indexOf("Reconstrucción Crediticia") >= 0);
+    ok("FIX-01B-2 T3 Reperfilamiento absent", heroP5Plan.indexOf("Reperfilamiento") < 0);
+
+    var p4 = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
+    var r4 = runPipeline(p4);
+    var heroP4 = _renderDashboardHeroCard(r4.diag, window.CZState, r4.coherence);
+    ok("FIX-01B-2 T4 Reducción de Deuda unchanged", heroP4.indexOf("Reducción de Deuda") >= 0);
+
+    var p5 = PROFILES.filter(function(p) { return p.id === "P5"; })[0];
+    var r5 = runPipeline(p5);
+    var heroP5 = _renderDashboardHeroCard(r5.diag, window.CZState, r5.coherence);
+    ok("FIX-01B-2 T4 Recuperación Rápida unchanged", heroP5.indexOf("Recuperación Rápida") >= 0);
+
+    var p6 = PROFILES.filter(function(p) { return p.id === "P6"; })[0];
+    var r6 = runPipeline(p6);
+    var heroP6 = _renderDashboardHeroCard(r6.diag, window.CZState, r6.coherence);
+    ok("FIX-01B-2 T4 Estabilización Crítica unchanged", heroP6.indexOf("Estabilización Crítica") >= 0);
+
+    PROFILES.forEach(function(profile) {
+      if (!profile.expected || profile.expected.planId == null) return;
+      var result = runPipeline(profile);
+      ok("FIX-01B-2 T5 " + profile.id + " planId unchanged",
+        result.diag.planId === profile.expected.planId);
+    });
+    ok("FIX-01B-2 T5 P8 planId unchanged", r8.diag.planId === 4);
+    ok("FIX-01B-2 T5 motor titulo unchanged plan 1",
+      r11.diag.plan && r11.diag.plan.titulo === "Orden Financiero");
+    ok("FIX-01B-2 T5 motor titulo unchanged plan 5",
+      diagP5.plan && diagP5.plan.titulo === "Reperfilamiento");
+  })();
+
   (function assertBackwardCompatStatusLabel() {
     var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
     var result = runPipeline(p4Profile);

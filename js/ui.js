@@ -3342,6 +3342,21 @@ function _resolveHeroNextActionText(diag, st, coherence) {
   return _resolveDashboardNextStepText(diag, st);
 }
 
+// FIX-01B-2 — visible plan title alignment (display layer; motor PLANES.titulo unchanged)
+var _FIX01B2_PLAN_TITLE_DISPLAY = Object.freeze({
+  1: "Claridad Financiera",
+  5: "Reconstrucción Crediticia",
+});
+
+function _visiblePlanTitle(plan) {
+  plan = plan || {};
+  var id = parseInt(plan.id, 10);
+  if (!isNaN(id) && _FIX01B2_PLAN_TITLE_DISPLAY[id]) {
+    return _FIX01B2_PLAN_TITLE_DISPLAY[id];
+  }
+  return plan.titulo || "Tu plan";
+}
+
 function _renderDashboardHeroCard(diag, st, coherence) {
   diag = diag || _diag();
   st = st || _st();
@@ -3391,7 +3406,7 @@ function _renderDashboardHeroCard(diag, st, coherence) {
     + "Tu panorama actual"
     + "</div>"
     + '<div style="font-size:26px;font-weight:900;color:rgba(255,255,255,.96);line-height:1.25;margin-bottom:10px;">'
-    + (plan.icon || "") + " " + (plan.titulo || "Tu plan")
+    + (plan.icon || "") + " " + _visiblePlanTitle(plan)
     + "</div>"
     + '<div style="margin-bottom:14px;">'
     + _renderPlanStatusLabelHtml(statusLabel)
@@ -5790,6 +5805,7 @@ window.CredizonaUI = {
   _B7_SEGMENTS: _B7_SEGMENTS,
   _resolveZeroActiveDebtHeroProblema: _resolveZeroActiveDebtHeroProblema,
   _renderDashboardHeroCard: _renderDashboardHeroCard,
+  _visiblePlanTitle: _visiblePlanTitle,
   renderVerticalProfilingBlock: renderVerticalProfilingBlock,
   _shouldShowZeroPaymentDebtClarification: _shouldShowZeroPaymentDebtClarification,
   _ZERO_PAYMENT_DEBT_CLARIFICATION: _ZERO_PAYMENT_DEBT_CLARIFICATION,
