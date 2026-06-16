@@ -47,7 +47,7 @@ const PLANES = {
   },
   3: {
     id: 3, icon: "🚀", titulo: "Recuperación Rápida", color: "#34ffaf",
-    problema:  "Tu situación está bien encaminada. Hay algunos detalles que corregir para que el banco te diga que sí.",
+    problema:  "Tu situación está bien encaminada. Hay algunos detalles que corregir antes de una nueva evaluación.",
     objetivo:  "Hacer los ajustes puntuales que faltan para que el banco te apruebe en la próxima solicitud.",
     prioridades: [
       "Pagar todo en fecha. Un solo atraso puede echarte atrás meses de progreso.",
@@ -69,7 +69,7 @@ const PLANES = {
   },
   5: {
     id: 5, icon: "🔄", titulo: "Reperfilamiento", color: "#a78bfa",
-    problema:  "Tu historial financiero está dañado, pero tu actitud muestra que querés salir. Eso es recuperable.",
+    problema:  "Tu historial declarado muestra atrasos o mora. Regularizar pagos y sostenerlos en fecha ayuda a mejorar el perfil.",
     objetivo:  "Reconstruir el perfil con hábitos sostenidos, menor presión de deuda y seguimiento.",
     prioridades: [
       "Hacer lo mismo bien durante 60-90 días seguidos. La constancia es lo que reconstruye el historial.",

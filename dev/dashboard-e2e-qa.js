@@ -135,7 +135,7 @@
   var HERO_ALTO =
     "Tu perfil financiero está en orden. El próximo paso es optimizar el costo de tu deuda.";
   var HERO_MANTENER =
-    "Tu perfil financiero está en orden. Mantener la disciplina de pagos es lo que consolida la recuperación.";
+    "Tu perfil financiero está en orden. El foco es sostener pagos en fecha y evitar nueva deuda.";
 
   var CASE1_TEXT =
     "Tu situación declarada muestra un perfil ordenado y con margen disponible. "
@@ -1344,6 +1344,139 @@
     });
 
     trackCRMEvent = prevTrackCRM;
+  })();
+
+  (function assertCopy2bRealisticOptimism() {
+    var uiJs = fs.readFileSync(path.join(root, "js/ui.js"), "utf8");
+    var algorithmsJs = fs.readFileSync(path.join(root, "js/algorithms.js"), "utf8");
+    var appJs = fs.readFileSync(path.join(root, "js/app.js"), "utf8");
+    var FORBIDDEN = [
+      "vas a poder",
+      "te aprueban",
+      "garantizado",
+      "seguro",
+      "todo mejora",
+    ];
+    var REPLACEMENTS = {
+      completion: "Acciones registradas.",
+      diagInicial: "Con algunos ajustes podés mejorar tu situación declarada antes de una nueva evaluación.",
+      heroMantener: "Tu perfil financiero está en orden. El foco es sostener pagos en fecha y evitar nueva deuda.",
+      plan3Problema: "Tu situación está bien encaminada. Hay algunos detalles que corregir antes de una nueva evaluación.",
+      plan5Problema: "Tu historial declarado muestra atrasos o mora. Regularizar pagos y sostenerlos en fecha ayuda a mejorar el perfil.",
+    };
+    var replacementBlob = Object.keys(REPLACEMENTS).map(function(k) {
+      return REPLACEMENTS[k];
+    }).join("\n");
+
+    // T-COPY2B-1 — completion confirmation
+    ok("T-COPY2B-1 no marca la diferencia",
+      uiJs.indexOf("Eso marca la diferencia") < 0);
+    ok("T-COPY2B-1 Acciones registradas present",
+      uiJs.indexOf(REPLACEMENTS.completion) >= 0);
+
+    // T-COPY2B-2 — diagnosis initial framing
+    ok("T-COPY2B-2 no La buena noticia",
+      uiJs.indexOf("La buena noticia") < 0);
+
+    // T-COPY2B-3 — healthy hero override
+    ok("T-COPY2B-3 no consolida la recuperación",
+      uiJs.indexOf("consolida la recuperación") < 0);
+    ok("T-COPY2B-3 hero mantener replacement present",
+      uiJs.indexOf(REPLACEMENTS.heroMantener) >= 0);
+
+    // T-COPY2B-4 — Plan 3 approval implication (motor source)
+    ok("T-COPY2B-4 no banco te diga que sí",
+      algorithmsJs.indexOf("para que el banco te diga que sí") < 0);
+    ok("T-COPY2B-4 plan3 problema replacement present",
+      PLANES[3].problema === REPLACEMENTS.plan3Problema);
+
+    // T-COPY2B-5 — Plan 5 moral judgment (motor source)
+    ok("T-COPY2B-5 no actitud muestra",
+      algorithmsJs.indexOf("tu actitud muestra que querés salir") < 0);
+    ok("T-COPY2B-5 no querés salir in plan5 problema",
+      PLANES[5].problema.indexOf("querés salir") < 0);
+    ok("T-COPY2B-5 no actitud in plan5 problema",
+      PLANES[5].problema.indexOf("actitud") < 0);
+    ok("T-COPY2B-5 plan5 problema replacement present",
+      PLANES[5].problema === REPLACEMENTS.plan5Problema);
+
+    // T-COPY2B-6 — all replacements present
+    ok("T-COPY2B-6 diag inicial replacement present",
+      uiJs.indexOf(REPLACEMENTS.diagInicial) >= 0);
+
+    // T-COPY2B-7 — plan IDs unchanged
+    [1, 2, 3, 4, 5].forEach(function(id) {
+      ok("T-COPY2B-7 planId " + id + " unchanged", PLANES[id].id === id);
+    });
+
+    // T-COPY2B-8 — status labels unchanged (source strings)
+    ok("T-COPY2B-8 En buen camino present",
+      uiJs.indexOf('"En buen camino"') >= 0 || uiJs.indexOf("En buen camino") >= 0);
+
+    // T-COPY2B-9 — no forbidden phrases in COPY-2B replacement strings
+    FORBIDDEN.forEach(function(phrase) {
+      ok("T-COPY2B-9 replacements no " + phrase, replacementBlob.indexOf(phrase) < 0);
+    });
+
+    // T-COPY2B-10 — tracking / commitment attributes unchanged
+    ok("T-COPY2B-10 data-toggle-compromiso present",
+      uiJs.indexOf("data-toggle-compromiso") >= 0);
+    ok("T-COPY2B-10 flujo_negativo_accion id present",
+      algorithmsJs.indexOf('"flujo_negativo_accion"') >= 0);
+    ok("T-COPY2B-10 commitment handler in app.js",
+      appJs.indexOf("[data-toggle-compromiso]") >= 0);
+
+    // Runtime: healthy hero uses replacement copy
+    boot("?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B");
+    PRE.laboral = "relacion_dependencia";
+    PRE.ingreso = 75000;
+    window.CZState = {
+      gastos: { vivienda: 18000, alimentacion: 9000, servicios: 2000, transporte: 2000 },
+      gastos_missing_confirmed: false,
+      deudas: [{
+        tipo: "prestamo",
+        acreedor: "BROU",
+        monto: "100000",
+        pago: "7000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      diag: null,
+    };
+    var diagHealthy = calcularMotor();
+    window.CZState.diag = diagHealthy;
+    var cohHealthy = resolveDashboardCoherence(diagHealthy, window.CZState);
+    ok("T-COPY2B-3 runtime hero override replacement",
+      cohHealthy.heroProblemOverride === REPLACEMENTS.heroMantener);
+    var heroHtml = _renderDashboardHeroCard(diagHealthy, window.CZState, cohHealthy);
+    ok("T-COPY2B-3 runtime hero html has replacement",
+      heroHtml.indexOf(REPLACEMENTS.heroMantener) >= 0);
+
+    // Runtime: plan motor problema strings (P1 → plan 3)
+    var p1Profile = PROFILES.filter(function(p) { return p.id === "P1"; })[0];
+    var rP1 = runPipeline(p1Profile);
+    ok("T-COPY2B-4 runtime plan3 planId", rP1.diag.planId === 3);
+    ok("T-COPY2B-4 runtime plan3 problema",
+      rP1.diag.plan && rP1.diag.plan.problema === REPLACEMENTS.plan3Problema);
+
+    boot("?p1=B&p2=B&p3=B&p4=B&p5=B&p6=B&p7=B&p8=B&p9=B&p10=B");
+    PRE.ingreso = 55000;
+    window.CZState = {
+      gastos: { vivienda: 12000, alimentacion: 8000 },
+      gastos_missing_confirmed: false,
+      deudas: [{
+        tipo: "prestamo",
+        acreedor: "BROU",
+        monto: "30000",
+        pago: "5000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      diag: null,
+    };
+    var diagP5 = calcularMotor();
+    ok("T-COPY2B-5 runtime plan5 problema",
+      diagP5.plan && diagP5.plan.problema === REPLACEMENTS.plan5Problema);
   })();
 
   (function assertBackwardCompatStatusLabel() {

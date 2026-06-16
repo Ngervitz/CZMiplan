@@ -240,7 +240,7 @@ function renderDiagInicial() {
     + good.map(function(s) {
         return '<div class="signal" style="border-color:rgba(52,255,175,.2);background:rgba(52,255,175,.05);"><div class="signal-icon">' + s.i + '</div><div><div class="signal-title">' + s.t + '</div><div class="signal-text">' + s.d + '</div></div></div>';
       }).join("")
-    + '<div class="good-news"><strong>La buena noticia:</strong> con algunos ajustes podés mejorar progresivamente tu situación y aumentar tus posibilidades futuras de aprobación.</div>'
+    + '<div class="good-news">Con algunos ajustes podés mejorar tu situación declarada antes de una nueva evaluación.</div>'
     + '<div style="margin-top:26px;"><button class="btn btn-primary" id="btn-ver-plan-personalizado">Ver mi plan personalizado</button></div>'
     + '</div>'
     + '<div class="card">'
@@ -2405,7 +2405,7 @@ function resolveDashboardCoherence(diag, st) {
     } else {
       nextStepKey = "mantener_disciplina";
       nextStepText = "Mantené el ritmo de pagos actual y utilizá el margen disponible para reducir deuda más rápido si te resulta conveniente.";
-      heroProblemOverride = "Tu perfil financiero está en orden. Mantener la disciplina de pagos es lo que consolida la recuperación.";
+      heroProblemOverride = "Tu perfil financiero está en orden. El foco es sostener pagos en fecha y evitar nueva deuda.";
     }
     suppressOrdenarPanorama = true;
   } else if (diag.plan_guardrail_reason === "ingreso_cero") {
@@ -4950,7 +4950,7 @@ function renderAccionesRecomendadasHtml(diag) {
       }).join("")
     + verMasBtn
     + (allDone
-        ? '<div style="margin-top:14px;padding:14px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);border-radius:14px;text-align:center;font-size:18px;font-weight:800;color:#34ffaf;">Comprometiste las acciones recomendadas. Eso marca la diferencia.</div>'
+        ? '<div style="margin-top:14px;padding:14px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);border-radius:14px;text-align:center;font-size:18px;font-weight:800;color:#34ffaf;">Acciones registradas.</div>'
         : "")
     + '</div>';
 }
