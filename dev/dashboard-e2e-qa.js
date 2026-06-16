@@ -1114,6 +1114,238 @@
       diagP5.plan && diagP5.plan.titulo === "Reperfilamiento");
   })();
 
+  (function assertUx1d2B7ContradictionSuppression() {
+    var SURVEY = "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B";
+    var crmPayload = null;
+    var prevTrackCRM = trackCRMEvent;
+
+    function uxBoot(laboral, ingreso, state) {
+      boot(SURVEY);
+      PRE.laboral = laboral;
+      PRE.ingreso = ingreso;
+      window.CZState = state || { diag: null };
+      window.CZState.gastos = window.CZState.gastos || {};
+      window.CZState.gastos_missing_confirmed = window.CZState.gastos_missing_confirmed != null
+        ? window.CZState.gastos_missing_confirmed
+        : false;
+      window.CZState.deudas = window.CZState.deudas || [];
+      window.CZState.herr = window.CZState.herr || { compromisos: {} };
+      var diag = calcularMotor();
+      window.CZState.diag = diag;
+      return diag;
+    }
+
+    function uxItemHtml(html, actionId) {
+      var re = new RegExp(
+        '<div class="compromiso-item[^>]*data-toggle-compromiso="' + actionId + '"[^>]*>[\\s\\S]*?</div>\\s*</div>\\s*</div>'
+      );
+      var m = html.match(re);
+      return m ? m[0] : "";
+    }
+
+    function uxOpeningTag(chunk) {
+      var end = chunk.indexOf(">");
+      return end >= 0 ? chunk.slice(0, end + 1) : chunk;
+    }
+
+    function assertFlujoNegativoSuppressed(label, html, diag) {
+      var chunk = uxItemHtml(html, "flujo_negativo_accion");
+      var openTag = uxOpeningTag(chunk);
+      ok(label + " flujo_negativo in DOM", chunk.indexOf("data-toggle-compromiso=\"flujo_negativo_accion\"") >= 0);
+      ok(label + " keeps accion-recomendada-item", chunk.indexOf("accion-recomendada-item") >= 0);
+      ok(label + " keeps data-accion-index", chunk.indexOf("data-accion-index=") >= 0);
+      ok(label + " display none", openTag.indexOf("display:none") >= 0);
+      ok(label + " aria-hidden true", openTag.indexOf('aria-hidden="true"') >= 0);
+      ok(label + " tabindex -1", openTag.indexOf('tabindex="-1"') >= 0);
+      ok(label + " passive class", openTag.indexOf("cz-ux1d2-suppressed-action") >= 0);
+      var meta = _ux1d2ShouldSuppressFlujoNegativoAccion(
+        diag,
+        seleccionarAccionesRecomendadas(diag),
+        window.CZState
+      );
+      ok(label + " visible accessible >= 3", meta.visibleAccessibleCount >= 3);
+    }
+
+    function assertFlujoNegativoVisible(label, html) {
+      var chunk = uxItemHtml(html, "flujo_negativo_accion");
+      if (chunk.indexOf("flujo_negativo_accion") < 0) {
+        ok(label + " flujo_negativo present when applicable", false);
+        return;
+      }
+      var openTag = uxOpeningTag(chunk);
+      ok(label + " no display none", openTag.indexOf("display:none") < 0);
+      ok(label + " no suppression aria-hidden", openTag.indexOf('aria-hidden="true"') < 0);
+      ok(label + " no tabindex -1", openTag.indexOf('tabindex="-1"') < 0);
+      ok(label + " no passive class", openTag.indexOf("cz-ux1d2-suppressed-action") < 0);
+    }
+
+    var diagS1 = uxBoot("relacion_dependencia", 40000, {
+      gastos: { vivienda: 25000, alimentacion: 10000, servicios: 5000 },
+      deudas: [{
+        tipo: "prestamo",
+        monto: "50000",
+        pago: "8000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      diag: null,
+    });
+    trackCRMEvent = function(name, payload) {
+      if (payload && payload.action_ids) crmPayload = payload;
+    };
+    global.sessionStorage = {
+      getItem: function() { return null; },
+      setItem: function() {},
+    };
+    ok("T-UX1D2-1 segment S1", resolveContextualActionSegment(diagS1, window.CZState).segmentId === "S1");
+    ok("T-UX1D2-1 selects flujo_negativo",
+      seleccionarAccionesRecomendadas(diagS1).some(function(a) { return a.id === "flujo_negativo_accion"; }));
+    var htmlS1 = renderAccionesRecomendadasHtml(diagS1);
+    assertFlujoNegativoSuppressed("T-UX1D2-1", htmlS1, diagS1);
+    ok("T-UX1D2-1 action_ids includes flujo_negativo",
+      crmPayload && crmPayload.action_ids && crmPayload.action_ids.indexOf("flujo_negativo_accion") >= 0);
+
+    // T-UX1D2-2 — S3
+    crmPayload = null;
+    _accionesRecomExpand = false;
+    var diagS3 = uxBoot("monotributista", 40000, {
+      gastos: { vivienda: 25000, alimentacion: 10000, servicios: 5000 },
+      deudas: [{
+        tipo: "prestamo",
+        monto: "50000",
+        pago: "8000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      diag: null,
+    });
+    ok("T-UX1D2-2 segment S3", resolveContextualActionSegment(diagS3, window.CZState).segmentId === "S3");
+    var htmlS3 = renderAccionesRecomendadasHtml(diagS3);
+    assertFlujoNegativoSuppressed("T-UX1D2-2", htmlS3, diagS3);
+
+    // T-UX1D2-3 — S7 no suppression
+    _accionesRecomExpand = false;
+    var diagS7 = uxBoot("desempleado", 0, {
+      gastos: { vivienda: 10000 },
+      deudas: [{
+        tipo: "prestamo",
+        monto: "50000",
+        pago: "5000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      diag: null,
+    });
+    ok("T-UX1D2-3 segment S7", resolveContextualActionSegment(diagS7, window.CZState).segmentId === "S7");
+    var htmlS7 = renderAccionesRecomendadasHtml(diagS7);
+    assertFlujoNegativoVisible("T-UX1D2-3", htmlS7);
+
+    // T-UX1D2-4 — S0 / no B7 block
+    _accionesRecomExpand = false;
+    boot(SURVEY);
+    PRE.laboral = "";
+    PRE.ingreso = 40000;
+    window.CZState = {
+      gastos: { vivienda: 25000, alimentacion: 10000, servicios: 5000 },
+      gastos_missing_confirmed: false,
+      deudas: [{
+        tipo: "prestamo",
+        monto: "50000",
+        pago: "8000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      herr: { compromisos: {} },
+      diag: null,
+    };
+    var diagS0 = calcularMotor();
+    window.CZState.diag = diagS0;
+    ok("T-UX1D2-4 segment S0", resolveContextualActionSegment(diagS0, window.CZState).segmentId === "S0");
+    var htmlS0 = renderAccionesRecomendadasHtml(diagS0);
+    assertFlujoNegativoVisible("T-UX1D2-4", htmlS0);
+
+    // T-UX1D2-5 — Ver Más threshold (4 visible accessible when 5 selected, 1 suppressed)
+    _accionesRecomExpand = false;
+    var diagS1VerMas = uxBoot("relacion_dependencia", 40000, {
+      gastos: { vivienda: 25000, alimentacion: 10000, servicios: 5000 },
+      deudas: [{
+        tipo: "prestamo",
+        monto: "50000",
+        pago: "8000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      diag: null,
+    });
+    var htmlS1VerMas = renderAccionesRecomendadasHtml(diagS1VerMas);
+    var metaS1 = _ux1d2ShouldSuppressFlujoNegativoAccion(
+      diagS1VerMas,
+      seleccionarAccionesRecomendadas(diagS1VerMas),
+      window.CZState
+    );
+    ok("T-UX1D2-5 S1 suppress active", metaS1.suppressFlujoNegativo === true);
+    ok("T-UX1D2-5 visible accessible count 4", metaS1.visibleAccessibleCount === 4);
+    ok("T-UX1D2-5 ver mas button present", htmlS1VerMas.indexOf("btn-ver-mas-acciones") >= 0);
+    ok("T-UX1D2-5 suppressed excluded from visible count",
+      htmlS1VerMas.indexOf("cz-ux1d2-suppressed-action") >= 0
+      && htmlS1VerMas.indexOf("btn-ver-mas-acciones") >= 0);
+    if (window.CredizonaUI && typeof window.CredizonaUI.expandAccionesRecomendadas === "function") {
+      window.CredizonaUI.expandAccionesRecomendadas();
+    }
+    ok("T-UX1D2-5 expand flag set", _accionesRecomExpand === true);
+    var htmlS1Expanded = renderAccionesRecomendadasHtml(diagS1VerMas);
+    ok("T-UX1D2-5 suppressed stays hidden after expand",
+      uxOpeningTag(uxItemHtml(htmlS1Expanded, "flujo_negativo_accion")).indexOf("display:none") >= 0);
+
+    // T-UX1D2-6 — Floor guardrail (synthetic 3-action array)
+    _accionesRecomExpand = false;
+    var floorAcciones = [
+      { id: "flujo_negativo_accion", texto: "x", tipo: "accion", urgencia: "alta" },
+      { id: "bcu_clearing_distintos", texto: "y", tipo: "accion", urgencia: "media" },
+      { id: "historial_6_meses", texto: "z", tipo: "habito", urgencia: "media" },
+    ];
+    var floorMeta = _ux1d2ShouldSuppressFlujoNegativoAccion(diagS1, floorAcciones, window.CZState);
+    ok("T-UX1D2-6 floor aborts suppression", floorMeta.suppressFlujoNegativo === false);
+    ok("T-UX1D2-6 floor visible count 3", floorMeta.visibleAccessibleCount === 3);
+
+    // T-UX1D2-7 — Other segments untouched
+    var otherSegments = [
+      { id: "S2", laboral: "relacion_dependencia", ingreso: 80000, deudas: [] },
+      { id: "S4", laboral: "monotributista", ingreso: 80000, deudas: [] },
+      { id: "S5", laboral: "jubilado", ingreso: 50000, deudas: [{
+        tipo: "prestamo", monto: "30000", pago: "5000",
+        situacion_ui: "pagando_normal", debt_confidence: "high",
+      }] },
+      { id: "S6", laboral: "jubilado", ingreso: 80000, deudas: [] },
+      { id: "S8", laboral: "desempleado", ingreso: 0, deudas: [] },
+      { id: "S9", laboral: "relacion_dependencia", ingreso: 0, deudas: [{
+        tipo: "prestamo", monto: "30000", pago: "5000",
+        situacion_ui: "pagando_normal", debt_confidence: "high",
+      }] },
+      { id: "S10", laboral: "monotributista", ingreso: 0, deudas: [] },
+      { id: "S11", laboral: "jubilado", ingreso: 0, deudas: [] },
+    ];
+    otherSegments.forEach(function(cfg) {
+      _accionesRecomExpand = false;
+      var dOther = uxBoot(cfg.laboral, cfg.ingreso, {
+        gastos: cfg.ingreso > 0 ? { vivienda: 12000, alimentacion: 8000 } : {},
+        deudas: cfg.deudas,
+        diag: null,
+      });
+      ok("T-UX1D2-7 " + cfg.id + " segment",
+        resolveContextualActionSegment(dOther, window.CZState).segmentId === cfg.id);
+      var htmlOther = renderAccionesRecomendadasHtml(dOther);
+      if (htmlOther.indexOf("flujo_negativo_accion") >= 0) {
+        assertFlujoNegativoVisible("T-UX1D2-7 " + cfg.id, htmlOther);
+      } else {
+        ok("T-UX1D2-7 " + cfg.id + " no suppression class",
+          (htmlOther.match(/cz-ux1d2-suppressed-action/g) || []).length === 0);
+      }
+    });
+
+    trackCRMEvent = prevTrackCRM;
+  })();
+
   (function assertBackwardCompatStatusLabel() {
     var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
     var result = runPipeline(p4Profile);

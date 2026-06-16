@@ -4847,13 +4847,47 @@ function _trackAccionesMostradasOnce(diag, acciones) {
   } catch (e) { /* never throw */ }
 }
 
-function renderAccionRecomendadaItem(accion, index) {
+function _ux1d2ShouldSuppressFlujoNegativoAccion(diag, acciones, st) {
+  acciones = acciones || [];
+  st = st || _st();
+  var b7Segment = resolveContextualActionSegment(diag, st);
+  var segmentId = b7Segment && b7Segment.segmentId;
+  var suppressCandidate = segmentId === "S1" || segmentId === "S3";
+  var hasFlujoNegativo = acciones.some(function(a) {
+    return a && a.id === "flujo_negativo_accion";
+  });
+  var visibleCountAfterSuppression = acciones.length
+    - (suppressCandidate && hasFlujoNegativo ? 1 : 0);
+  var suppressFlujoNegativo = suppressCandidate
+    && hasFlujoNegativo
+    && visibleCountAfterSuppression >= 3;
+  return {
+    suppressFlujoNegativo: suppressFlujoNegativo,
+    visibleAccessibleCount: suppressFlujoNegativo
+      ? visibleCountAfterSuppression
+      : acciones.length,
+    segmentId: segmentId || "S0",
+  };
+}
+
+function renderAccionRecomendadaItem(accion, index, opts) {
+  opts = opts || {};
+  var uxSuppressed = !!opts.uxSuppressed;
+  var visibleIndex = opts.visibleIndex != null ? opts.visibleIndex : index;
   var done = !!((_herr().compromisos || {})[accion.id]);
   var urgColor = accion.urgencia === "alta" ? "#ff4e72"
     : accion.urgencia === "media" ? "#ffd36f" : "#8390b5";
-  var hiddenCls = (index >= 3 && !_accionesRecomExpand) ? " accion-recom-extra" : "";
-  return '<div class="compromiso-item accion-recomendada-item' + hiddenCls + '" data-toggle-compromiso="' + accion.id + '"'
+  var hiddenCls = (!uxSuppressed && visibleIndex >= 3 && !_accionesRecomExpand)
+    ? " accion-recom-extra"
+    : "";
+  var modifierCls = uxSuppressed ? " cz-ux1d2-suppressed-action" : "";
+  var a11yAttrs = uxSuppressed
+    ? ' style="display:none" aria-hidden="true" tabindex="-1"'
+    : "";
+  return '<div class="compromiso-item accion-recomendada-item' + hiddenCls + modifierCls + '"'
+    + ' data-toggle-compromiso="' + accion.id + '"'
     + ' data-accion-index="' + index + '"'
+    + a11yAttrs
     + ' data-accion-tipo="' + (accion.tipo || "") + '" data-accion-urgencia="' + (accion.urgencia || "") + '">'
     + '<div class="compromiso-check' + (done ? " checked" : "") + '">' + (done ? "&#10003;" : "") + '</div>'
     + '<div style="flex:1;min-width:0;">'
@@ -4891,18 +4925,29 @@ function renderAccionesRecomendadasHtml(diag) {
   if (acciones.length > 5) acciones = acciones.slice(0, 5);
   _trackAccionesMostradasOnce(diag, acciones);
 
+  var ux1d2 = _ux1d2ShouldSuppressFlujoNegativoAccion(diag, acciones, st);
+  var suppressFlujoNegativo = ux1d2.suppressFlujoNegativo;
+  var visibleAccessibleCount = ux1d2.visibleAccessibleCount;
+
   var comp_ = _herr().compromisos || {};
   var allDone = acciones.length > 0;
   for (var ai = 0; ai < acciones.length; ai++) {
     if (!comp_[acciones[ai].id]) { allDone = false; break; }
   }
 
-  var verMasBtn = (acciones.length > 3 && !_accionesRecomExpand)
+  var verMasBtn = (visibleAccessibleCount > 3 && !_accionesRecomExpand)
     ? '<button type="button" id="btn-ver-mas-acciones" class="acciones-recom-ver-mas-btn" data-acciones-ver-mas="1">Ver más recomendaciones</button>'
     : "";
 
+  var visibleIndex = 0;
   return '<div class="acciones-recomendadas-wrap" style="margin-top:8px;">'
-    + acciones.map(function(a, idx) { return renderAccionRecomendadaItem(a, idx); }).join("")
+    + acciones.map(function(a, idx) {
+        var isSuppressed = suppressFlujoNegativo && a.id === "flujo_negativo_accion";
+        return renderAccionRecomendadaItem(a, idx, {
+          uxSuppressed: isSuppressed,
+          visibleIndex: isSuppressed ? -1 : visibleIndex++,
+        });
+      }).join("")
     + verMasBtn
     + (allDone
         ? '<div style="margin-top:14px;padding:14px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);border-radius:14px;text-align:center;font-size:18px;font-weight:800;color:#34ffaf;">Comprometiste las acciones recomendadas. Eso marca la diferencia.</div>'
@@ -5810,6 +5855,8 @@ window.CredizonaUI = {
   _shouldShowZeroPaymentDebtClarification: _shouldShowZeroPaymentDebtClarification,
   _ZERO_PAYMENT_DEBT_CLARIFICATION: _ZERO_PAYMENT_DEBT_CLARIFICATION,
   _filterAccionesForIncompleteProfile: _filterAccionesForIncompleteProfile,
+  _ux1d2ShouldSuppressFlujoNegativoAccion: _ux1d2ShouldSuppressFlujoNegativoAccion,
+  renderAccionesRecomendadasHtml: renderAccionesRecomendadasHtml,
   _renderTuSituacionHoy: _renderTuSituacionHoy,
   renderConfianzaDiagnostico: renderConfianzaDiagnostico,
   renderLowExpensesConfirmCard: renderLowExpensesConfirmCard,
