@@ -1479,6 +1479,242 @@
       diagP5.plan && diagP5.plan.problema === REPLACEMENTS.plan5Problema);
   })();
 
+  (function assertUx2aPrimaryActionCard() {
+    var PRIMARY_LABEL = "Tu prioridad hoy";
+    var PRIMARY_CLASS = "cz-primary-action-card";
+    var BODY_CLASS = "cz-primary-action-card-body";
+
+    function topLevelKeys(obj) {
+      return obj ? Object.keys(obj).slice().sort() : [];
+    }
+
+    function extractPrimaryCardChunk(html) {
+      var classIdx = html.indexOf('class="' + PRIMARY_CLASS + '"');
+      if (classIdx < 0) return "";
+      var openIdx = html.lastIndexOf("<div", classIdx);
+      if (openIdx < 0) return "";
+      var slice = html.slice(openIdx);
+      var depth = 0;
+      for (var j = 0; j < slice.length; j++) {
+        if (slice.slice(j, j + 4) === "<div") depth++;
+        if (slice.slice(j, j + 6) === "</div>") {
+          depth--;
+          if (depth === 0) {
+            return slice.slice(0, j + 6);
+          }
+        }
+      }
+      return "";
+    }
+
+    function extractPrimaryBodyText(html) {
+      var re = new RegExp(
+        'class="' + BODY_CLASS + '"[^>]*>([\\s\\S]*?)<\\/div>'
+      );
+      var m = html.match(re);
+      return m ? m[1] : null;
+    }
+
+    function assertPrimaryCardComplete(label, profileId) {
+      var profile = PROFILES.filter(function(p) { return p.id === profileId; })[0];
+      ok(label + " profile exists", !!profile);
+      if (!profile) return;
+      var result = runPipeline(profile);
+      var diag = result.diag;
+      var st = window.CZState;
+      var coh = result.coherence;
+      var cardHtml = renderPrimaryActionCard(diag, st, coh);
+      var tab = renderTabPlan();
+      var hero = _renderDashboardHeroCard(diag, st, coh);
+      var bodyFromCard = extractPrimaryBodyText(cardHtml);
+      var bodyFromTab = extractPrimaryBodyText(tab);
+
+      ok(label + " card renders", cardHtml.length > 0);
+      ok(label + " tab has class", tab.indexOf(PRIMARY_CLASS) >= 0);
+      ok(label + " section label", cardHtml.indexOf(PRIMARY_LABEL) >= 0);
+      ok(label + " body equals coherence.nextStepText",
+        bodyFromCard === coh.nextStepText);
+      ok(label + " tab body equals coherence.nextStepText",
+        bodyFromTab === coh.nextStepText);
+      ok(label + " nextStepText non-empty", !!(coh.nextStepText && coh.nextStepText.trim()));
+
+      var heroIdx = tab.indexOf('id="cz-dashboard-hero"');
+      var primaryIdx = tab.indexOf(PRIMARY_CLASS);
+      var narrIdx = tab.indexOf("Qué está pasando");
+      var diagZoneIdx = tab.indexOf("dash-zone-diagnostico");
+      ok(label + " after hero", primaryIdx > heroIdx);
+      ok(label + " before Qué está pasando", primaryIdx < narrIdx);
+      ok(label + " before diagnostico zone", primaryIdx < diagZoneIdx);
+
+      var chunk = extractPrimaryCardChunk(tab);
+      ok(label + " no button", chunk.indexOf("<button") < 0);
+      ok(label + " no onclick", chunk.indexOf("onclick") < 0);
+      ok(label + " no CTA class", chunk.indexOf("btn btn-") < 0);
+      ok(label + " no compromiso toggle", chunk.indexOf("data-toggle-compromiso") < 0);
+
+      ok(label + " hero still renders", hero.indexOf("cz-hero-card") >= 0);
+      ok(label + " narrative still renders",
+        renderNarrativaInterpretacion(diag, st, coh).indexOf("Qué está pasando") >= 0);
+      ok(label + " hero nextStep surface preserved",
+        !coh.nextStepText || hero.indexOf(coh.nextStepText) >= 0
+          || tab.indexOf(coh.nextStepText) >= 0);
+    }
+
+    assertPrimaryCardComplete("T-UX2A-1", "P1");
+    assertPrimaryCardComplete("T-UX2A-2", "P4");
+    assertPrimaryCardComplete("T-UX2A-3", "P6");
+    assertPrimaryCardComplete("T-UX2A-5", "P3");
+
+    // T-UX2A-4 — incomplete profile
+    (function() {
+      var profile = PROFILES.filter(function(p) { return p.id === "P7"; })[0];
+      var result = runPipeline(profile);
+      var diag = result.diag;
+      var st = window.CZState;
+      var coh = result.coherence;
+      var cardHtml = renderPrimaryActionCard(diag, st, coh);
+      var tab = renderTabPlan();
+      ok("T-UX2A-4 render returns empty", cardHtml === "");
+      ok("T-UX2A-4 no class in tab", tab.indexOf(PRIMARY_CLASS) < 0);
+      ok("T-UX2A-4 no label in tab", tab.indexOf(PRIMARY_LABEL) < 0);
+      ok("T-UX2A-4 incomplete profile", isIncompleteFinancialProfile(diag, st) === true);
+      var heroCloseIdx = tab.indexOf('id="cz-dashboard-hero"');
+      var diagOpenIdx = tab.indexOf("dash-zone-diagnostico");
+      var between = tab.slice(heroCloseIdx, diagOpenIdx);
+      ok("T-UX2A-4 no orphan primary card between hero and diagnostico",
+        between.indexOf(PRIMARY_CLASS) < 0 && between.indexOf(PRIMARY_LABEL) < 0);
+    })();
+
+    // T-UX2A-6 — exact coherence source (3 complete profiles)
+    ["P1", "P4", "P6"].forEach(function(pid) {
+      var result = runPipeline(PROFILES.filter(function(p) { return p.id === pid; })[0]);
+      var coh = result.coherence;
+      var body = extractPrimaryBodyText(renderPrimaryActionCard(result.diag, window.CZState, coh));
+      ok("T-UX2A-6 " + pid + " body from coherence.nextStepText",
+        body === coh.nextStepText);
+      ok("T-UX2A-6 " + pid + " not plan problema",
+        body !== (result.diag.plan && result.diag.plan.problema));
+    });
+
+    // T-UX2A-7 — zone order unchanged
+    (function() {
+      var result = runPipeline(PROFILES.filter(function(p) { return p.id === "P1"; })[0]);
+      var tab = renderTabPlan();
+      var zones = [
+        "dash-zone-hero",
+        "dash-zone-diagnostico",
+        "dash-zone-accion",
+        "dash-zone-acciones-recom",
+      ];
+      var lastIdx = -1;
+      zones.forEach(function(z) {
+        var idx = tab.indexOf(z);
+        ok("T-UX2A-7 zone " + z + " present", idx >= 0);
+        ok("T-UX2A-7 zone " + z + " order", idx > lastIdx);
+        lastIdx = idx;
+      });
+      ok("T-UX2A-7 accion prioritaria surface preserved",
+        tab.indexOf("Acción prioritaria") >= 0 || tab.indexOf(result.coherence.nextStepText) >= 0);
+    })();
+
+    // T-UX2A-8 — empty nextStepText escape (direct render)
+    (function() {
+      var result = runPipeline(PROFILES.filter(function(p) { return p.id === "P1"; })[0]);
+      var cohEmpty = Object.assign({}, result.coherence, { nextStepText: "" });
+      var cohSpace = Object.assign({}, result.coherence, { nextStepText: "   " });
+      var cohNl = Object.assign({}, result.coherence, { nextStepText: "\n" });
+      ok("T-UX2A-8 empty string", renderPrimaryActionCard(result.diag, window.CZState, cohEmpty) === "");
+      ok("T-UX2A-8 whitespace", renderPrimaryActionCard(result.diag, window.CZState, cohSpace) === "");
+      ok("T-UX2A-8 newline", renderPrimaryActionCard(result.diag, window.CZState, cohNl) === "");
+    })();
+
+    // T-UX2A-9 — read-only render (no new top-level keys)
+    (function() {
+      var result = runPipeline(PROFILES.filter(function(p) { return p.id === "P1"; })[0]);
+      var diag = result.diag;
+      var st = window.CZState;
+      var coh = Object.assign({}, result.coherence);
+      var diagKeys = topLevelKeys(diag);
+      var stKeys = topLevelKeys(st);
+      var cohKeys = topLevelKeys(coh);
+      var czKeys = topLevelKeys(window.CZState);
+      renderPrimaryActionCard(diag, st, coh);
+      ok("T-UX2A-9 diag keys unchanged", topLevelKeys(diag).join("|") === diagKeys.join("|"));
+      ok("T-UX2A-9 st keys unchanged", topLevelKeys(st).join("|") === stKeys.join("|"));
+      ok("T-UX2A-9 coherence keys unchanged", topLevelKeys(coh).join("|") === cohKeys.join("|"));
+      ok("T-UX2A-9 CZState keys unchanged",
+        topLevelKeys(window.CZState).join("|") === czKeys.join("|"));
+    })();
+
+    // T-UX2A-10 — whitespace-only full render escape
+    function assertWhitespaceFullRender(label, whitespaceValue) {
+      var result = runPipeline(PROFILES.filter(function(p) { return p.id === "P1"; })[0]);
+      var origResolve = resolveDashboardCoherence;
+      resolveDashboardCoherence = function(d, s) {
+        var base = origResolve(d, s);
+        return Object.assign({}, base, { nextStepText: whitespaceValue });
+      };
+      var tab = renderTabPlan();
+      resolveDashboardCoherence = origResolve;
+      ok(label + " no primary class", tab.indexOf(PRIMARY_CLASS) < 0);
+      ok(label + " no label", tab.indexOf(PRIMARY_LABEL) < 0);
+      var heroIdx = tab.indexOf('id="cz-dashboard-hero"');
+      var diagIdx = tab.indexOf("dash-zone-diagnostico");
+      var between = tab.slice(heroIdx, diagIdx);
+      ok(label + " no ghost card between hero and diagnostico",
+        between.indexOf(PRIMARY_CLASS) < 0 && between.indexOf(PRIMARY_LABEL) < 0);
+    }
+    assertWhitespaceFullRender("T-UX2A-10 spaces", "     ");
+    assertWhitespaceFullRender("T-UX2A-10 double newline", "\n\n");
+    assertWhitespaceFullRender("T-UX2A-10 mixed whitespace", " \n ");
+
+    // T-UX2A-11 — acciones / Ver Más untouched
+    (function() {
+      boot("?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B");
+      PRE.laboral = "relacion_dependencia";
+      PRE.ingreso = 40000;
+      window.CZState = {
+        gastos: { vivienda: 25000, alimentacion: 10000, servicios: 5000 },
+        gastos_missing_confirmed: false,
+        deudas: [{
+          tipo: "prestamo",
+          monto: "50000",
+          pago: "8000",
+          situacion_ui: "pagando_normal",
+          debt_confidence: "high",
+        }],
+        herr: { compromisos: {} },
+        diag: null,
+      };
+      var diag = calcularMotor();
+      window.CZState.diag = diag;
+      _accionesRecomExpand = false;
+      var acciones = seleccionarAccionesRecomendadas(diag);
+      var html = renderAccionesRecomendadasHtml(diag);
+      var meta = _ux1d2ShouldSuppressFlujoNegativoAccion(
+        diag, acciones, window.CZState
+      );
+      ok("T-UX2A-11 acciones count unchanged", acciones.length >= 3);
+      ok("T-UX2A-11 flujo_negativo selected",
+        acciones.some(function(a) { return a.id === "flujo_negativo_accion"; }));
+      ok("T-UX2A-11 visible accessible count", meta.visibleAccessibleCount >= 3);
+      ok("T-UX2A-11 suppression active",
+        html.indexOf("cz-ux1d2-suppressed-action") >= 0);
+      ok("T-UX2A-11 Ver Más threshold",
+        html.indexOf("data-acciones-ver-mas") >= 0 || acciones.length <= 3);
+      var crmPayload = null;
+      var prevTrack = trackCRMEvent;
+      trackCRMEvent = function(name, payload) {
+        if (payload && payload.action_ids) crmPayload = payload;
+      };
+      renderAccionesRecomendadasHtml(diag);
+      trackCRMEvent = prevTrack;
+      ok("T-UX2A-11 action_ids includes flujo_negativo",
+        crmPayload && crmPayload.action_ids
+          && crmPayload.action_ids.indexOf("flujo_negativo_accion") >= 0);
+    })();
+  })();
+
   (function assertBackwardCompatStatusLabel() {
     var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
     var result = runPipeline(p4Profile);

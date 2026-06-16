@@ -3425,6 +3425,39 @@ function _renderDashboardHeroCard(diag, st, coherence) {
     + "</div>";
 }
 
+function renderPrimaryActionCard(diag, st, coherence) {
+  diag = diag || _diag();
+  st = st || _st();
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+
+  if (isIncompleteFinancialProfile(diag, st)) {
+    return "";
+  }
+
+  var nextStepText = ((coherence && coherence.nextStepText) || "").trim();
+  if (!nextStepText) {
+    return "";
+  }
+
+  var pc = (diag.plan && diag.plan.color) ? diag.plan.color : "#40d7ff";
+
+  return '<div class="cz-primary-action-card" role="region" aria-label="Tu prioridad hoy" '
+    + 'style="box-sizing:border-box;max-width:100%;padding:16px 20px;'
+    + "background:rgba(255,255,255,.05);"
+    + "border:1px solid rgba(255,255,255,.1);"
+    + "border-left:4px solid " + pc + ";"
+    + 'border-radius:12px;">'
+    + '<div style="font-size:11px;font-weight:800;color:#8390b5;text-transform:uppercase;'
+    + 'letter-spacing:.07em;margin-bottom:8px;line-height:1.4;">'
+    + "Tu prioridad hoy"
+    + "</div>"
+    + '<div class="cz-primary-action-card-body" style="font-size:16px;color:rgba(255,255,255,.92);'
+    + 'line-height:1.65;">'
+    + nextStepText
+    + "</div>"
+    + "</div>";
+}
+
 // =============================================================================
 // TAB: MI PLAN
 // =============================================================================
@@ -3508,6 +3541,12 @@ function renderTabPlan() {
     + _dashZoneOpen("hero")
     + _renderDashboardHeroCard(diag, st, coherence)
     + _dashZoneClose()
+
+    + (function() {
+        var primaryHtml = renderPrimaryActionCard(diag, st, coherence);
+        if (!primaryHtml) return "";
+        return CZ_DASH_ZONE_GAP + primaryHtml + CZ_DASH_ZONE_GAP;
+      })()
 
     // 2 — Tu situación actual (primary diagnosis)
     + _dashZoneOpen("diagnostico", CZ_DASH_ZONE_GAP)
@@ -5850,6 +5889,8 @@ window.CredizonaUI = {
   _B7_SEGMENTS: _B7_SEGMENTS,
   _resolveZeroActiveDebtHeroProblema: _resolveZeroActiveDebtHeroProblema,
   _renderDashboardHeroCard: _renderDashboardHeroCard,
+  renderPrimaryActionCard: renderPrimaryActionCard,
+  renderTabPlan: renderTabPlan,
   _visiblePlanTitle: _visiblePlanTitle,
   renderVerticalProfilingBlock: renderVerticalProfilingBlock,
   _shouldShowZeroPaymentDebtClarification: _shouldShowZeroPaymentDebtClarification,
