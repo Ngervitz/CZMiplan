@@ -3314,6 +3314,11 @@ function _dashZoneClose() {
   return "</div>";
 }
 
+function _dashZoneGapSpacerHtml() {
+  return '<div class="dash-zone-gap" aria-hidden="true" style="max-width:100%;box-sizing:border-box;'
+    + CZ_DASH_ZONE_GAP + '"></div>';
+}
+
 function _horizonPlanCardOpen(diag, st, inlineStyle) {
   var compact = isIncompleteFinancialProfile(diag, st);
   return '<div class="plan-card dash-tier-b dash-horizon-card' + (compact ? " dash-horizon-compact" : "") + '" style="' + (inlineStyle || "") + '">';
@@ -3545,7 +3550,7 @@ function renderTabPlan() {
     + (function() {
         var primaryHtml = renderPrimaryActionCard(diag, st, coherence);
         if (!primaryHtml) return "";
-        return CZ_DASH_ZONE_GAP + primaryHtml + CZ_DASH_ZONE_GAP;
+        return _dashZoneGapSpacerHtml() + primaryHtml + _dashZoneGapSpacerHtml();
       })()
 
     // 2 — Tu situación actual (primary diagnosis)

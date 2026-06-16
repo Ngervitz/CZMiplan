@@ -1780,6 +1780,34 @@
       tab.indexOf(REPLACEMENTS.plan3Objetivo) >= 0);
   })();
 
+  (function assertFix03aCssLeak() {
+    var LEAK = "margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);";
+    var p1 = PROFILES.filter(function(p) { return p.id === "P1"; })[0];
+    runPipeline(p1);
+    var tab = renderTabPlan();
+    ok("FIX-03A no bare css after tag close", tab.indexOf("</div>" + LEAK) < 0);
+    ok("FIX-03A no bare css before card", tab.indexOf(LEAK + '<div class="cz-primary-action-card"') < 0);
+    ok("FIX-03A gap spacer present", tab.indexOf('class="dash-zone-gap"') >= 0);
+    ok("FIX-03A primary card present", tab.indexOf("cz-primary-action-card") >= 0);
+    ok("FIX-03A Tu prioridad hoy present", tab.indexOf("Tu prioridad hoy") >= 0);
+    var heroIdx = tab.indexOf('id="cz-dashboard-hero"');
+    var primaryIdx = tab.indexOf("cz-primary-action-card");
+    var diagIdx = tab.indexOf("dash-zone-diagnostico");
+    ok("FIX-03A order hero before primary", heroIdx >= 0 && primaryIdx > heroIdx);
+    ok("FIX-03A order primary before diagnostico", primaryIdx < diagIdx);
+    ok("FIX-03A gap css only in style attr", (function() {
+      var idx = 0;
+      while ((idx = tab.indexOf(LEAK, idx)) >= 0) {
+        var styleStart = tab.lastIndexOf('style="', idx);
+        if (styleStart < 0) return false;
+        var styleEnd = tab.indexOf('"', styleStart + 7);
+        if (styleEnd < 0 || idx > styleEnd) return false;
+        idx += LEAK.length;
+      }
+      return true;
+    })());
+  })();
+
   (function assertBackwardCompatStatusLabel() {
     var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
     var result = runPipeline(p4Profile);
