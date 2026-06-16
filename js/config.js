@@ -172,6 +172,113 @@ function isSeoIaEntry() {
   return p.get("source") === "seo_ia";
 }
 
+// =============================================================================
+// FIX-01A — Entry Context Layer (read-only dependencies: hasUrlLaboralParam,
+// hasUrlIngresoParam, TIENE_ENCUESTA, isSeoIaEntry, PRE, SEGMENTO, URLSearchParams)
+// =============================================================================
+
+function _entryCtxStrongLaboralParam(params) {
+  var raw = params.get("laboral");
+  if (raw == null) return false;
+  var s = String(raw).trim();
+  if (s === "") return false;
+  return PROFILE_LABORAL_VALUES.indexOf(s) >= 0;
+}
+
+function _entryCtxStrongIngresoParam(params) {
+  var raw = params.get("ingreso");
+  if (raw == null) return false;
+  var s = String(raw).trim();
+  if (s === "") return false;
+  if (!/^\d+(\.\d+)?$/.test(s)) return false;
+  var n = parseFloat(s);
+  return n > 0 && isFinite(n);
+}
+
+function _entryCtxHasUtm(params) {
+  var keys = ["utm_source", "utm_medium", "utm_campaign"];
+  for (var i = 0; i < keys.length; i++) {
+    var val = params.get(keys[i]);
+    if (val != null && String(val).trim() !== "") return true;
+  }
+  return false;
+}
+
+/*
+ * ARCHITECTURE RULE — Entry Context Layer
+ *
+ * reasons[] and evidenceStrength are for debugging
+ * and observability only.
+ *
+ * All copy gating and UI decisions must depend
+ * exclusively on entryContext and its derivations
+ * (hasRejectionContext, etc.).
+ *
+ * Never gate copy on evidenceStrength.
+ * Never gate copy on reasons[].
+ *
+ * resolveEntryContext() must be a pure, side-effect-free
+ * evaluator. It must not write storage, mutate cookies,
+ * dispatch GTM/CRM events, call network services, or alter
+ * any existing app state. It only profiles the incoming
+ * session context.
+ */
+function resolveEntryContext() {
+  // Read-only dependencies (FIX-01A): hasUrlLaboralParam, hasUrlIngresoParam,
+  // TIENE_ENCUESTA, isSeoIaEntry, PRE, SEGMENTO, URLSearchParams — not modified here.
+  var params = new URLSearchParams(window.location.search);
+  var reasons = [];
+
+  if (hasUrlLaboralParam()) reasons.push("has_url_laboral");
+  if (hasUrlIngresoParam()) reasons.push("has_url_ingreso");
+  if (TIENE_ENCUESTA) reasons.push("has_encuesta");
+  if (_entryCtxHasUtm(params)) reasons.push("has_utm");
+  if (isSeoIaEntry()) reasons.push("has_seo_ia_flag");
+
+  var cdvStrong =
+    _entryCtxStrongLaboralParam(params)
+    && _entryCtxStrongIngresoParam(params)
+    && TIENE_ENCUESTA;
+
+  var entryContext;
+  var evidenceStrength;
+
+  if (cdvStrong) {
+    entryContext = "cdv_rejected";
+    evidenceStrength = "strong";
+  } else if (isSeoIaEntry()) {
+    entryContext = "seo_organic";
+    evidenceStrength = "strong";
+  } else {
+    entryContext = "organic";
+    if (_entryCtxHasUtm(params) || reasons.length > 0) {
+      evidenceStrength = "moderate";
+    } else {
+      evidenceStrength = "weak";
+    }
+  }
+
+  var trafficSource;
+  if (_entryCtxHasUtm(params)) {
+    trafficSource = "paid";
+  } else if (isSeoIaEntry()) {
+    trafficSource = "seo";
+  } else {
+    trafficSource = "direct";
+  }
+
+  return {
+    entryContext: entryContext,
+    trafficSource: trafficSource,
+    hasRejectionContext: entryContext === "cdv_rejected",
+    evidenceStrength: evidenceStrength,
+    reasons: reasons,
+  };
+}
+
+const CZ_ENTRY_CONTEXT = Object.freeze(resolveEntryContext());
+window.CZ_ENTRY_CONTEXT = CZ_ENTRY_CONTEXT;
+
 function hasResultParams() {
   var p = new URLSearchParams(window.location.search);
   var hasIncome = p.has("ingreso");
