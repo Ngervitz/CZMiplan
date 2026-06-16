@@ -927,6 +927,120 @@
         || narrInc.indexOf("datos necesarios") >= 0);
   })();
 
+  (function assertFix01bRejectionCopyGating() {
+    function assertOrganicContext() {
+      ok("FIX-01B organic hasRejectionContext false",
+        window.CZ_ENTRY_CONTEXT && window.CZ_ENTRY_CONTEXT.hasRejectionContext === false);
+    }
+
+    // Organic — horizon DTI branch + feedback (no CDV URL params)
+    boot("?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B");
+    assertOrganicContext();
+    PRE.ingreso = 50000;
+    window.CZState = {
+      gastos: { vivienda: 12000, alimentacion: 8000, transporte: 2000 },
+      gastos_missing_confirmed: false,
+      deudas: [{
+        tipo: "prestamo",
+        acreedor: "BROU",
+        monto: "60000",
+        pago: "5000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      snap: { plan_id: 2 },
+      diag: null,
+    };
+    var diagDti = calcularMotor();
+    window.CZState.diag = diagDti;
+    var cohDti = resolveDashboardCoherence(diagDti, window.CZState);
+    var horizonHtml = renderHorizonteRecalificacion(diagDti, window.CZState, cohDti);
+    ok("FIX-01B organic horizon no solicitud rechazada",
+      horizonHtml.indexOf("solicitud rechazada") < 0);
+    ok("FIX-01B organic horizon neutral DTI copy",
+      horizonHtml.indexOf("Con una relaci\u00f3n deuda/ingreso elevada") >= 0);
+
+    var feedbackHtml = renderMiPlanSuggestionBox();
+    ok("FIX-01B organic feedback neutral label",
+      feedbackHtml.indexOf("Qu\u00e9 afecta mi perfil crediticio") >= 0);
+    ok("FIX-01B organic feedback no rechazaron label",
+      feedbackHtml.indexOf("Por qu\u00e9 me rechazaron") < 0);
+
+    // Organic — bloqueadores empty state (P3-like zero active debt, complete)
+    boot("?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B");
+    assertOrganicContext();
+    PRE.ingreso = 80000;
+    window.CZState = {
+      step: 3,
+      gastos: { vivienda: 12000, alimentacion: 8000, salud: 3000, transporte: 2000 },
+      gastos_missing_confirmed: false,
+      deudas: [{ tipo: "prestamo", monto: "50000", pago: "5000", cancelada: true }],
+      snap: { plan_id: 1 },
+      diag: null,
+    };
+    var diagBlock = calcularMotor();
+    window.CZState.diag = diagBlock;
+    var blockHtml = renderBloqueadores(diagBlock);
+    ok("FIX-01B organic bloqueadores no solicitud rechazada",
+      blockHtml.indexOf("solicitud rechazada") < 0);
+    ok("FIX-01B organic bloqueadores neutral copy",
+      blockHtml.indexOf("Eso no garantiza por s\u00ed solo que una evaluaci\u00f3n crediticia sea favorable") >= 0);
+
+    // CDV — rejection context (horizon DTI + feedback)
+    boot("?laboral=relacion_dependencia&ingreso=45000&p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B");
+    ok("FIX-01B CDV hasRejectionContext true",
+      window.CZ_ENTRY_CONTEXT && window.CZ_ENTRY_CONTEXT.hasRejectionContext === true);
+    window.CZState = {
+      gastos: { vivienda: 12000, alimentacion: 8000, transporte: 2000 },
+      gastos_missing_confirmed: false,
+      deudas: [{
+        tipo: "prestamo",
+        acreedor: "BROU",
+        monto: "60000",
+        pago: "5000",
+        situacion_ui: "pagando_normal",
+        debt_confidence: "high",
+      }],
+      snap: { plan_id: 2 },
+      diag: null,
+    };
+    var diagCdv = calcularMotor();
+    window.CZState.diag = diagCdv;
+    var cohCdv = resolveDashboardCoherence(diagCdv, window.CZState);
+    var horizonCdv = renderHorizonteRecalificacion(diagCdv, window.CZState, cohCdv);
+    ok("FIX-01B CDV horizon solicitud rechazada",
+      horizonCdv.indexOf("solicitud rechazada") >= 0);
+
+    var feedbackCdv = renderMiPlanSuggestionBox();
+    ok("FIX-01B CDV feedback rechazaron label",
+      feedbackCdv.indexOf("Por qu\u00e9 me rechazaron") >= 0);
+
+    // Bridge + diagnosis screen (render paths)
+    boot("");
+    window.CZ_ENTRY_CONTEXT = { hasRejectionContext: false };
+    var bridgeNeutral = renderBridgeScreen();
+    ok("FIX-01B bridge neutral copy",
+      bridgeNeutral.indexOf("Tu perfil financiero no depende solo de ingresos o Clearing") >= 0);
+    ok("FIX-01B bridge no rechazo financiero",
+      bridgeNeutral.indexOf("El rechazo financiero no siempre depende") < 0);
+
+    boot("?laboral=relacion_dependencia&ingreso=45000&p1=A&p2=B&p3=A&p4=A&p5=A&p6=A&p7=A&p8=A&p9=A&p10=A");
+    window.CZState = { diag: null };
+    var diagScreen = renderDiagnosisScreen();
+    ok("FIX-01B CDV diagnosis level A rejection copy",
+      diagScreen.indexOf("El rechazo puede estar relacionado") >= 0);
+
+    boot("");
+    window.CZ_ENTRY_CONTEXT = { hasRejectionContext: false };
+    window.CZState = { diag: { enc: { nivel: "A", flagsRiesgo: [] } } };
+    PRE.respuestas = { p1: "A", p2: "A", p3: "A", p4: "A", p5: "A", p6: "A", p7: "A", p8: "A", p9: "A", p10: "A" };
+    var diagScreenNeutral = renderDiagnosisScreen();
+    ok("FIX-01B diagnosis level A neutral copy",
+      diagScreenNeutral.indexOf("Tu perfil puede verse afectado por la estructura de tus deudas") >= 0);
+    ok("FIX-01B diagnosis level A no rechazo copy",
+      diagScreenNeutral.indexOf("El rechazo puede estar relacionado") < 0);
+  })();
+
   (function assertBackwardCompatStatusLabel() {
     var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
     var result = runPipeline(p4Profile);

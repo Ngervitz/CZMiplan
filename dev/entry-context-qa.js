@@ -218,6 +218,73 @@
     ok("T15 Object.isFrozen", Object.isFrozen(pack.global) === true);
   })();
 
+  // Rejection Copy Gating Helper
+  console.log("\n--- Rejection Copy Gating Helper ---");
+  (function testRejectionCopyHelper() {
+    function load(file, sandbox) {
+      var src = fs.readFileSync(path.join(root, file), "utf8").replace(/\bconst /g, "var ");
+      vm.runInNewContext(src, sandbox, { filename: path.join(root, file) });
+    }
+
+    function bootUiWithContext(search, ctxOverride) {
+      search = search || "";
+      var normalized = search.indexOf("?") === 0 ? search : (search ? "?" + search : "");
+      var sandbox = {
+        window: null,
+        document: {
+          getElementById: function() { return null; },
+          querySelectorAll: function() { return []; },
+          addEventListener: function() {},
+        },
+        console: console,
+        parseFloat: parseFloat,
+        isFinite: isFinite,
+        Object: Object,
+        Array: Array,
+        String: String,
+        URLSearchParams: URLSearchParams,
+        Math: Math,
+        JSON: JSON,
+        trackEvent: function() {},
+        trackCRMEvent: function() {},
+        enviarCRM: function() {},
+        localStorage: { getItem: function() { return null; }, setItem: function() {} },
+        sessionStorage: { getItem: function() { return null; }, setItem: function() {} },
+      };
+      sandbox.window = sandbox;
+      sandbox.location = {
+        search: normalized,
+        href: "http://localhost/" + (normalized ? normalized.replace(/^\?/, "?") : ""),
+      };
+      load("js/config.js", sandbox);
+      if (ctxOverride !== undefined) {
+        sandbox.window.CZ_ENTRY_CONTEXT = ctxOverride;
+        sandbox.CZ_ENTRY_CONTEXT = ctxOverride;
+      }
+      load("js/creditors.js", sandbox);
+      load("js/survey.js", sandbox);
+      load("js/algorithms.js", sandbox);
+      load("js/events.js", sandbox);
+      load("js/crm.js", sandbox);
+      load("js/ui.js", sandbox);
+      return sandbox;
+    }
+
+    var sbTrue = bootUiWithContext("", { hasRejectionContext: true });
+    ok("RC helper true returns REJECTION",
+      sbTrue._rejectionCopy("REJECTION", "NEUTRAL") === "REJECTION");
+
+    var sbFalse = bootUiWithContext("", { hasRejectionContext: false });
+    ok("RC helper false returns NEUTRAL",
+      sbFalse._rejectionCopy("REJECTION", "NEUTRAL") === "NEUTRAL");
+
+    var sbMissing = bootUiWithContext("", null);
+    delete sbMissing.window.CZ_ENTRY_CONTEXT;
+    delete sbMissing.CZ_ENTRY_CONTEXT;
+    ok("RC helper missing context returns NEUTRAL",
+      sbMissing._rejectionCopy("REJECTION", "NEUTRAL") === "NEUTRAL");
+  })();
+
   var total = passed + failed;
   console.log("\nentry-context-qa — " + passed + "/" + total
     + (failed ? " (" + failed + " FAIL)" : " PASS"));

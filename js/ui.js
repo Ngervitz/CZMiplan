@@ -8,6 +8,20 @@ function _st()    { return window.CZState || {}; }
 function _diag()  { return _st().diag; }
 function _herr()  { return _st().herr || {}; }
 
+function _rejectionCopy(rejectionVersion, neutralVersion) {
+  return (window.CZ_ENTRY_CONTEXT &&
+          window.CZ_ENTRY_CONTEXT.hasRejectionContext)
+    ? rejectionVersion
+    : neutralVersion;
+}
+
+function _feedbackCategoryLabel(cat) {
+  if (cat === "Por qu\u00e9 me rechazaron") {
+    return _rejectionCopy("Por qu\u00e9 me rechazaron", "Qu\u00e9 afecta mi perfil crediticio");
+  }
+  return cat;
+}
+
 // =============================================================================
 // SPRINT 10 — Mi Plan in-app consent screen
 // Shown before any diagnosis, dashboard, score, horizon, or recommendation.
@@ -1995,7 +2009,12 @@ function renderBloqueadores(diag) {
     return '<div class="plan-card" style="border-color:rgba(255,255,255,.1);">'
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Lo que frena tu perfil hoy</div>'
       + '<div style="padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;">'
-      + '<div style="font-size:15px;color:rgba(255,255,255,.8);line-height:1.55;">Con la información declarada, no se detectan factores críticos adicionales en este diagnóstico. Eso no explica por sí solo una solicitud rechazada ni garantiza que una nueva evaluación sea viable.</div>'
+      + '<div style="font-size:15px;color:rgba(255,255,255,.8);line-height:1.55;">Con la información declarada, no se detectan factores críticos adicionales en este diagnóstico. '
+      + _rejectionCopy(
+          "Eso no explica por sí solo una solicitud rechazada ni garantiza que una nueva evaluación sea viable.",
+          "Eso no garantiza por sí solo que una evaluación crediticia sea favorable."
+        )
+      + '</div>'
       + '</div></div>';
   }
   return '<div class="plan-card">'
@@ -2914,7 +2933,12 @@ function renderHorizonteRecalificacion(diag, st, coherence) {
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:24px;font-weight:900;color:#ffd36f;line-height:1.3;margin-bottom:12px;">Tu deuda acumulada ya puede estar pesando en la evaluación</div>'
       + '<div style="font-size:13px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:10px;">El total de deuda que declaraste supera tu ingreso mensual. Aunque no tengas pagos activos registrados, este nivel de deuda puede influir en una futura evaluación.</div>'
-      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Como este diagnóstico parte de una solicitud rechazada, conviene revisar si esta deuda tiene pagos, refinanciaciones o información adicional que todavía no fue incorporada.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">'
+      + _rejectionCopy(
+          "Como este diagnóstico parte de una solicitud rechazada, conviene revisar si esta deuda tiene pagos, refinanciaciones o información adicional que todavía no fue incorporada.",
+          "Con una relación deuda/ingreso elevada, conviene revisar si esta deuda tiene pagos, refinanciaciones o información adicional que todavía no fue incorporada."
+        )
+      + '</div>'
       + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
   }
@@ -3682,10 +3706,11 @@ var MIPLAN_FEEDBACK_CATEGORIES = [
 
 function renderMiPlanSuggestionBox() {
   var checks = MIPLAN_FEEDBACK_CATEGORIES.map(function(cat, i) {
+    var label = _feedbackCategoryLabel(cat);
     return '<label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;margin-bottom:12px;">'
-      + '<input type="checkbox" class="chk-fb-cat" data-cat="' + cat + '" id="chk-fb-' + i + '" '
+      + '<input type="checkbox" class="chk-fb-cat" data-cat="' + label + '" id="chk-fb-' + i + '" '
       + 'style="width:20px;height:20px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">'
-      + '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.5;">' + cat + '</span>'
+      + '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.5;">' + label + '</span>'
       + '</label>';
   }).join("");
 
@@ -5174,7 +5199,10 @@ function renderDiagnosisScreen() {
       labelText:  "Perfil conductual sin alertas criticas",
       labelColor: "#34ffaf",
       line1:      "Tus respuestas no muestran factores de riesgo conductual importantes.",
-      line2:      "El rechazo puede estar relacionado con la estructura de tus deudas o el ratio de pagos mensual.",
+      line2:      _rejectionCopy(
+        "El rechazo puede estar relacionado con la estructura de tus deudas o el ratio de pagos mensual.",
+        "Tu perfil puede verse afectado por la estructura de tus deudas o el ratio de pagos mensual."
+      ),
       accion:     "Para completar el diagnostico, vemos el panorama de tus deudas.",
     },
     "B+": {
@@ -5564,7 +5592,10 @@ function renderBridgeScreen() {
       'font-size:15px;color:#8390b5;line-height:1.65;',
       'max-width:340px;margin:0 0 40px;',
     '">',
-      'El rechazo financiero no siempre depende solo de ingresos o Clearing. ',
+      _rejectionCopy(
+        "El rechazo financiero no siempre depende solo de ingresos o Clearing. ",
+        "Tu perfil financiero no depende solo de ingresos o Clearing. "
+      ),
       'Mi Plan analiza organizacion financiera, presion mensual y habitos ',
       'para detectar que puede estar afectando tu situacion hoy.',
     '</p>',
@@ -5767,6 +5798,7 @@ window.CredizonaUI = {
   renderConfianzaDiagnostico: renderConfianzaDiagnostico,
   renderLowExpensesConfirmCard: renderLowExpensesConfirmCard,
   isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
+  _rejectionCopy: _rejectionCopy,
 };
 
 window.renderAll = renderAll;
