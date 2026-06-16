@@ -1715,6 +1715,71 @@
     })();
   })();
 
+  (function assertCopy2cExplicitCreditExpectations() {
+    var uiJs = fs.readFileSync(path.join(root, "js/ui.js"), "utf8");
+    var algorithmsJs = fs.readFileSync(path.join(root, "js/algorithms.js"), "utf8");
+    var REPLACEMENTS = {
+      plan3Objetivo: "Hacer los ajustes puntuales que faltan antes de una nueva evaluación del perfil declarado.",
+      plan3Prioridad: "En 30-60 días volver a evaluar el perfil declarado y revisar qué cambió.",
+      horizonteInmediato: "Revisión posible en el corto plazo",
+      diagLead: "Encontramos factores que podrían estar afectando hoy tu perfil financiero según la información declarada.",
+      horizonLowConf: "todavía faltan datos para estimar con confianza un horizonte de recalificación.",
+      retryUnlocked: "Con los datos actuales, conviene revisar si cambió algo material en tu perfil declarado.",
+      plusLocked: "la IA señala diferencias entre lo declarado y lo registrado",
+      microRegularizada: "Estado registrado como regularizada. Conviene verificar que el acreedor lo refleje.",
+      diagScreenC: "complicando una evaluación crediticia hoy",
+      diagModifier: "afectando tu perfil financiero hoy",
+      seoIntro: "pasos concretos para ordenar tu situación financiera declarada",
+    };
+    var FORBIDDEN = [
+      "para que el banco te apruebe",
+      "ya podés aplicar",
+      "Ya hay condiciones para considerar una solicitud",
+      "posibilidades de aprobación",
+      "condiciones de presentar una nueva solicitud",
+      "condiciones de revisar una nueva solicitud",
+      "bloqueando tu aprobacion",
+      "Excelente! Eso mejora directamente tu perfil crediticio",
+      "complicando las aprobaciones hoy",
+      "afectando tus aprobaciones hoy",
+      "chances de acceder a financiamiento",
+    ];
+
+    ok("T-COPY2C-1 plan3 objetivo", PLANES[3].objetivo === REPLACEMENTS.plan3Objetivo);
+    ok("T-COPY2C-1 plan3 prioridad", PLANES[3].prioridades[2] === REPLACEMENTS.plan3Prioridad);
+
+    var h = calcularHorizonte({ cantMoras: 0, ratio: 0.2, flujoLibre: 10000 }, 50000);
+    ok("T-COPY2C-2 horizonte banda inmediato", h.banda === "inmediato");
+    ok("T-COPY2C-2 horizonte label", h.label === REPLACEMENTS.horizonteInmediato);
+
+    ok("T-COPY2C-2 retry unlocked copy", uiJs.indexOf(REPLACEMENTS.retryUnlocked) >= 0);
+    ok("T-COPY2C-2 horizon low conf", uiJs.indexOf(REPLACEMENTS.horizonLowConf) >= 0);
+
+    ok("T-COPY2C-3 diag inicial lead", uiJs.indexOf(REPLACEMENTS.diagLead) >= 0);
+    ok("T-COPY2C-3 diagnosis screen C", uiJs.indexOf(REPLACEMENTS.diagScreenC) >= 0);
+    ok("T-COPY2C-3 diagnosis modifier", uiJs.indexOf(REPLACEMENTS.diagModifier) >= 0);
+
+    ok("T-COPY2C-4 plus locked", uiJs.indexOf(REPLACEMENTS.plusLocked) >= 0);
+    ok("T-COPY2C-4 micro regularizada", uiJs.indexOf(REPLACEMENTS.microRegularizada) >= 0);
+    ok("T-COPY2C-4 seo intro source", uiJs.indexOf(REPLACEMENTS.seoIntro) >= 0);
+    ok("T-COPY2C-4 seo intro runtime",
+      typeof renderSeoIaIntroBlock === "function"
+        && renderSeoIaIntroBlock().indexOf(REPLACEMENTS.seoIntro) >= 0);
+
+    FORBIDDEN.forEach(function(phrase) {
+      ok("T-COPY2C-F no " + phrase.slice(0, 28),
+        uiJs.indexOf(phrase) < 0 && algorithmsJs.indexOf(phrase) < 0);
+    });
+
+    var p1 = PROFILES.filter(function(p) { return p.id === "P1"; })[0];
+    runPipeline(p1);
+    var tab = renderTabPlan();
+    ok("T-COPY2C-5 hero intact", tab.indexOf("cz-hero-card") >= 0);
+    ok("T-COPY2C-5 primary action intact", tab.indexOf("cz-primary-action-card") >= 0);
+    ok("T-COPY2C-5 plan3 objetivo in tab",
+      tab.indexOf(REPLACEMENTS.plan3Objetivo) >= 0);
+  })();
+
   (function assertBackwardCompatStatusLabel() {
     var p4Profile = PROFILES.filter(function(p) { return p.id === "P4"; })[0];
     var result = runPipeline(p4Profile);

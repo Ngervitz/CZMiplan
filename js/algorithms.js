@@ -48,11 +48,11 @@ const PLANES = {
   3: {
     id: 3, icon: "🚀", titulo: "Recuperación Rápida", color: "#34ffaf",
     problema:  "Tu situación está bien encaminada. Hay algunos detalles que corregir antes de una nueva evaluación.",
-    objetivo:  "Hacer los ajustes puntuales que faltan para que el banco te apruebe en la próxima solicitud.",
+    objetivo:  "Hacer los ajustes puntuales que faltan antes de una nueva evaluación del perfil declarado.",
     prioridades: [
       "Pagar todo en fecha. Un solo atraso puede echarte atrás meses de progreso.",
       "Bajar lo que pagás en deudas para que sea menos del 30% de lo que ganás.",
-      "En 30-60 días volver a evaluar el perfil para ver si ya podés aplicar.",
+      "En 30-60 días volver a evaluar el perfil declarado y revisar qué cambió.",
     ],
     cta: "Activar plan 30-60 dias", reevaluacion: "30 a 60 días",
   },
@@ -336,7 +336,7 @@ function calcularHorizonte(fin, ing) {
     meses = Math.max(1, meses);
   }
   let banda, label;
-  if (meses <= 1)       { banda = "inmediato"; label = "Ya hay condiciones para considerar una solicitud"; }
+  if (meses <= 1)       { banda = "inmediato"; label = "Revisión posible en el corto plazo"; }
   else if (meses <= 3)  { banda = "corto";     label = "Próximos 2 a 3 meses"; }
   else if (meses <= 6)  { banda = "corto";     label = "Próximos 4 a 6 meses"; }
   else if (meses <= 12) { banda = "medio";     label = "Dentro de 6 a 12 meses"; }

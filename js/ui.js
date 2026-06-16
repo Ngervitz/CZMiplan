@@ -221,7 +221,7 @@ function renderDiagInicial() {
 
   return '<div class="badge"><div class="dot"></div>Tu evaluación inicial está lista</div>'
     + '<h1>Ya analizamos tus respuestas.<br><span class="gradient">Ahora veamos el plan.</span></h1>'
-    + '<div class="lead">Encontramos factores que podrían estar afectando hoy tu perfil financiero y tus posibilidades de aprobación.</div>'
+    + '<div class="lead">Encontramos factores que podrían estar afectando hoy tu perfil financiero según la información declarada.</div>'
     + '<div class="sub">La idea no es pedirte otro formulario de cero. Primero te mostramos una lectura inicial. Después, si querés más precisión, completás gastos y deudas.</div>'
     + '<div class="btn-wrap" style="margin-bottom:20px;">'
     + '<button class="btn btn-primary" id="btn-ver-evaluacion">Ver mi evaluación inicial</button>'
@@ -2961,7 +2961,7 @@ function renderHorizonteRecalificacion(diag, st, coherence) {
     return _horizonPlanCardOpen(diag, st, "border-color:rgba(255,255,255,.08);background:rgba(255,255,255,.03);")
       + '<div style="font-size:13px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Horizonte estimado para recalificar</div>'
       + '<div style="font-size:22px;font-weight:900;color:#8390b5;line-height:1.3;margin-bottom:10px;">Necesitamos completar tu diagnóstico</div>'
-      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Hay señales positivas en la información que registraste, pero todavía faltan datos para estimar con confianza si estás en condiciones de presentar una nueva solicitud.</div>'
+      + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:10px;">Hay señales positivas en la información que registraste, pero todavía faltan datos para estimar con confianza un horizonte de recalificación.</div>'
       + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:14px;">Completá la información pendiente para obtener una evaluación más precisa.</div>'
       + _retryHorizonAddonHtml(diag, st, coherence)
       + '</div>';
@@ -3250,7 +3250,7 @@ function _retryCtaUnlockedCopy(diag, st) {
       return "Tu situación mejoró desde tu evaluación inicial.";
     }
   }
-  return "Con los datos actuales, tu perfil parece estar en condiciones de revisar una nueva solicitud.";
+  return "Con los datos actuales, conviene revisar si cambió algo material en tu perfil declarado.";
 }
 
 function _trackRetryCtaShown(state, diag, st) {
@@ -4146,7 +4146,7 @@ function renderTabIA() {
     return '<div class="fade"><div class="locked-overlay">'
       + '<div class="locked-blur" style="height:280px;background:rgba(255,255,255,.03);border-radius:22px;"></div>'
       + '<div class="locked-gate"><div class="locked-icon">🤖</div><div class="locked-title">Tu analisis esta casi listo</div>'
-      + '<div class="locked-text">En cuanto tengamos tu informe Clearing real, la IA te dice exactamente que esta bloqueando tu aprobacion y cual es el primer paso concreto para tu caso.</div>'
+      + '<div class="locked-text">En cuanto tengamos tu informe Clearing real, la IA señala diferencias entre lo declarado y lo registrado y cuál es el primer paso concreto para tu caso.</div>'
       + '<button class="btn btn-primary" style="height:68px;font-size:20px;" id="btn-conocer-plus-ia">Ver mi situación real</button>'
       + '</div></div></div>';
   }
@@ -5261,7 +5261,7 @@ function renderHerramientasPlan5() {
         return '<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07);">'
           + '<div style="font-size:17px;font-weight:800;margin-bottom:8px;">' + (d.acreedor || (DEBT_TYPES.find(function(t) { return t.v === d.tipo; }) || {}).l || "Deuda #" + (i + 1)) + '</div>'
           + '<select data-atraso-key="' + key + '">' + EATR.map(function(e) { return '<option value="' + e.v + '"' + (est === e.v ? " selected" : "") + '>' + e.l + '</option>'; }).join("") + '</select>'
-          + (est === "regularizada" ? '<div class="micro-insight" style="margin-top:8px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);color:#34ffaf;">Excelente! Eso mejora directamente tu perfil crediticio.</div>' : "")
+          + (est === "regularizada" ? '<div class="micro-insight" style="margin-top:8px;background:rgba(52,255,175,.1);border:1px solid rgba(52,255,175,.25);color:#34ffaf;">Estado registrado como regularizada. Conviene verificar que el acreedor lo refleje.</div>' : "")
           + '</div>';
       }).join("")
     + '</div>', Object.keys(atr).length > 0);
@@ -5321,7 +5321,7 @@ function renderDiagnosisScreen() {
     "C": {
       labelText:  "Perfil con factores de riesgo activos",
       labelColor: "#ff4e72",
-      line1:      "Hay mas de un factor que puede estar complicando las aprobaciones hoy.",
+      line1:      "Hay mas de un factor que puede estar complicando una evaluación crediticia hoy.",
       line2:      "Para entender exactamente que esta pasando, necesitamos el detalle de tus deudas.",
       accion:     "Ahora vamos a ordenar el panorama de tus deudas. Con eso podemos detectar que esta generando mas presion hoy.",
     },
@@ -5334,7 +5334,7 @@ function renderDiagnosisScreen() {
   if (enc && enc.flagsRiesgo && enc.flagsRiesgo.length > 0) {
     modifier = '<p style="font-size:13px;color:#8390b5;margin:14px 0 0;padding:12px 14px;'
       + 'background:rgba(255,255,255,.04);border-radius:10px;line-height:1.55;">'
-      + 'Algunas respuestas muestran senales de presion financiera que pueden estar afectando tus aprobaciones hoy.'
+      + 'Algunas respuestas muestran senales de presion financiera que pueden estar afectando tu perfil financiero hoy.'
       + '</p>';
   }
 
@@ -5490,7 +5490,7 @@ function renderSeoIaIntroBlock() {
 
     '<p style="font-size:16px;line-height:1.65;color:rgba(255,255,255,.78);margin:0 0 28px;">',
       'Respondé unas preguntas simples sobre tu situación financiera actual. En base a tus respuestas, ',
-      'Mi Plan analiza tu perfil y te muestra un camino concreto para mejorar tus chances de acceder a financiamiento.',
+      'Mi Plan analiza tu perfil y te muestra pasos concretos para ordenar tu situación financiera declarada.',
     '</p>',
 
     '<div style="background:rgba(91,124,255,.08);border:1px solid rgba(91,124,255,.22);',
