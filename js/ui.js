@@ -1459,6 +1459,9 @@ function resolvePlanStatusLabel(diag, st, coherence) {
   if (coherence && coherence.profileTier === "healthy_organized") {
     return { emoji: "🟢", text: "En buen camino", color: "#34ffaf" };
   }
+  if (Number(diag.planId) === 1) {
+    return { emoji: "🟡", text: "Pendiente de ordenar", color: "#ffd36f" };
+  }
   var sev = typeof _severityFromDiag === "function" ? _severityFromDiag(diag) : {};
   var severityLevel = sev.severity_level
     || (diag.interpretacion_v2 && diag.interpretacion_v2.severity_level);

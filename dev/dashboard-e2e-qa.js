@@ -206,6 +206,9 @@
     if (coh.profileTier === "healthy_organized") {
       ok(label + " statusLabel En buen camino",
         resolvePlanStatusLabel(diag, window.CZState, coh).text === "En buen camino");
+    } else if (diag.planId === 1) {
+      ok(label + " statusLabel Pendiente de ordenar",
+        resolvePlanStatusLabel(diag, window.CZState, coh).text === "Pendiente de ordenar");
     }
   }
 
@@ -1806,6 +1809,62 @@
       }
       return true;
     })());
+  })();
+
+  (function assertFix03bPlanStatusLabelCoherence() {
+    var p7 = PROFILES.filter(function(p) { return p.id === "P7"; })[0];
+    var r7 = runPipeline(p7);
+    ok("FIX-03B-A Diagnóstico incompleto",
+      resolvePlanStatusLabel(r7.diag, window.CZState, r7.coherence).text === "Diagnóstico incompleto");
+
+    ["P1", "P2", "P3"].forEach(function(pid) {
+      var r = runPipeline(PROFILES.filter(function(p) { return p.id === pid; })[0]);
+      ok("FIX-03B-B " + pid + " En buen camino",
+        resolvePlanStatusLabel(r.diag, window.CZState, r.coherence).text === "En buen camino");
+    });
+
+    var diagPlan1Std = {
+      planId: 1,
+      plan: PLANES[1],
+      fin: {
+        ratio: 0.22,
+        flujoLibre: 8000,
+        cantMoras: 0,
+        costoDeudaNivel: "Medio",
+      },
+      interpretacion_v2: { confidence_level: "high" },
+    };
+    var stPlan1Std = {
+      gastos: { vivienda: 15000, alimentacion: 10000, transporte: 5000 },
+      gastos_missing_confirmed: false,
+      deudas: [{
+        monto: "15000",
+        pago: "5000",
+        cancelada: false,
+        situacion_ui: "pagando_normal",
+      }],
+      diag: diagPlan1Std,
+    };
+    var cohPlan1Std = resolveDashboardCoherence(diagPlan1Std, stPlan1Std);
+    ok("FIX-03B-C planId 1", diagPlan1Std.planId === 1);
+    ok("FIX-03B-C not healthy_organized", cohPlan1Std.profileTier !== "healthy_organized");
+    ok("FIX-03B-C profileTier standard", cohPlan1Std.profileTier === "standard");
+    ok("FIX-03B-C Pendiente de ordenar",
+      resolvePlanStatusLabel(diagPlan1Std, stPlan1Std, cohPlan1Std).text === "Pendiente de ordenar");
+
+    var r4 = runPipeline(PROFILES.filter(function(p) { return p.id === "P4"; })[0]);
+    ok("FIX-03B-D P4 En proceso",
+      resolvePlanStatusLabel(r4.diag, window.CZState, r4.coherence).text === "En proceso");
+    var r6 = runPipeline(PROFILES.filter(function(p) { return p.id === "P6"; })[0]);
+    ok("FIX-03B-D P6 Prioridad alta",
+      resolvePlanStatusLabel(r6.diag, window.CZState, r6.coherence).text === "Prioridad alta");
+
+    var heroPlan1 = _renderDashboardHeroCard(diagPlan1Std, stPlan1Std, cohPlan1Std);
+    ok("FIX-03B-E hero Pendiente de ordenar", heroPlan1.indexOf("Pendiente de ordenar") >= 0);
+    ok("FIX-03B-E hero Claridad Financiera", heroPlan1.indexOf("Claridad Financiera") >= 0);
+    ok("FIX-03B-E hero plan problema",
+      heroPlan1.indexOf("No tenés claro cuánto entra") >= 0);
+    ok("FIX-03B-E hero no En buen camino", heroPlan1.indexOf("En buen camino") < 0);
   })();
 
   (function assertBackwardCompatStatusLabel() {
