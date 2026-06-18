@@ -2284,6 +2284,119 @@ function _personalizarAccionRecomendada(template, ctx) {
   return accion;
 }
 
+// =============================================================================
+// ACTIONS-ARCH-02 — Narrative taxonomy filter (master bank only)
+// GUARDRAIL:
+// Filter runs inside seleccionarAccionesRecomendadas() after legacy selection.
+// Does not alter B7, Plan5 fallback, Next Step, rendering, CRM, GTM or GA4.
+// =============================================================================
+
+var CZ_TAXONOMY_FILTER_MIN_ACTIONS = 3;
+
+var CZ_CLARITY_DIAGNOSTIC_STABILIZATION_ACTIONS = Object.freeze({
+  confirmar_saldo_stock_deuda: true,
+  ordenar_panorama: true,
+});
+
+var CZ_NARRATIVE_MODE_ALLOWED_FAMILIES = Object.freeze({
+  RECOVERY: Object.freeze(["RECOVERY", "UNIVERSAL"]),
+  STABILIZATION: Object.freeze(["STABILIZATION", "LEARNING", "UNIVERSAL"]),
+  OPTIMIZATION: Object.freeze(["OPTIMIZATION", "LEARNING", "UNIVERSAL"]),
+  CLARITY: Object.freeze(["LEARNING", "UNIVERSAL"]),
+});
+
+function _isValidNarrativeModeForTaxonomyFilter(mode) {
+  return mode === "RECOVERY"
+    || mode === "STABILIZATION"
+    || mode === "OPTIMIZATION"
+    || mode === "CLARITY";
+}
+
+function _getActionNarrativeTaxonomyModule() {
+  if (typeof ActionNarrativeTaxonomy !== "undefined" && ActionNarrativeTaxonomy
+      && typeof ActionNarrativeTaxonomy.getMasterActionNarrativeFamilies === "function") {
+    return ActionNarrativeTaxonomy;
+  }
+  if (typeof getMasterActionNarrativeFamilies === "function") {
+    return { getMasterActionNarrativeFamilies: getMasterActionNarrativeFamilies };
+  }
+  return null;
+}
+
+function _actionFamiliesIntersectAllowed(actionFamilies, allowedFamilies) {
+  if (!actionFamilies || !actionFamilies.length || !allowedFamilies || !allowedFamilies.length) {
+    return false;
+  }
+  for (var i = 0; i < actionFamilies.length; i++) {
+    for (var j = 0; j < allowedFamilies.length; j++) {
+      if (actionFamilies[i] === allowedFamilies[j]) return true;
+    }
+  }
+  return false;
+}
+
+function _isClarityDiagnosticStabilizationAction(actionKey) {
+  return !!(actionKey && CZ_CLARITY_DIAGNOSTIC_STABILIZATION_ACTIONS[actionKey]);
+}
+
+function _actionPassesNarrativeTaxonomyFilter(action, narrativeMode, taxonomy) {
+  if (!action || typeof action !== "object") return false;
+  var actionKey = action.id;
+  if (!actionKey) return false;
+
+  if (narrativeMode === "CLARITY" && _isClarityDiagnosticStabilizationAction(actionKey)) {
+    return true;
+  }
+
+  var families = taxonomy.getMasterActionNarrativeFamilies(actionKey);
+  if (!families || !families.length) return false;
+
+  var allowedFamilies = CZ_NARRATIVE_MODE_ALLOWED_FAMILIES[narrativeMode];
+  if (!allowedFamilies) return false;
+
+  return _actionFamiliesIntersectAllowed(families, allowedFamilies);
+}
+
+function _setTaxonomySelectionMeta(diag, mode, discardCount) {
+  if (!diag) return;
+  diag.action_selection_mode = mode;
+  diag.taxonomy_discard_count = discardCount != null ? discardCount : 0;
+}
+
+function applyNarrativeTaxonomyFilterToSelected(diag, candidateActions) {
+  var candidates = candidateActions || [];
+
+  if (!diag) {
+    return candidates;
+  }
+
+  var taxonomy = _getActionNarrativeTaxonomyModule();
+  var narrativeDecision = diag.narrative_decision;
+  var narrativeMode = narrativeDecision && narrativeDecision.narrative_mode;
+
+  if (!taxonomy || !narrativeDecision || !_isValidNarrativeModeForTaxonomyFilter(narrativeMode)) {
+    _setTaxonomySelectionMeta(diag, "legacy_fallback", 0);
+    return candidates;
+  }
+
+  var filtered = [];
+  for (var i = 0; i < candidates.length; i++) {
+    if (_actionPassesNarrativeTaxonomyFilter(candidates[i], narrativeMode, taxonomy)) {
+      filtered.push(candidates[i]);
+    }
+  }
+
+  var discardCount = candidates.length - filtered.length;
+
+  if (filtered.length >= CZ_TAXONOMY_FILTER_MIN_ACTIONS) {
+    _setTaxonomySelectionMeta(diag, "taxonomy", discardCount);
+    return filtered;
+  }
+
+  _setTaxonomySelectionMeta(diag, "legacy_fallback", discardCount);
+  return candidates;
+}
+
 function _fallbackAccionesRecomendadas() {
   var diag = typeof calcularMotor === "function" ? calcularMotor() : null;
   var ctx = _evalCtxAcciones(diag || { planId: 1, bloqueadores: [], fin: {}, prio: null });
@@ -2383,6 +2496,9 @@ function seleccionarAccionesRecomendadas(diag) {
     selected = _ordenarAccionesRecomendadasFinal(selected, ctx.planId);
     // STEP 5
     if (selected.length > 5) selected = selected.slice(0, 5);
+
+    // ACTIONS-ARCH-02 — taxonomy filter (master bank candidates only)
+    selected = applyNarrativeTaxonomyFilterToSelected(diag, selected);
 
     if (selected.length < 3) {
       return _fallbackAccionesRecomendadas();

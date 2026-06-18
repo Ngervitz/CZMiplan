@@ -337,11 +337,11 @@
   // AA — no GA4 changes
   ok("AA taxonomy no GA4", taxonomySrc.indexOf("gtag") < 0 && taxonomySrc.indexOf("analytics") < 0);
 
-  // AB — no narrative_decision consumption in recommendation selectors
+  // AB — taxonomy module does not consume narrative_decision (filter lives in algorithms.js)
   ok("AB taxonomy no seleccionar", taxonomySrc.indexOf("seleccionarAccionesRecomendadas") < 0);
   ok("AB taxonomy no renderAcciones", taxonomySrc.indexOf("renderAccionesRecomendadasHtml") < 0);
-  ok("AB seleccionar fn no narrative_decision", algoSrc.indexOf("function seleccionarAccionesRecomendadas") >= 0
-    && algoSrc.split("function seleccionarAccionesRecomendadas")[1].split("function ")[0].indexOf("narrative_decision") < 0);
+  ok("AB taxonomy module no narrative_decision", taxonomySrc.indexOf("resolveNarrativeDecision") < 0
+    && taxonomySrc.indexOf("diag.narrative_decision") < 0);
 
   // AC — bank object shape unchanged
   var bankAfter = bankSnapshot();
