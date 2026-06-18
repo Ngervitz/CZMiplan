@@ -245,11 +245,15 @@
   try { tabHtml = ctx.renderTabPlan(); } catch (e) { tabHtml = ""; }
   ok("K dashboard renders", tabHtml.length > 0 && tabHtml.indexOf("cz-dashboard-hero") >= 0);
 
-  // L — What Is Happening unchanged
+  // L — Explanation varies with narrative_mode (NARRATIVE-03); Hero next-step path isolated
   var explBefore = ctx.renderNarrativaInterpretacion(diagBase, stComplete);
-  diagBase.narrative_decision = { narrative_mode: "STABILIZATION", profile_tier: "IMPROVING", sub_tracks: {} };
+  diagBase.narrative_decision = {
+    narrative_mode: "STABILIZATION",
+    profile_tier: "IMPROVING",
+    sub_tracks: { focus_target: "BUDGET_STABILIZATION", context_modifier: "DEFAULT" },
+  };
   var explAfter = ctx.renderNarrativaInterpretacion(diagBase, stComplete);
-  ok("L What Is Happening unchanged", explBefore === explAfter);
+  ok("L explanation varies with narrative_mode", explBefore !== explAfter);
 
   // M — Next Step unchanged (coherence nextStepText)
   var cohBase = ctx.resolveDashboardCoherence(diagBase, stComplete);
@@ -297,13 +301,13 @@
     typeof ctx.safeGTMPayload === "function"
     && JSON.stringify(ctx.safeGTMPayload("miplan_started", { narrative_decision: "x" })).indexOf("narrative_decision") < 0);
 
-  // V — Explanation does not consume narrative_decision
+  // V — Explanation consumes narrative_decision via resolver (NARRATIVE-03)
   var uiSrc = fs.readFileSync(path.join(root, "js/ui.js"), "utf8");
-  var explBlock = uiSrc.slice(
-    uiSrc.indexOf("function renderNarrativaInterpretacion"),
-    uiSrc.indexOf("function _ensureFirstAssessmentAt")
+  var explResolverBlock = uiSrc.slice(
+    uiSrc.indexOf("NARRATIVE-03"),
+    uiSrc.indexOf("function renderNarrativaInterpretacion")
   );
-  ok("V Explanation does not consume narrative_decision", explBlock.indexOf("narrative_decision") < 0);
+  ok("V Explanation consumes narrative_decision via resolver", explResolverBlock.indexOf("narrative_decision") >= 0);
 
   // W — Next Step resolver does not consume narrative_decision
   var nextStepBlock = uiSrc.slice(
@@ -327,7 +331,11 @@
   var uiOutsideHero = uiSrc.slice(0, uiSrc.indexOf("NARRATIVE-02"))
     + uiSrc.slice(uiSrc.indexOf("function renderPrimaryActionCard"));
   ok("Y Hero block references narrative_decision", heroBlock.indexOf("narrative_decision") >= 0);
-  ok("Y only Hero consumes narrative_decision in ui.js", uiOutsideHero.indexOf("narrative_decision") < 0);
+  var nextStepBlock = uiSrc.slice(
+    uiSrc.indexOf("function _resolveDashboardNextStepText"),
+    uiSrc.indexOf("function _incompleteFinancialScoreLabel")
+  );
+  ok("Y Next Step still isolated from narrative_decision", nextStepBlock.indexOf("narrative_decision") < 0);
 
   // Z — HEALTHY tier keeps OPTIMIZATION dominant, tone only
   var stZ = completeSt({

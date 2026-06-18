@@ -186,24 +186,24 @@
   ok("Z plan unchanged", dBefore.planId === planBefore);
   ok("AA financial_stage unchanged", stageAfterAttach === stageBefore);
 
-  // AB — dashboard narrative unchanged
+  // AB — explanation reflects narrative_decision when injected (NARRATIVE-03)
   var narrBase = ctx.renderNarrativaInterpretacion(dBefore, ctx.CZState);
-  dBefore.narrative_decision = { narrative_mode: "RECOVERY", profile_tier: "AT_RISK", sub_tracks: { focus_target: "RECOVERY_URGENT", context_modifier: "REJECTED_EXTERNAL" } };
+  dBefore.narrative_decision = { narrative_mode: "STABILIZATION", profile_tier: "IMPROVING", sub_tracks: { focus_target: "BUDGET_STABILIZATION", context_modifier: "DEFAULT" } };
   var narrAfter = ctx.renderNarrativaInterpretacion(dBefore, ctx.CZState);
-  ok("AB narrative unchanged", narrBase === narrAfter);
+  ok("AB explanation reflects narrative_mode", narrBase !== narrAfter);
 
   // AC — recommendations unchanged
   var recBase = ctx.renderAccionesRecomendadasHtml(dBefore);
   var recAfter = ctx.renderAccionesRecomendadasHtml(dBefore);
   ok("AC recommendations unchanged", recBase === recAfter);
 
-  // AD — only Hero may consume narrative_decision (NARRATIVE-02 onward)
+  // AD — only Hero and Explanation may consume narrative_decision
   var uiSrc = fs.readFileSync(path.join(root, "js/ui.js"), "utf8");
-  var narrInterpBlock = uiSrc.slice(
-    uiSrc.indexOf("function renderNarrativaInterpretacion"),
-    uiSrc.indexOf("function _ensureFirstAssessmentAt")
+  var explBlock = uiSrc.slice(
+    uiSrc.indexOf("NARRATIVE-03"),
+    uiSrc.indexOf("function renderNarrativaInterpretacion")
   );
-  ok("AD explanation does not consume narrative_decision", narrInterpBlock.indexOf("narrative_decision") < 0);
+  ok("AD Explanation consumes narrative_decision via resolver", explBlock.indexOf("narrative_decision") >= 0);
 
   // AE — CRM payload
   ctx.CZState.diag = dBefore;

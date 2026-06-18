@@ -3029,6 +3029,158 @@ function renderRecuperabilidadBadge(iv2) {
 // Uses getNarrativaByTipo() — never accesses array by index.
 // Confidence note is rendered AFTER all four blocks, separate from card content.
 // Optional st — when hierarchy primary is complete_expenses, injects contextual CTA after primer paso.
+
+// =============================================================================
+// NARRATIVE-03 — Explanation / "Qué está pasando" narrative consumption
+// GUARDRAIL:
+// NARRATIVE-03 allows ONLY Hero and Explanation to consume narrative_decision.
+// Next Step must not consume narrative_decision.
+// Recommendations must not consume narrative_decision.
+// Actions must not consume narrative_decision.
+// CRM must not consume narrative_decision.
+// GTM/GA4 must not consume narrative_decision.
+// =============================================================================
+
+var _EXPLANATION_NARRATIVE_CAUSAS = {
+  CLARITY: ["falta_organizacion", "sin_accion"],
+  RECOVERY: ["flujo_negativo", "mora_activa", "estres_alto", "presion_informal", "deuda_cara", "demasiadas_deudas", "deterioro_estructural"],
+  STABILIZATION: ["stock_deuda_alto"],
+  OPTIMIZATION: ["sin_accion"],
+};
+
+var _EXPLANATION_CLARITY_TEXT =
+  "El panorama financiero no está completamente claro, lo que dificulta detectar por dónde empezar.";
+var _EXPLANATION_RECOVERY_FLUJO_TEXT =
+  "Los pagos actuales superan el ingreso disponible. El margen mensual real es negativo.";
+var _EXPLANATION_RECOVERY_MORA_TEXT =
+  "Hay deudas en atraso o mora activa que están afectando el perfil financiero hoy.";
+var _EXPLANATION_STABILIZATION_STOCK_TEXT =
+  "El flujo mensual puede parecer manejable, pero el volumen total de deuda acumulada sigue siendo un factor importante.";
+
+function _explanationNarrativaTextoForMode(diag, mode) {
+  var iv2 = diag && diag.interpretacion_v2;
+  if (!iv2 || !iv2.narrativa_jerarquizada) return null;
+  var allowed = _EXPLANATION_NARRATIVE_CAUSAS[mode];
+  if (!allowed) return null;
+  var n = getNarrativaByTipo(iv2.narrativa_jerarquizada, "problema_principal");
+  if (!n || !n.texto || allowed.indexOf(n.causa) < 0) return null;
+  return n.texto;
+}
+
+function _resolveExplanationOptimizationText(diag, st) {
+  var fin = (diag && diag.fin) || {};
+  var costoNivel = String(fin.costoDeudaNivel || "").toLowerCase();
+  var hasActiveDebts = _hasActiveDebtsFromState(st);
+  if (!hasActiveDebts) return _WHAT_IS_HAPPENING_HEALTHY_ZERO_DEBT;
+  if (costoNivel === "alto") return _WHAT_IS_HAPPENING_HEALTHY_ALTO;
+  return _WHAT_IS_HAPPENING_HEALTHY_MEDIO_BAJO;
+}
+
+function _explanationNarrativeBaseTextForMode(mode, diag, st) {
+  diag = diag || {};
+  switch (mode) {
+    case "CLARITY":
+      return _explanationNarrativaTextoForMode(diag, mode)
+        || _EXPLANATION_CLARITY_TEXT
+        || _heroPlanProblema(1)
+        || (diag.plan && diag.plan.problema);
+    case "RECOVERY":
+      return _explanationNarrativaTextoForMode(diag, mode)
+        || _EXPLANATION_RECOVERY_FLUJO_TEXT
+        || _EXPLANATION_RECOVERY_MORA_TEXT
+        || _heroPlanProblema(2)
+        || (diag.plan && diag.plan.problema);
+    case "STABILIZATION":
+      return _explanationNarrativaTextoForMode(diag, mode)
+        || _EXPLANATION_STABILIZATION_STOCK_TEXT
+        || _heroPlanProblema(4)
+        || (diag.plan && diag.plan.problema);
+    case "OPTIMIZATION":
+      return _explanationNarrativaTextoForMode(diag, mode)
+        || _resolveExplanationOptimizationText(diag, st)
+        || _heroPlanProblema(3)
+        || (diag.plan && diag.plan.problema);
+    default:
+      return null;
+  }
+}
+
+function _applyExplanationNarrativeProfileTierTone(text, profileTier, narrativeMode) {
+  if (!text || !profileTier || !narrativeMode) return text;
+  var tier = String(profileTier).trim().toUpperCase();
+  // Tone only — profile_tier must never change the selected explanation family.
+  if (tier === "UNKNOWN" && narrativeMode === "CLARITY") {
+    if (text.indexOf("estimad") < 0 && text.indexOf("completamente claro") >= 0) {
+      return text + " Con la información actual, el diagnóstico todavía tiene margen de mejora.";
+    }
+  }
+  if (tier === "AT_RISK" && narrativeMode === "RECOVERY") {
+    if (text.indexOf("mora") < 0 && text.indexOf("superan el ingreso") < 0) {
+      return _EXPLANATION_RECOVERY_MORA_TEXT;
+    }
+  }
+  if (tier === "IMPROVING" && narrativeMode === "STABILIZATION") {
+    if (text === _EXPLANATION_STABILIZATION_STOCK_TEXT) return text;
+  }
+  if (tier === "HEALTHY" && narrativeMode === "OPTIMIZATION") {
+    if (text.indexOf("perfil ordenado") < 0 && text.indexOf("equilibrio") < 0) {
+      return _WHAT_IS_HAPPENING_HEALTHY_MEDIO_BAJO;
+    }
+  }
+  return text;
+}
+
+function _resolveExplanationQueEstaPasandoLegacy(diag, st, coherence) {
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+  if (coherence.whatIsHappeningText != null) return coherence.whatIsHappeningText;
+  var iv2 = diag && diag.interpretacion_v2;
+  if (!iv2 || !iv2.narrativa_jerarquizada) return null;
+  var nPrincipal = getNarrativaByTipo(iv2.narrativa_jerarquizada, "problema_principal");
+  return nPrincipal && nPrincipal.texto ? nPrincipal.texto : null;
+}
+
+function resolveExplanationQueEstaPasando(diag, st, coherence) {
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+  diag = diag || _diag();
+  st = st || _st();
+
+  var narrativeMode = _normalizeHeroNarrativeMode(diag.narrative_decision);
+  if (!narrativeMode) {
+    return {
+      text: _resolveExplanationQueEstaPasandoLegacy(diag, st, coherence),
+      source: "legacy",
+      narrativeMode: null,
+      profileTier: null,
+    };
+  }
+
+  if (_isCzDevMode()) {
+    try { console.log("[CZ Explanation] narrative_mode:", narrativeMode); } catch (e) {}
+  }
+
+  var profileTier = diag.narrative_decision && diag.narrative_decision.profile_tier
+    ? String(diag.narrative_decision.profile_tier).trim().toUpperCase()
+    : null;
+
+  var text = null;
+  if (coherence.whatIsHappeningText != null) {
+    text = coherence.whatIsHappeningText;
+  } else {
+    text = _explanationNarrativeBaseTextForMode(narrativeMode, diag, st);
+    if (!text) {
+      text = _resolveExplanationQueEstaPasandoLegacy(diag, st, coherence);
+    }
+  }
+  text = _applyExplanationNarrativeProfileTierTone(text, profileTier, narrativeMode);
+
+  return {
+    text: text,
+    source: "narrative",
+    narrativeMode: narrativeMode,
+    profileTier: profileTier,
+  };
+}
+
 function renderNarrativaInterpretacion(diag, st, coherence) {
   var iv2 = diag.interpretacion_v2;
   if (!iv2 || !iv2.narrativa_jerarquizada) return "";
@@ -3039,15 +3191,13 @@ function renderNarrativaInterpretacion(diag, st, coherence) {
     return _renderIncompleteProfileNarrativeHtml(diag, st);
   }
 
-  var nPrincipal = getNarrativaByTipo(iv2.narrativa_jerarquizada, "problema_principal");
   var nPresion   = getNarrativaByTipo(iv2.narrativa_jerarquizada, "presion_dominante");
   var nRecup     = getNarrativaByTipo(iv2.narrativa_jerarquizada, "recuperabilidad");
   var textoPaso = coherence.suppressOrdenarPanorama
     ? coherence.nextStepText
     : (coherence.nextStepText || _resolveDashboardNextStepText(diag, st));
-  var textoPrincipal = coherence.whatIsHappeningText != null
-    ? coherence.whatIsHappeningText
-    : (nPrincipal ? nPrincipal.texto : null);
+  var explanationContent = resolveExplanationQueEstaPasando(diag, st, coherence);
+  var textoPrincipal = explanationContent.text;
   var injectedCtaHtml = _resolveDiagnosisInjectedCtaHtml(diag, st);
 
   var block = function(label, text, isLead) {
@@ -3345,12 +3495,8 @@ function _renderNumerosAccordionShell(innerHtml) {
 
 // =============================================================================
 // NARRATIVE-02 — Hero narrative consumption (content-selection layer only)
-// GUARDRAIL:
-// Only Hero consumes narrative_decision in NARRATIVE-02.
-// Explanation must not consume narrative_decision.
-// Next Step must not consume narrative_decision.
-// Recommendations must not consume narrative_decision.
-// Existing renderers remain unchanged.
+// GUARDRAIL (NARRATIVE-03): Hero and Explanation may consume narrative_decision.
+// Next Step, Recommendations, Actions, CRM, GTM/GA4 must not consume narrative_decision.
 // =============================================================================
 
 var _HERO_NARRATIVE_MODES = ["CLARITY", "RECOVERY", "STABILIZATION", "OPTIMIZATION"];
@@ -6199,6 +6345,8 @@ window.CredizonaUI = {
   _resolveZeroActiveDebtHeroProblema: _resolveZeroActiveDebtHeroProblema,
   resolveHeroContent: resolveHeroContent,
   _resolveHeroContentLegacy: _resolveHeroContentLegacy,
+  resolveExplanationQueEstaPasando: resolveExplanationQueEstaPasando,
+  _resolveExplanationQueEstaPasandoLegacy: _resolveExplanationQueEstaPasandoLegacy,
   _renderDashboardHeroCard: _renderDashboardHeroCard,
   renderPrimaryActionCard: renderPrimaryActionCard,
   renderTabPlan: renderTabPlan,
