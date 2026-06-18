@@ -3343,6 +3343,186 @@ function _renderNumerosAccordionShell(innerHtml) {
     + "</div>";
 }
 
+// =============================================================================
+// NARRATIVE-02 — Hero narrative consumption (content-selection layer only)
+// GUARDRAIL:
+// Only Hero consumes narrative_decision in NARRATIVE-02.
+// Explanation must not consume narrative_decision.
+// Next Step must not consume narrative_decision.
+// Recommendations must not consume narrative_decision.
+// Existing renderers remain unchanged.
+// =============================================================================
+
+var _HERO_NARRATIVE_MODES = ["CLARITY", "RECOVERY", "STABILIZATION", "OPTIMIZATION"];
+
+var _HERO_NARRATIVE_STABILIZATION_PROBLEMA =
+  "El flujo mensual puede parecer manejable, pero el volumen total de deuda acumulada sigue siendo un factor importante.";
+
+function _isCzDevMode() {
+  try {
+    return typeof window !== "undefined" && window.location
+      && String(window.location.search || "").indexOf("czdev=true") !== -1;
+  } catch (e) {
+    return false;
+  }
+}
+
+function _normalizeHeroNarrativeMode(nd) {
+  if (!nd || typeof nd !== "object" || Array.isArray(nd)) return null;
+  if (nd.narrative_mode == null || nd.narrative_mode === "") return null;
+  var s = String(nd.narrative_mode).trim().toUpperCase();
+  return _HERO_NARRATIVE_MODES.indexOf(s) >= 0 ? s : null;
+}
+
+function _heroPlanProblema(planId) {
+  if (typeof PLANES === "undefined" || !PLANES) return null;
+  var p = PLANES[planId];
+  return p && p.problema ? p.problema : null;
+}
+
+function _heroNarrativaProblemaForMode(diag, mode) {
+  var iv2 = diag && diag.interpretacion_v2;
+  if (!iv2 || !iv2.narrativa_jerarquizada) return null;
+  var causasByMode = {
+    CLARITY: { problema_principal: ["falta_organizacion", "sin_accion"] },
+    RECOVERY: { problema_principal: ["flujo_negativo", "mora_activa", "estres_alto", "presion_informal", "deuda_cara", "demasiadas_deudas", "deterioro_estructural"] },
+    STABILIZATION: { problema_principal: ["stock_deuda_alto"] },
+    OPTIMIZATION: { problema_principal: ["sin_accion"] },
+  };
+  var allowed = causasByMode[mode];
+  if (!allowed) return null;
+  var ppCausas = allowed.problema_principal;
+  if (ppCausas) {
+    var n = getNarrativaByTipo(iv2.narrativa_jerarquizada, "problema_principal");
+    if (n && n.texto && ppCausas.indexOf(n.causa) >= 0) return n.texto;
+  }
+  return null;
+}
+
+function _heroNarrativeBaseProblemForMode(mode, diag, st) {
+  diag = diag || {};
+  var plan = diag.plan || {};
+  switch (mode) {
+    case "CLARITY":
+      return _heroNarrativaProblemaForMode(diag, mode)
+        || _heroPlanProblema(1)
+        || plan.problema;
+    case "RECOVERY":
+      return _heroNarrativaProblemaForMode(diag, mode)
+        || _heroPlanProblema(2)
+        || _heroPlanProblema(4)
+        || plan.problema;
+    case "STABILIZATION":
+      return _heroNarrativaProblemaForMode(diag, mode)
+        || _HERO_NARRATIVE_STABILIZATION_PROBLEMA
+        || _heroPlanProblema(4)
+        || plan.problema;
+    case "OPTIMIZATION":
+      if (_isZeroActiveDebtCompleteProfile(diag, st)) return _ZERO_ACTIVE_DEBT_HERO_PROBLEMA;
+      return _heroNarrativaProblemaForMode(diag, mode)
+        || _heroPlanProblema(3)
+        || plan.problema;
+    default:
+      return null;
+  }
+}
+
+function _applyHeroNarrativeProfileTierTone(problem, profileTier, narrativeMode) {
+  if (!problem || !profileTier || !narrativeMode) return problem;
+  var tier = String(profileTier).trim().toUpperCase();
+  // Tone only — profile_tier must never change the selected Hero family.
+  if (tier === "AT_RISK" && narrativeMode === "RECOVERY") {
+    var criticalCopy = _heroPlanProblema(4);
+    var pressureCopy = _heroPlanProblema(2);
+    if (criticalCopy && problem === pressureCopy) return criticalCopy;
+  }
+  if (tier === "HEALTHY" && narrativeMode === "OPTIMIZATION") {
+    var plan3Copy = _heroPlanProblema(3);
+    var positiveTone =
+      "Tu perfil financiero está en orden. El foco es sostener pagos en fecha y evitar nueva deuda.";
+    if (plan3Copy && problem === plan3Copy) return positiveTone;
+  }
+  return problem;
+}
+
+function _resolveHeroContentLegacy(diag, st, coherence) {
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+  diag = diag || {};
+  st = st || _st();
+  if (isIncompleteFinancialProfile(diag, st)) {
+    return {
+      incomplete: true,
+      source: "legacy",
+      narrativeMode: null,
+      profileTier: null,
+    };
+  }
+  var plan = diag.plan || {};
+  var problem = coherence.heroProblemOverride != null
+    ? coherence.heroProblemOverride
+    : _resolveZeroActiveDebtHeroProblema(diag, st, plan.problema);
+  return {
+    incomplete: false,
+    source: "legacy",
+    narrativeMode: null,
+    profileTier: null,
+    problem: problem,
+    nextAction: _resolveHeroNextActionText(diag, st, coherence),
+    statusLabel: resolvePlanStatusLabel(diag, st, coherence),
+    plan: plan,
+  };
+}
+
+function resolveHeroContent(diag, st, coherence) {
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+  diag = diag || _diag();
+  st = st || _st();
+
+  var narrativeMode = _normalizeHeroNarrativeMode(diag.narrative_decision);
+  if (!narrativeMode) {
+    return _resolveHeroContentLegacy(diag, st, coherence);
+  }
+
+  if (_isCzDevMode()) {
+    try { console.log("[CZ Hero] narrative_mode:", narrativeMode); } catch (e) {}
+  }
+
+  var profileTier = diag.narrative_decision && diag.narrative_decision.profile_tier
+    ? String(diag.narrative_decision.profile_tier).trim().toUpperCase()
+    : null;
+
+  if (isIncompleteFinancialProfile(diag, st)) {
+    return {
+      incomplete: true,
+      source: "narrative",
+      narrativeMode: narrativeMode,
+      profileTier: profileTier,
+    };
+  }
+
+  var problem = null;
+  if (coherence.heroProblemOverride != null) {
+    problem = coherence.heroProblemOverride;
+  } else {
+    problem = _heroNarrativeBaseProblemForMode(narrativeMode, diag, st);
+    if (!problem) {
+      problem = _resolveZeroActiveDebtHeroProblema(diag, st, (diag.plan || {}).problema);
+    }
+  }
+  problem = _applyHeroNarrativeProfileTierTone(problem, profileTier, narrativeMode);
+
+  return {
+    incomplete: false,
+    source: "narrative",
+    narrativeMode: narrativeMode,
+    profileTier: profileTier,
+    problem: problem,
+    nextAction: _resolveHeroNextActionText(diag, st, coherence),
+    statusLabel: resolvePlanStatusLabel(diag, st, coherence),
+    plan: diag.plan || {},
+  };
+}
+
 function _resolveHeroNextActionText(diag, st, coherence) {
   coherence = coherence || resolveDashboardCoherence(diag, st);
   if (isIncompleteFinancialProfile(diag, st)) return null;
@@ -3370,8 +3550,9 @@ function _renderDashboardHeroCard(diag, st, coherence) {
   st = st || _st();
   coherence = coherence || resolveDashboardCoherence(diag, st);
   var pc = (diag.plan && diag.plan.color) ? diag.plan.color : "#40d7ff";
+  var heroContent = resolveHeroContent(diag, st, coherence);
 
-  if (isIncompleteFinancialProfile(diag, st)) {
+  if (heroContent.incomplete) {
     var showGastosCta = _heroShowsExpensesCta(diag, st);
     var showDebtsCta = _heroShowsDebtsCta(diag, st);
     var heroCtaHtml = showGastosCta
@@ -3400,12 +3581,10 @@ function _renderDashboardHeroCard(diag, st, coherence) {
       + "</div>";
   }
 
-  var plan = diag.plan || {};
-  var heroProblema = coherence.heroProblemOverride != null
-    ? coherence.heroProblemOverride
-    : _resolveZeroActiveDebtHeroProblema(diag, st, plan.problema);
-  var statusLabel = resolvePlanStatusLabel(diag, st, coherence);
-  var nextAction = _resolveHeroNextActionText(diag, st, coherence);
+  var plan = heroContent.plan || diag.plan || {};
+  var heroProblema = heroContent.problem;
+  var statusLabel = heroContent.statusLabel;
+  var nextAction = heroContent.nextAction;
 
   return '<div class="cz-hero-card plan-card dash-tier-a" id="cz-dashboard-hero" style="border-color:' + pc + '55;'
     + 'background:linear-gradient(165deg,' + pc + '18 0%,rgba(255,255,255,.04) 58%);'
@@ -6018,6 +6197,8 @@ window.CredizonaUI = {
   renderContextualActionBlock: renderContextualActionBlock,
   _B7_SEGMENTS: _B7_SEGMENTS,
   _resolveZeroActiveDebtHeroProblema: _resolveZeroActiveDebtHeroProblema,
+  resolveHeroContent: resolveHeroContent,
+  _resolveHeroContentLegacy: _resolveHeroContentLegacy,
   _renderDashboardHeroCard: _renderDashboardHeroCard,
   renderPrimaryActionCard: renderPrimaryActionCard,
   renderTabPlan: renderTabPlan,

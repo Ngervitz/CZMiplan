@@ -197,9 +197,13 @@
   var recAfter = ctx.renderAccionesRecomendadasHtml(dBefore);
   ok("AC recommendations unchanged", recBase === recAfter);
 
-  // AD — renderers do not consume narrative_decision
+  // AD — only Hero may consume narrative_decision (NARRATIVE-02 onward)
   var uiSrc = fs.readFileSync(path.join(root, "js/ui.js"), "utf8");
-  ok("AD ui has no narrative_decision consumption", uiSrc.indexOf("narrative_decision") < 0);
+  var narrInterpBlock = uiSrc.slice(
+    uiSrc.indexOf("function renderNarrativaInterpretacion"),
+    uiSrc.indexOf("function _ensureFirstAssessmentAt")
+  );
+  ok("AD explanation does not consume narrative_decision", narrInterpBlock.indexOf("narrative_decision") < 0);
 
   // AE — CRM payload
   ctx.CZState.diag = dBefore;
