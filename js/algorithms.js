@@ -1195,6 +1195,115 @@ function calcularSeveridadFinanciera(fin, deudas, ingreso) {
 }
 
 // =============================================================================
+// STAGE-01 — Financial stage resolver (pure; no narrative consumption yet)
+// =============================================================================
+// GUARDRAIL:
+// Financial stage must not read or depend on entry_context.
+// Financial stage must not read or depend on declared user goals (P11 intent).
+// RECHAZO_CDV does not imply debt.
+// RECHAZO_CDV does not imply mora.
+// RECHAZO_CDV does not imply financial pressure.
+// Declared goals do not alter financial stage.
+
+var STAGE_RATIO_ALTO = 0.35;
+var STAGE_RATIO_OPTIMIZACION_MAX = 0.20;
+var STAGE_DTI_RELEVANT_LIABILITY = 0.5;
+
+function _stageIncome(st, fin) {
+  if (st && st.declared_ingreso != null) {
+    var declared = parseFloat(st.declared_ingreso);
+    if (isFinite(declared) && declared > 0) return declared;
+  }
+  if (typeof PRE !== "undefined" && PRE.ingreso > 0) return PRE.ingreso;
+  if (fin && fin.ingreso > 0) return fin.ingreso;
+  return 0;
+}
+
+function _stageHasInsufficientData(diag, st, fin, iv2) {
+  if (_stageIncome(st, fin) <= 0) return true;
+
+  if (typeof hasCompletedFinancialInputs === "function") {
+    if (!hasCompletedFinancialInputs(st || {})) return true;
+  } else if (st && !st.financial_income_complete && _stageIncome(st, fin) <= 0) {
+    return true;
+  }
+
+  if (!fin || fin.flujoLibre == null || !isFinite(fin.flujoLibre)) return true;
+
+  return false;
+}
+
+function _stageLowConfidenceBlocksStaging(diag, st, fin, iv2) {
+  if (!iv2 || iv2.confidence_level !== "low") return false;
+
+  if (diag && diag.missing_payment_information && fin.flujoLibre < 0) return true;
+  if (iv2.missing_payment_information && fin.flujoLibre < 0) return true;
+
+  if (iv2.interpretacion_parcial) {
+    var noDebtDeclared = !!(st && st.no_debts_declared);
+    var hasLiabilities = _stageHasRelevantLiabilities(fin);
+    if (!hasLiabilities && !noDebtDeclared) return true;
+  }
+
+  return false;
+}
+
+function _stageHasRecoveryPressure(diag, fin, iv2) {
+  fin = fin || {};
+  iv2 = iv2 || {};
+  var flujoLibre = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  var ratio = fin.ratio != null ? fin.ratio : 0;
+  var cantMoras = fin.cantMoras || 0;
+  var behav = fin.behavioral || {};
+
+  if (flujoLibre < 0) return true;
+  if (cantMoras > 0) return true;
+  if (diag && diag.mora_activa) return true;
+  if (iv2.has_mora_or_deje_pagar) return true;
+  if (behav.tiene_mora_declarada) return true;
+  if (ratio >= STAGE_RATIO_ALTO) return true;
+  if (iv2.severity_level === "critico") {
+    if (flujoLibre < 0 || ratio >= STAGE_RATIO_OPTIMIZACION_MAX || cantMoras > 0) return true;
+    if (iv2.has_mora_or_deje_pagar || behav.tiene_mora_declarada) return true;
+    if ((fin.totalPago || 0) > 0 && ratio >= STAGE_RATIO_OPTIMIZACION_MAX) return true;
+    return false;
+  }
+  if (iv2.severity_level === "alto" && (flujoLibre < 0 || ratio >= STAGE_RATIO_OPTIMIZACION_MAX)) {
+    return true;
+  }
+  if (iv2.severe_latent_pressure && flujoLibre < 0) return true;
+
+  return false;
+}
+
+function _stageHasRelevantLiabilities(fin) {
+  fin = fin || {};
+  var totalDeuda = fin.totalDeuda || 0;
+  var totalPago = fin.totalPago || 0;
+  var dti = fin.dti_ratio != null ? fin.dti_ratio : 0;
+  return totalDeuda > 0 || totalPago > 0 || dti >= STAGE_DTI_RELEVANT_LIABILITY;
+}
+
+function resolveFinancialStage(diag, st) {
+  diag = diag || {};
+  st = st || {};
+  var fin = diag.fin || {};
+  var iv2 = diag.interpretacion_v2 || {};
+
+  if (_stageHasInsufficientData(diag, st, fin, iv2)) return "CLARIDAD";
+  if (_stageHasRecoveryPressure(diag, fin, iv2)) return "RECUPERACION";
+  if (_stageLowConfidenceBlocksStaging(diag, st, fin, iv2)) return "CLARIDAD";
+  if (_stageHasRelevantLiabilities(fin)) return "ESTABILIZACION";
+  return "OPTIMIZACION";
+}
+
+function attachFinancialStageToDiag(diag, st) {
+  if (!diag) return diag;
+  diag.financial_stage = resolveFinancialStage(diag, st);
+  return diag;
+}
+
+// =============================================================================
 // INTERPRETATION ENGINE v1 — Sprint 7A
 //
 // Converts calcularMotor() output into a structured semantic interpretation.
@@ -2260,6 +2369,7 @@ function buildDiagnosisSnapshot() {
   var motor;
   try {
     motor = calcularMotor();
+    attachFinancialStageToDiag(motor, st);
   } catch (e) {
     motor = {};
   }

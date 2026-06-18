@@ -225,12 +225,25 @@ function recalcDiagYGuardar() {
     prevFlujo = st.diag.fin.flujoLibre;
   }
   if (typeof calcularMotor === "function") {
-    st.diag = calcularMotor();
+    assignMotorDiagnosis(st);
     st._diagSource = "live_calc";
     maybeTrackProfileExtremeDebt(st);
   }
   window.guardarLocal();
   _maybeCelebratePositiveFlow(st, prevFlujo);
+}
+
+function assignMotorDiagnosis(st) {
+  st = st || window.CZState;
+  if (!st || typeof calcularMotor !== "function") return st ? st.diag : null;
+  var diag = calcularMotor();
+  if (typeof attachFinancialStageToDiag === "function") {
+    attachFinancialStageToDiag(diag, st);
+  } else if (typeof resolveFinancialStage === "function") {
+    diag.financial_stage = resolveFinancialStage(diag, st);
+  }
+  st.diag = diag;
+  return diag;
 }
 
 // Sprint B7b-fix — clear stale debt-step completion when no active debts remain
@@ -537,7 +550,7 @@ function commitDeudaQuickMontoFromInput(inputEl) {
       d.cancelada = false;
       if (typeof enriquecerDeuda === "function") enriquecerDeuda(d);
       if (typeof calcularMotor === "function") {
-        st.diag = calcularMotor();
+        assignMotorDiagnosis(st);
       }
       st.temporal.last_debt_update_at = new Date().toISOString();
       window.guardarLocal();
@@ -1283,7 +1296,7 @@ function next() {
       syncPreRespuestasFromSeoIaSurvey(st);
     }
 
-    st.diag = calcularMotor();
+    st.diag = assignMotorDiagnosis(st);
     st._diagSource = "live_calc";
     maybeTrackProfileExtremeDebt(st);
 
@@ -2096,7 +2109,11 @@ async function init() {
     st.miplan_started = true;
 
     if (typeof calcularMotor === "function") {
-      st._preliminary_diag = calcularMotor();
+      var _prelimDiag = calcularMotor();
+      if (typeof attachFinancialStageToDiag === "function") {
+        attachFinancialStageToDiag(_prelimDiag, st);
+      }
+      st._preliminary_diag = _prelimDiag;
     }
 
     st.temporal.survey_completed_at = now;
@@ -2611,7 +2628,7 @@ function completeSeoIaOnboarding() {
 
   var preliminaryDiag = null;
   if (typeof calcularMotor === "function") {
-    preliminaryDiag = calcularMotor();
+    preliminaryDiag = assignMotorDiagnosis(st);
   }
 
   st.step = resolveNextRequiredFinancialStep(st);
