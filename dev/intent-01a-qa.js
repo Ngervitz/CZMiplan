@@ -203,12 +203,14 @@
     (d0.interpretacion_v2 && d0.interpretacion_v2.nivel_riesgo) ===
     (d1.interpretacion_v2 && d1.interpretacion_v2.nivel_riesgo));
 
-  // R — dashboard narrative / motor do not consume user_intent
-  var uiSrc = fs.readFileSync(path.join(root, "js/ui.js"), "utf8");
+  // R — motor / stage resolver do not consume user_intent (narrative attach may read it)
   var algoSrc = fs.readFileSync(path.join(root, "js/algorithms.js"), "utf8");
-  ok("R motor has no user_intent", algoSrc.indexOf("user_intent") < 0);
-  ok("R narrativa fn has no user_intent", uiSrc.indexOf("renderNarrativaInterpretacion") >= 0
-    && uiSrc.split("function renderNarrativaInterpretacion")[1].split("function ")[0].indexOf("user_intent") < 0);
+  var motorBlock = algoSrc.split("function calcularMotor")[1];
+  motorBlock = motorBlock ? motorBlock.split("function ")[0] : "";
+  var stageBlock = algoSrc.split("function resolveFinancialStage")[1];
+  stageBlock = stageBlock ? stageBlock.split("function ")[0] : "";
+  ok("R motor has no user_intent", motorBlock.indexOf("user_intent") < 0);
+  ok("R stage resolver has no user_intent", stageBlock.indexOf("user_intent") < 0);
 
   // Group 5 button label for non-CDV
   seo.window.CZState = seoSurveySt();

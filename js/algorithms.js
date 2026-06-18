@@ -1300,6 +1300,116 @@ function resolveFinancialStage(diag, st) {
 function attachFinancialStageToDiag(diag, st) {
   if (!diag) return diag;
   diag.financial_stage = resolveFinancialStage(diag, st);
+  if (typeof attachNarrativeDecisionToDiag === "function") {
+    attachNarrativeDecisionToDiag(diag, st);
+  }
+  return diag;
+}
+
+// =============================================================================
+// NARRATIVE-01 — Financial narrative orchestrator (decisions only; no copy)
+// =============================================================================
+// GUARDRAIL:
+// narrative_mode is driven by financial_stage.
+// Declared user goals (P11 intent) cannot override financial reality.
+// entry_context cannot override financial reality.
+// RECHAZO_CDV does not imply debt.
+// RECHAZO_CDV does not imply recovery.
+// NARRATIVE-01 must not generate copy.
+// NARRATIVE-01 must not alter rendering.
+
+var NARRATIVE_STAGE_TO_MODE = {
+  CLARIDAD:      "CLARITY",
+  RECUPERACION:  "RECOVERY",
+  ESTABILIZACION:"STABILIZATION",
+  OPTIMIZACION:  "OPTIMIZATION",
+};
+
+var NARRATIVE_STAGE_TO_TIER = {
+  CLARIDAD:      "UNKNOWN",
+  RECUPERACION:  "AT_RISK",
+  ESTABILIZACION:"IMPROVING",
+  OPTIMIZACION:  "HEALTHY",
+};
+
+var NARRATIVE_VALID_STAGES = ["CLARIDAD", "RECUPERACION", "ESTABILIZACION", "OPTIMIZACION"];
+var NARRATIVE_VALID_INTENTS = ["RECUPERAR", "ORDENAR", "CREDITO", "OPTIMIZAR"];
+
+function _normalizeNarrativeFinancialStage(value) {
+  if (value == null) return null;
+  var s = String(value).trim();
+  return NARRATIVE_VALID_STAGES.indexOf(s) >= 0 ? s : null;
+}
+
+function _normalizeNarrativeUserIntent(value) {
+  if (typeof normalizeUserIntent === "function") {
+    return normalizeUserIntent(value);
+  }
+  if (value == null) return null;
+  var s = String(value).trim();
+  if (s === "") return null;
+  return NARRATIVE_VALID_INTENTS.indexOf(s) >= 0 ? s : null;
+}
+
+function _narrativeContextModifier(entryContext) {
+  entryContext = entryContext || {};
+  if (entryContext.hasRejectionContext === true) return "REJECTED_EXTERNAL";
+  if (entryContext.entryContext === "cdv_rejected") return "REJECTED_EXTERNAL";
+  return "DEFAULT";
+}
+
+function _resolveNarrativeFocusTarget(narrativeMode, userIntent) {
+  if (narrativeMode === "RECOVERY") return "RECOVERY_URGENT";
+  if (narrativeMode === "STABILIZATION") return "BUDGET_STABILIZATION";
+  if (narrativeMode === "OPTIMIZATION") {
+    if (userIntent === "CREDITO") return "CREDIT_BUILDING";
+    if (userIntent === "ORDENAR") return "LEARNING";
+  }
+  return "DEFAULT";
+}
+
+function resolveNarrativeDecision(financialStage, userIntent, entryContext, planId) {
+  // planId reserved for future narrative phases — not consumed in NARRATIVE-01.
+  void planId;
+
+  var stage = _normalizeNarrativeFinancialStage(financialStage);
+  if (!stage) {
+    return {
+      narrative_mode: "CLARITY",
+      profile_tier: "UNKNOWN",
+      sub_tracks: {
+        focus_target: "DEFAULT",
+        context_modifier: _narrativeContextModifier(entryContext),
+      },
+    };
+  }
+
+  var narrativeMode = NARRATIVE_STAGE_TO_MODE[stage] || "CLARITY";
+  var profileTier = NARRATIVE_STAGE_TO_TIER[stage] || "UNKNOWN";
+  var intent = _normalizeNarrativeUserIntent(userIntent);
+
+  return {
+    narrative_mode: narrativeMode,
+    profile_tier: profileTier,
+    sub_tracks: {
+      focus_target: _resolveNarrativeFocusTarget(narrativeMode, intent),
+      context_modifier: _narrativeContextModifier(entryContext),
+    },
+  };
+}
+
+function attachNarrativeDecisionToDiag(diag, st, entryContext) {
+  if (!diag) return diag;
+  var ctx = entryContext;
+  if (!ctx && typeof CZ_ENTRY_CONTEXT !== "undefined") {
+    ctx = CZ_ENTRY_CONTEXT;
+  }
+  diag.narrative_decision = resolveNarrativeDecision(
+    diag.financial_stage,
+    st && st.user_intent,
+    ctx,
+    diag.planId
+  );
   return diag;
 }
 
