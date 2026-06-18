@@ -1,5 +1,5 @@
 /**
- * dev/intent-01a-qa.js — INTENT-01A user intent capture QA
+ * dev/intent-01a-qa.js — INTENT-01A P11 placement QA (SEO IA survey)
  */
 (function() {
   "use strict";
@@ -69,115 +69,153 @@
     return sandbox;
   }
 
-  function organicSt() {
+  function fillP1ToP10(ob) {
+    var i;
+    for (i = 1; i <= 10; i++) ob.respuestas["p" + i] = "B";
+  }
+
+  function seoSurveySt() {
+    var resp = {};
+    var i;
+    for (i = 1; i <= 10; i++) resp["p" + i] = null;
     return {
       step: 0,
       user_intent: null,
-      consent: { accepted_at: "2026-01-01T00:00:00.000Z" },
-      miplan_started: false,
+      seo_ia_onboarding: {
+        phase: "survey",
+        surveyGroup: 5,
+        respuestas: resp,
+        started_at: "2026-01-01T00:00:00.000Z",
+      },
     };
   }
 
-  function dashboardSt() {
-    return {
-      step: 3,
-      user_intent: null,
-      user_email: "ana@example.com",
-      financial_profile_complete: true,
-      financial_income_complete: true,
-      financial_debts_complete: true,
-      financial_expenses_complete: true,
-      income_source: "localStorage_restore",
-      declared_ingreso: 80000,
-      declared_nombre: "Ana Perez",
-      declared_laboral: "relacion_dependencia",
-      deudas: [{ tipo: "prestamo", monto: "50000", pago: "3000", situacion_ui: "pagando_normal" }],
-      gastos: { vivienda: 12000, alimentacion: 8000 },
-      temporal: { dashboard_generated_at: "2026-01-01T00:00:00.000Z" },
-      snap: { fecha_inicio: "2026-01-01T00:00:00.000Z" },
-      diag: { planId: 2, scoreReset: 18 },
-    };
+  var seo = boot("?source=seo_ia");
+  seo.window.CZState = seoSurveySt();
+  fillP1ToP10(seo.window.CZState.seo_ia_onboarding);
+
+  // A — intent not shown before survey starts
+  var introHtml = seo.renderSeoIaIntroBlock();
+  ok("A intro has no P11 title", introHtml.indexOf("¿Qué querés lograr con Mi Plan?") < 0);
+  var group1Html = seo.renderSeoIaSurveyGroupScreen(1);
+  ok("A group1 has no P11 title", group1Html.indexOf("¿Qué querés lograr con Mi Plan?") < 0);
+  ok("A group1 is P1-P2", group1Html.indexOf("Pregunta 1 de 10") >= 0);
+
+  // B — intent only as P11
+  var p11Html = seo.renderSeoIaUserIntentP11();
+  ok("B P11 title present", p11Html.indexOf("¿Qué querés lograr con Mi Plan?") >= 0);
+  ok("B P11 marker", p11Html.indexOf("Pregunta 11 de 11") >= 0);
+  ok("B P11 class", p11Html.indexOf("seo-ia-intent-p11") >= 0);
+
+  // C — P11 after P10, before legals
+  ok("C post-P10 phase intent", seo.resolveSeoIaPhaseAfterP10(seo.window.CZState) === "intent");
+  seo.window.CZState.seo_ia_onboarding.phase = "intent";
+  var onboardingIntent = seo.renderSeoIaOnboarding();
+  ok("C onboarding intent phase", onboardingIntent.indexOf("seo-ia-intent-p11") >= 0);
+  ok("C legals not yet", onboardingIntent.indexOf("Último paso antes de tu diagnóstico") < 0);
+  seo.handleSeoIaUserIntentSelect("ORDENAR");
+  seo.handleSeoIaUserIntentNext();
+  ok("C after P11 goes legals", seo.window.CZState.seo_ia_onboarding.phase === "legals");
+  var onboardingLegals = seo.renderSeoIaOnboarding();
+  ok("C legals visible after P11", onboardingLegals.indexOf("Último paso antes de tu diagnóstico") >= 0);
+
+  // D — cannot continue without valid intent
+  seo.window.CZState = seoSurveySt();
+  fillP1ToP10(seo.window.CZState.seo_ia_onboarding);
+  seo.window.CZState.seo_ia_onboarding.phase = "intent";
+  seo.window.CZState.user_intent = null;
+  seo.window.CZState._user_intent_pending = null;
+  var p11Disabled = seo.renderSeoIaUserIntentP11();
+  ok("D CTA disabled without selection", p11Disabled.indexOf('id="btn-seo-ia-intent-next" disabled') >= 0);
+  seo.handleSeoIaUserIntentNext();
+  ok("D blocked without selection", seo.window.CZState.seo_ia_onboarding.phase === "intent");
+
+  function persistIntent(label, value, expected) {
+    seo.window.CZState = seoSurveySt();
+    fillP1ToP10(seo.window.CZState.seo_ia_onboarding);
+    seo.window.CZState.seo_ia_onboarding.phase = "intent";
+    seo.window.CZState.user_intent = null;
+    seo.handleSeoIaUserIntentSelect(value);
+    seo.handleSeoIaUserIntentNext();
+    ok(label + " persists " + expected, seo.window.CZState.user_intent === expected);
+    ok(label + " advances to legals", seo.window.CZState.seo_ia_onboarding.phase === "legals");
   }
 
-  // --- boot organic (no CDV params) ---
-  var org = boot("");
-  var st = organicSt();
-  org.window.CZState = st;
+  // E–H — each valid intent persists
+  persistIntent("E", "RECUPERAR", "RECUPERAR");
+  persistIntent("F", "ORDENAR", "ORDENAR");
+  persistIntent("G", "CREDITO", "CREDITO");
+  persistIntent("H", "OPTIMIZAR", "OPTIMIZAR");
 
-  // 1 — organic user sees intent question
-  ok("1 organic gate shows", org.shouldShowUserIntentCapture(st));
-  var intentHtml = org.renderUserIntentCapture();
-  ok("1 title present", intentHtml.indexOf("¿Qué querés lograr con Mi Plan?") >= 0);
-  ok("1 subtitle present", intentHtml.indexOf("Elegí la opción que mejor describe tu objetivo principal hoy.") >= 0);
-  ok("1 mobile wrap styles", intentHtml.indexOf("white-space:normal") >= 0
-    && intentHtml.indexOf("word-wrap:break-word") >= 0);
-  ok("1 CTA disabled initially", intentHtml.indexOf('id="btn-user-intent-continue" disabled') >= 0);
+  // I — reload restores valid user_intent
+  seo.window.CZState = { user_intent: "CREDITO", step: 0 };
+  seo.guardarLocal();
+  var saved = JSON.parse(_stored.val);
+  ok("I saved CREDITO", saved.user_intent === "CREDITO");
+  ok("I restore CREDITO", seo.normalizeUserIntent(saved.user_intent) === "CREDITO");
 
-  // 2 — CDV rejection user skips intent question
+  // J — reset clears user_intent
+  seo.window.CZState.user_intent = "OPTIMIZAR";
+  seo.resetear();
+  ok("J reset clears", seo.window.CZState.user_intent === null);
+
+  // K — invalid/empty/whitespace rejected
+  ok("K invalid BOGUS", seo.normalizeUserIntent("BOGUS") === null);
+  ok("K empty string", seo.normalizeUserIntent("") === null);
+  ok("K whitespace", seo.normalizeUserIntent("   ") === null);
+  ok("K lowercase ordenar", seo.normalizeUserIntent("ordenar") === null);
+  seo.window.CZState = seoSurveySt();
+  seo.window.CZState.seo_ia_onboarding.phase = "intent";
+  seo.handleSeoIaUserIntentSelect("  ");
+  ok("K whitespace select blocked", !seo.isValidUserIntent(seo.window.CZState._user_intent_pending));
+
+  // L–N — CDV skips P11
   var cdvSearch = "?ingreso=80000&laboral=relacion_dependencia"
     + "&p1=A&p2=B&p3=C&p4=D&p5=A&p6=B&p7=C&p8=D&p9=A&p10=B";
   var cdv = boot(cdvSearch);
-  ok("2 CDV hasRejectionContext", cdv.CZ_ENTRY_CONTEXT.hasRejectionContext === true);
-  cdv.window.CZState = organicSt();
-  ok("2 CDV skips gate", !cdv.shouldShowUserIntentCapture(cdv.window.CZState));
+  ok("L CDV hasRejectionContext", cdv.CZ_ENTRY_CONTEXT.hasRejectionContext === true);
+  cdv.window.CZState = { user_intent: null };
+  ok("L CDV skips P11", cdv.shouldSkipSeoIaUserIntentP11(cdv.window.CZState));
+  ok("M CDV P10 to legals", cdv.resolveSeoIaPhaseAfterP10(cdv.window.CZState) === "legals");
+  cdv.window.CZState.seo_ia_onboarding = {
+    phase: "survey",
+    surveyGroup: 5,
+    respuestas: {},
+  };
+  fillP1ToP10(cdv.window.CZState.seo_ia_onboarding);
+  cdv.handleSeoIaSurveyNext();
+  ok("M CDV lands on legals", cdv.window.CZState.seo_ia_onboarding.phase === "legals");
+  ok("N CDV no auto intent", cdv.window.CZState.user_intent == null);
 
-  // 3 — valid selection stores user_intent
-  st._user_intent_pending = "ORDENAR";
-  ok("3 pending valid", org.isValidUserIntent(st._user_intent_pending));
-  st.user_intent = org.normalizeUserIntent(st._user_intent_pending);
-  st._user_intent_pending = null;
-  ok("3 stored ORDENAR", org.window.CZState.user_intent === "ORDENAR");
-
-  // 4 — selection survives save/restore
-  org.window.CZState = { user_intent: "CREDITO", step: 0 };
-  org.guardarLocal();
-  var saved = JSON.parse(_stored.val);
-  ok("4 saved CREDITO", saved.user_intent === "CREDITO");
-  var restored = org.normalizeUserIntent(saved.user_intent);
-  ok("4 restore CREDITO", restored === "CREDITO");
-
-  // 5 — old localStorage without user_intent restores as null
-  ok("5 missing field null", org.normalizeUserIntent(undefined) === null);
-
-  // 6 — reset clears user_intent
-  org.window.CZState.user_intent = "OPTIMIZAR";
-  org.resetear();
-  ok("6 reset clears", org.window.CZState.user_intent === null);
-
-  // 7–9 — motor outputs unchanged with/without user_intent
-  org.PRE.ingreso = 80000;
-  org.PRE.respuestas = {
+  // O–Q — motor unchanged
+  seo.PRE.ingreso = 80000;
+  seo.PRE.respuestas = {
     p1: "B", p2: "B", p3: "B", p4: "B", p5: "B",
     p6: "B", p7: "B", p8: "B", p9: "B", p10: "B",
   };
-  org.window.CZState = { user_intent: null, deudas: [] };
-  var d0 = org.calcularMotor();
-  org.window.CZState.user_intent = "RECUPERAR";
-  var d1 = org.calcularMotor();
-  ok("7 score unchanged", d0.scoreReset === d1.scoreReset);
-  ok("8 planId unchanged", d0.planId === d1.planId);
-  ok("9 nivelR unchanged", d0.nivelR === d1.nivelR);
-  ok("9 interpretacion_v2 risk unchanged",
+  seo.window.CZState = { user_intent: null, deudas: [] };
+  var d0 = seo.calcularMotor();
+  seo.window.CZState.user_intent = "ORDENAR";
+  var d1 = seo.calcularMotor();
+  ok("O score unchanged", d0.scoreReset === d1.scoreReset);
+  ok("P planId unchanged", d0.planId === d1.planId);
+  ok("Q risk unchanged",
     (d0.interpretacion_v2 && d0.interpretacion_v2.nivel_riesgo) ===
     (d1.interpretacion_v2 && d1.interpretacion_v2.nivel_riesgo));
 
-  // 10 — returning dashboard users not blocked
-  var dash = dashboardSt();
-  org.PRE.ingreso = 80000;
-  org.window.CZState = dash;
-  ok("10 dashboard not gated", !org.shouldShowUserIntentCapture(dash));
+  // R — dashboard narrative / motor do not consume user_intent
+  var uiSrc = fs.readFileSync(path.join(root, "js/ui.js"), "utf8");
+  var algoSrc = fs.readFileSync(path.join(root, "js/algorithms.js"), "utf8");
+  ok("R motor has no user_intent", algoSrc.indexOf("user_intent") < 0);
+  ok("R narrativa fn has no user_intent", uiSrc.indexOf("renderNarrativaInterpretacion") >= 0
+    && uiSrc.split("function renderNarrativaInterpretacion")[1].split("function ")[0].indexOf("user_intent") < 0);
 
-  // 11 — invalid stored value normalizes to null
-  ok("11 invalid BOGUS", org.normalizeUserIntent("BOGUS") === null);
-  ok("11 invalid empty", org.normalizeUserIntent("") === null);
-  ok("11 invalid lowercase", org.normalizeUserIntent("ordenar") === null);
-
-  // 12 — SEO intent URL param does not affect user_intent
-  var seo = boot("?source=seo_ia&intent=clearing&question=como-salir-del-clearing");
-  seo.window.CZState = organicSt();
-  ok("12 seo acq intent set", seo.getSeoIaAcquisitionPayload().intent === "clearing");
-  ok("12 user_intent stays null", seo.window.CZState.user_intent == null);
-  ok("12 seo intent not valid user_intent", seo.normalizeUserIntent("clearing") === null);
+  // Group 5 button label for non-CDV
+  seo.window.CZState = seoSurveySt();
+  var g5 = seo.renderSeoIaSurveyGroupScreen(5);
+  ok("group5 non-CDV says Siguiente", g5.indexOf(">Siguiente</button>") >= 0);
+  var g5cdv = cdv.renderSeoIaSurveyGroupScreen(5);
+  ok("group5 CDV says Ver mis legales", g5cdv.indexOf(">Ver mis legales</button>") >= 0);
 
   console.log("\nINTENT-01A QA: " + passed + " passed, " + failed + " failed");
   if (failed > 0) process.exit(1);

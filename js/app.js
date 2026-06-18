@@ -2473,11 +2473,37 @@ function handleSeoIaSurveyNext() {
   }
 
   if (group >= 5) {
-    ob.phase = "legals";
+    ob.phase = typeof resolveSeoIaPhaseAfterP10 === "function"
+      ? resolveSeoIaPhaseAfterP10(st)
+      : "legals";
   } else {
     ob.surveyGroup = group + 1;
   }
 
+  window.guardarLocal();
+  window.CredizonaUI.renderAll();
+}
+
+function handleSeoIaUserIntentSelect(intentVal) {
+  var st = window.CZState;
+  var normalized = typeof normalizeUserIntent === "function"
+    ? normalizeUserIntent(intentVal)
+    : null;
+  if (!normalized) return;
+  st._user_intent_pending = normalized;
+  window.guardarLocal();
+  window.CredizonaUI.renderAll();
+}
+
+function handleSeoIaUserIntentNext() {
+  var st = window.CZState;
+  var ob = st.seo_ia_onboarding;
+  if (!ob || ob.phase !== "intent") return;
+  var pending = st._user_intent_pending;
+  if (typeof isValidUserIntent !== "function" || !isValidUserIntent(pending)) return;
+  st.user_intent = normalizeUserIntent(pending);
+  st._user_intent_pending = null;
+  ob.phase = "legals";
   window.guardarLocal();
   window.CredizonaUI.renderAll();
 }
@@ -3190,27 +3216,20 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // INTENT-01A — user intent capture gate
-      var intentOpt = e.target.closest("[data-user-intent-opt]");
-      if (intentOpt) {
-        var intentVal = intentOpt.getAttribute("data-user-intent-opt");
-        if (typeof isValidUserIntent === "function" && isValidUserIntent(intentVal)) {
-          st._user_intent_pending = intentVal;
-          if (typeof updateUserIntentContinueState === "function") {
-            updateUserIntentContinueState();
-          }
-          window.CredizonaUI.renderAll();
-        }
+      // SEO IA onboarding — intro, survey, P11 intent, legals, diagnosis CTA
+      if (e.target.id === "btn-seo-ia-intro-start") {
+        handleSeoIaIntroStart();
         return;
       }
 
-      if (e.target.id === "btn-user-intent-continue") {
-        var pendingIntent = st._user_intent_pending;
-        if (!isValidUserIntent(pendingIntent)) return;
-        st.user_intent = normalizeUserIntent(pendingIntent);
-        st._user_intent_pending = null;
-        window.guardarLocal();
-        window.CredizonaUI.renderAll();
+      var _seoIntentOpt = e.target.closest("[data-seo-intent-opt]");
+      if (_seoIntentOpt) {
+        handleSeoIaUserIntentSelect(_seoIntentOpt.getAttribute("data-seo-intent-opt"));
+        return;
+      }
+
+      if (e.target.id === "btn-seo-ia-intent-next") {
+        handleSeoIaUserIntentNext();
         return;
       }
 
@@ -3244,12 +3263,6 @@ document.addEventListener("DOMContentLoaded", function() {
         trackEvent(CZ_EVENT_NAMES.SURVEY_STARTED, { source: "dashboard_refinement_cta" });
         window.guardarLocal();
         window.location.href = SURVEY_URL;
-        return;
-      }
-
-      // SEO IA onboarding — intro, survey options, legals, diagnosis CTA
-      if (e.target.id === "btn-seo-ia-intro-start") {
-        handleSeoIaIntroStart();
         return;
       }
 

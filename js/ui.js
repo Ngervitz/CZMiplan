@@ -97,11 +97,6 @@ function updateSticky() {
   var bar  = document.getElementById("sticky-bar");
   if (!lbl || !stEl || !cta) return;
 
-  if (typeof shouldShowUserIntentCapture === "function" && shouldShowUserIntentCapture(st)) {
-    if (bar) bar.style.display = "none";
-    return;
-  }
-
   // step 0: basic profile + income (SEO virgin / missing profile)
   if (typeof needsIncomeStep === "function" && needsIncomeStep(st)) {
     if (bar) { bar.style.display = ""; bar.classList.remove("dashboard"); }
@@ -5422,6 +5417,12 @@ function seoIaNormalizeOnboardingPhase(ob) {
   if (!ob) return;
   if (ob.phase === "finish") ob.phase = "legals";
   if (ob.phase === "survey" && !ob.surveyGroup) ob.surveyGroup = 1;
+  var st = _st();
+  if (ob.phase === "legals"
+    && !shouldSkipSeoIaUserIntentP11(st)
+    && !isValidUserIntent(st.user_intent)) {
+    ob.phase = "intent";
+  }
 }
 
 function seoIaSurveyGroupQuestions(group) {
@@ -5448,6 +5449,116 @@ function seoIaSurveyIsComplete(ob) {
     if (v !== "A" && v !== "B" && v !== "C" && v !== "D") return false;
   }
   return true;
+}
+
+// INTENT-01A — P11 user intent (SEO IA survey only; no motor impact)
+var USER_INTENT_VALUES = ["RECUPERAR", "ORDENAR", "CREDITO", "OPTIMIZAR"];
+
+var USER_INTENT_OPTIONS = [
+  { v: "RECUPERAR", l: "Salir de una deuda o situación difícil" },
+  { v: "ORDENAR", l: "Ordenar mis finanzas y entender mejor mis números" },
+  { v: "CREDITO", l: "Mejorar mi perfil para acceder a crédito" },
+  { v: "OPTIMIZAR", l: "Hacer rendir mejor lo que tengo" },
+];
+
+function normalizeUserIntent(value) {
+  if (value == null) return null;
+  var s = String(value).trim();
+  if (s === "") return null;
+  return USER_INTENT_VALUES.indexOf(s) >= 0 ? s : null;
+}
+
+function isValidUserIntent(value) {
+  return normalizeUserIntent(value) != null;
+}
+
+function shouldSkipSeoIaUserIntentP11(st) {
+  var entryCtx = typeof CZ_ENTRY_CONTEXT !== "undefined" ? CZ_ENTRY_CONTEXT : {};
+  return !!entryCtx.hasRejectionContext;
+}
+
+function resolveSeoIaPhaseAfterP10(st) {
+  st = st || _st();
+  if (shouldSkipSeoIaUserIntentP11(st)) return "legals";
+  if (isValidUserIntent(st.user_intent)) return "legals";
+  return "intent";
+}
+
+function renderSeoIaUserIntentP11() {
+  var st = _st();
+  var pending = st._user_intent_pending;
+  var canContinue = isValidUserIntent(pending);
+  var optsHtml = USER_INTENT_OPTIONS.map(function(opt) {
+    var isSel = pending === opt.v;
+    return [
+      '<button type="button" data-seo-intent-opt="' + opt.v + '" style="',
+        "display:block;width:100%;max-width:100%;box-sizing:border-box;text-align:left;",
+        "border-radius:14px;padding:16px 18px;margin-bottom:10px;cursor:pointer;",
+        "white-space:normal;word-wrap:break-word;overflow-wrap:break-word;",
+        "border:1px solid " + (isSel ? "rgba(64,215,255,.55)" : "rgba(255,255,255,.09)") + ";",
+        "background:" + (isSel ? "rgba(64,215,255,.12)" : "rgba(255,255,255,.04)") + ";",
+        "color:rgba(255,255,255,.9);font-size:15px;line-height:1.5;",
+      '">',
+        opt.l,
+      "</button>",
+    ].join("");
+  }).join("");
+
+  return [
+    '<div id="seo-ia-survey-progress" style="margin-bottom:28px;">',
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">',
+        '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#40d7ff;">',
+          "Pregunta 11 de 11",
+        "</div>",
+        '<div style="font-size:12px;color:#8390b5;">100%</div>',
+      "</div>",
+      '<div style="height:8px;background:rgba(255,255,255,.1);border-radius:999px;overflow:hidden;">',
+        '<div style="height:100%;width:100%;background:linear-gradient(90deg,#5b7cff 0%,#40d7ff 100%);',
+          'border-radius:999px;"></div>',
+      "</div>",
+    "</div>",
+    '<div class="seo-ia-q-card seo-ia-intent-p11" data-seo-q-card="11" style="',
+      "background:rgba(91,124,255,.06);border:1px solid rgba(91,124,255,.18);",
+      "border-radius:16px;padding:20px 18px;margin-bottom:20px;",
+    '">',
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#40d7ff;margin-bottom:8px;">',
+        "Tu objetivo",
+      "</div>",
+      '<h2 style="font-size:20px;font-weight:800;line-height:1.35;color:#fff;margin:0 0 8px;',
+        'white-space:normal;word-wrap:break-word;">¿Qué querés lograr con Mi Plan?</h2>',
+      '<p style="font-size:15px;color:rgba(255,255,255,.7);line-height:1.65;margin:0 0 18px;',
+        'white-space:normal;word-wrap:break-word;">',
+        "Elegí la opción que mejor describe tu objetivo principal hoy.",
+      "</p>",
+      '<div class="seo-ia-survey-options">' + optsHtml + "</div>",
+    "</div>",
+    '<button type="button" id="btn-seo-ia-intent-next" ' + (canContinue ? "" : "disabled ") + 'style="',
+      "width:100%;border:none;border-radius:16px;padding:18px 24px;margin-top:8px;",
+      "font-size:17px;font-weight:800;color:#fff;cursor:pointer;",
+      "background:linear-gradient(135deg,#5b7cff 0%,#40d7ff 100%);",
+      "box-shadow:0 4px 24px rgba(64,215,255,.35);line-height:1.3;",
+      (canContinue ? "" : "opacity:.45;"),
+    '">Ver mis legales</button>',
+  ].join("");
+}
+
+function updateSeoIaIntentP11State() {
+  var st = _st();
+  var pending = st._user_intent_pending;
+  var valid = isValidUserIntent(pending);
+  var btn = document.getElementById("btn-seo-ia-intent-next");
+  if (btn) {
+    btn.disabled = !valid;
+    btn.style.opacity = valid ? "1" : ".45";
+  }
+  var opts = document.querySelectorAll("[data-seo-intent-opt]");
+  for (var i = 0; i < opts.length; i++) {
+    var el = opts[i];
+    var val = el.getAttribute("data-seo-intent-opt");
+    var selected = val === pending && valid;
+    el.style.border = "1px solid " + (selected ? "rgba(64,215,255,.55)" : "rgba(255,255,255,.09)");
+    el.style.background = selected ? "rgba(64,215,255,.12)" : "rgba(255,255,255,.04)";
+  }
 }
 
 function shouldShowSeoIaOnboarding() {
@@ -5595,7 +5706,8 @@ function renderSeoIaSurveyGroupScreen(group) {
   var g = group || 1;
   var qs = seoIaSurveyGroupQuestions(g);
   var isLast = g === 5;
-  var btnLabel = isLast ? "Ver mis legales" : "Siguiente";
+  var skipIntent = shouldSkipSeoIaUserIntentP11();
+  var btnLabel = isLast ? (skipIntent ? "Ver mis legales" : "Siguiente") : "Siguiente";
 
   return [
     renderSeoIaSurveyProgressBar(g),
@@ -5655,6 +5767,8 @@ function renderSeoIaOnboarding() {
     body = renderSeoIaIntroBlock();
   } else if (ob.phase === "survey") {
     body = renderSeoIaSurveyGroupScreen(ob.surveyGroup || 1);
+  } else if (ob.phase === "intent") {
+    body = renderSeoIaUserIntentP11();
   } else if (ob.phase === "legals") {
     body = renderSeoIaSurveyLegalsAndCta();
   }
@@ -5679,100 +5793,6 @@ function renderSeoIaVirginLanding() {
 // Shown when czuid was present but CRM returned null AND localStorage is empty.
 // Does NOT show financial cards, scores, or any diagnostic data.
 // =============================================================================
-
-// =============================================================================
-// INTENT-01A — user intent capture (organic only; no motor impact)
-// =============================================================================
-var USER_INTENT_VALUES = ["RECUPERAR", "ORDENAR", "CREDITO", "OPTIMIZAR"];
-
-var USER_INTENT_OPTIONS = [
-  { v: "RECUPERAR", l: "Salir de una deuda o situación difícil" },
-  { v: "ORDENAR", l: "Ordenar mis finanzas y entender mejor mis números" },
-  { v: "CREDITO", l: "Mejorar mi perfil para acceder a crédito" },
-  { v: "OPTIMIZAR", l: "Hacer rendir mejor lo que tengo" },
-];
-
-function normalizeUserIntent(value) {
-  if (value == null || value === "") return null;
-  var s = String(value);
-  return USER_INTENT_VALUES.indexOf(s) >= 0 ? s : null;
-}
-
-function isValidUserIntent(value) {
-  return normalizeUserIntent(value) != null;
-}
-
-function shouldShowUserIntentCapture(st) {
-  st = st || _st();
-  var entryCtx = typeof CZ_ENTRY_CONTEXT !== "undefined" ? CZ_ENTRY_CONTEXT : {};
-  if (entryCtx.hasRejectionContext) return false;
-  if (st.user_intent) return false;
-  if (typeof hasCompletedFinancialInputs === "function" && hasCompletedFinancialInputs(st)) {
-    return false;
-  }
-  return true;
-}
-
-function renderUserIntentCapture() {
-  var st = _st();
-  var pending = st._user_intent_pending;
-  var optsHtml = USER_INTENT_OPTIONS.map(function(opt) {
-    var selected = pending === opt.v;
-    return '<button type="button" data-user-intent-opt="' + opt.v + '" style="'
-      + "display:block;width:100%;max-width:100%;box-sizing:border-box;"
-      + "text-align:left;padding:16px 18px;margin-bottom:12px;"
-      + "border-radius:14px;cursor:pointer;font-size:15px;line-height:1.55;"
-      + "white-space:normal;word-wrap:break-word;overflow-wrap:break-word;"
-      + (selected
-        ? "background:rgba(91,124,255,.18);border:2px solid #5b7cff;color:rgba(255,255,255,.95);"
-        : "background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);color:rgba(255,255,255,.85);")
-      + '">' + opt.l + "</button>";
-  }).join("");
-
-  var canContinue = isValidUserIntent(pending);
-
-  return '<div style="padding:8px 0;max-width:100%;overflow-x:hidden;box-sizing:border-box;">'
-    + '<div style="font-size:26px;font-weight:900;line-height:1.25;margin-bottom:12px;'
-    + 'white-space:normal;word-wrap:break-word;">¿Qué querés lograr con Mi Plan?</div>'
-    + '<div style="font-size:16px;color:rgba(255,255,255,.7);line-height:1.65;margin-bottom:24px;'
-    + 'white-space:normal;word-wrap:break-word;">'
-    + "Elegí la opción que mejor describe tu objetivo principal hoy."
-    + "</div>"
-    + '<div style="width:100%;max-width:100%;">' + optsHtml + "</div>"
-    + '<button type="button" class="btn btn-primary" id="btn-user-intent-continue" '
-    + (canContinue ? "" : "disabled ")
-    + 'style="width:100%;max-width:100%;box-sizing:border-box;height:64px;font-size:19px;margin-top:8px;'
-    + (canContinue ? "" : "opacity:.45;")
-    + '">Continuar</button>'
-    + "</div>";
-}
-
-function updateUserIntentContinueState() {
-  var st = _st();
-  var pending = st._user_intent_pending;
-  var valid = isValidUserIntent(pending);
-  var btn = document.getElementById("btn-user-intent-continue");
-  if (btn) {
-    btn.disabled = !valid;
-    btn.style.opacity = valid ? "1" : ".45";
-  }
-  var opts = document.querySelectorAll("[data-user-intent-opt]");
-  for (var i = 0; i < opts.length; i++) {
-    var el = opts[i];
-    var val = el.getAttribute("data-user-intent-opt");
-    var selected = val === pending && valid;
-    if (selected) {
-      el.style.background = "rgba(91,124,255,.18)";
-      el.style.border = "2px solid #5b7cff";
-      el.style.color = "rgba(255,255,255,.95)";
-    } else {
-      el.style.background = "rgba(255,255,255,.04)";
-      el.style.border = "1px solid rgba(255,255,255,.09)";
-      el.style.color = "rgba(255,255,255,.85)";
-    }
-  }
-}
-
 function renderBridgeScreen() {
   return [
     '<div style="',
@@ -5847,14 +5867,6 @@ function renderAll() {
     return;
   }
 
-  // INTENT-01A — user intent capture gate (organic users, before financial flow)
-  if (shouldShowUserIntentCapture(st)) {
-    main.innerHTML = '<div class="fade">' + renderUserIntentCapture() + "</div>";
-    updateUserIntentContinueState();
-    updateSticky();
-    return;
-  }
-
   // SEO IA virgin onboarding — after external consent, before step routing
   if (typeof shouldShowSeoIaOnboarding === "function" && shouldShowSeoIaOnboarding()) {
     main.innerHTML = '<div class="fade">' + renderSeoIaOnboarding() + '</div>';
@@ -5873,6 +5885,9 @@ function renderAll() {
       if (st.seo_ia_onboarding.phase === "survey"
         && typeof updateSeoIaSurveyNextState === "function") {
         updateSeoIaSurveyNextState();
+      } else if (st.seo_ia_onboarding.phase === "intent"
+        && typeof updateSeoIaIntentP11State === "function") {
+        updateSeoIaIntentP11State();
       } else if (st.seo_ia_onboarding.phase === "legals"
         && typeof updateSeoIaDiagnosisCtaState === "function") {
         updateSeoIaDiagnosisCtaState();
@@ -6020,14 +6035,16 @@ window.CredizonaUI = {
   _rejectionCopy: _rejectionCopy,
   normalizeUserIntent: normalizeUserIntent,
   isValidUserIntent: isValidUserIntent,
-  shouldShowUserIntentCapture: shouldShowUserIntentCapture,
-  renderUserIntentCapture: renderUserIntentCapture,
-  updateUserIntentContinueState: updateUserIntentContinueState,
+  shouldSkipSeoIaUserIntentP11: shouldSkipSeoIaUserIntentP11,
+  resolveSeoIaPhaseAfterP10: resolveSeoIaPhaseAfterP10,
+  renderSeoIaUserIntentP11: renderSeoIaUserIntentP11,
+  updateSeoIaIntentP11State: updateSeoIaIntentP11State,
 };
 
 window.normalizeUserIntent = normalizeUserIntent;
 window.isValidUserIntent = isValidUserIntent;
-window.shouldShowUserIntentCapture = shouldShowUserIntentCapture;
-window.updateUserIntentContinueState = updateUserIntentContinueState;
+window.shouldSkipSeoIaUserIntentP11 = shouldSkipSeoIaUserIntentP11;
+window.resolveSeoIaPhaseAfterP10 = resolveSeoIaPhaseAfterP10;
+window.updateSeoIaIntentP11State = updateSeoIaIntentP11State;
 
 window.renderAll = renderAll;
