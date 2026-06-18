@@ -40,6 +40,9 @@ window.CZState = {
   iaRes:         null,
   miplan_started: false,
 
+  // INTENT-01A — narrative context only (no motor impact)
+  user_intent: null,
+
   // Sprint 9 — incomplete data flags
   gastos_missing_confirmed:  false,
   low_expenses_confirmed:    false,
@@ -1085,6 +1088,7 @@ window.guardarLocal = function(extra) {
       plus_feedback_submitted: !!st.plus_feedback_submitted,
       iaRes:                   st.iaRes,
       miplan_started:          st.miplan_started          || false,
+      user_intent:             normalizeUserIntent(st.user_intent),
       user_recovery_state:     st.user_recovery_state     || null,
       temporal:                st.temporal                || {},
       herr:                    st.herr,
@@ -1387,6 +1391,7 @@ function resetear() {
     plus_feedback_submitted: false,
     iaRes:               null,
     miplan_started:      false,
+    user_intent:         null,
     user_recovery_state: null,
 
     // Sprint 9 — incomplete data flags
@@ -2210,6 +2215,8 @@ async function init() {
     st.vertical_profiling_opened = !!dataToUse.vertical_profiling_opened;
     syncVerticalProfilingCompletion(st);
 
+    st.user_intent = normalizeUserIntent(dataToUse.user_intent);
+
     if (hasCompletedFinancialInputs(st)) {
       st.step = 3;
     } else {
@@ -2265,6 +2272,8 @@ async function init() {
     syncPreRespuestasFromSeoIaSurvey(st);
   }
   ensureFinancialStepBeforeDashboard(st);
+
+  st.user_intent = normalizeUserIntent(st.user_intent);
 
   if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {
     window.CredizonaUI.renderAll();
@@ -3178,6 +3187,30 @@ document.addEventListener("DOMContentLoaded", function() {
             label: acc.textContent.trim().substring(0, 40),
           });
         }
+        return;
+      }
+
+      // INTENT-01A — user intent capture gate
+      var intentOpt = e.target.closest("[data-user-intent-opt]");
+      if (intentOpt) {
+        var intentVal = intentOpt.getAttribute("data-user-intent-opt");
+        if (typeof isValidUserIntent === "function" && isValidUserIntent(intentVal)) {
+          st._user_intent_pending = intentVal;
+          if (typeof updateUserIntentContinueState === "function") {
+            updateUserIntentContinueState();
+          }
+          window.CredizonaUI.renderAll();
+        }
+        return;
+      }
+
+      if (e.target.id === "btn-user-intent-continue") {
+        var pendingIntent = st._user_intent_pending;
+        if (!isValidUserIntent(pendingIntent)) return;
+        st.user_intent = normalizeUserIntent(pendingIntent);
+        st._user_intent_pending = null;
+        window.guardarLocal();
+        window.CredizonaUI.renderAll();
         return;
       }
 

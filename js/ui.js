@@ -97,6 +97,11 @@ function updateSticky() {
   var bar  = document.getElementById("sticky-bar");
   if (!lbl || !stEl || !cta) return;
 
+  if (typeof shouldShowUserIntentCapture === "function" && shouldShowUserIntentCapture(st)) {
+    if (bar) bar.style.display = "none";
+    return;
+  }
+
   // step 0: basic profile + income (SEO virgin / missing profile)
   if (typeof needsIncomeStep === "function" && needsIncomeStep(st)) {
     if (bar) { bar.style.display = ""; bar.classList.remove("dashboard"); }
@@ -5674,6 +5679,100 @@ function renderSeoIaVirginLanding() {
 // Shown when czuid was present but CRM returned null AND localStorage is empty.
 // Does NOT show financial cards, scores, or any diagnostic data.
 // =============================================================================
+
+// =============================================================================
+// INTENT-01A — user intent capture (organic only; no motor impact)
+// =============================================================================
+var USER_INTENT_VALUES = ["RECUPERAR", "ORDENAR", "CREDITO", "OPTIMIZAR"];
+
+var USER_INTENT_OPTIONS = [
+  { v: "RECUPERAR", l: "Salir de una deuda o situación difícil" },
+  { v: "ORDENAR", l: "Ordenar mis finanzas y entender mejor mis números" },
+  { v: "CREDITO", l: "Mejorar mi perfil para acceder a crédito" },
+  { v: "OPTIMIZAR", l: "Hacer rendir mejor lo que tengo" },
+];
+
+function normalizeUserIntent(value) {
+  if (value == null || value === "") return null;
+  var s = String(value);
+  return USER_INTENT_VALUES.indexOf(s) >= 0 ? s : null;
+}
+
+function isValidUserIntent(value) {
+  return normalizeUserIntent(value) != null;
+}
+
+function shouldShowUserIntentCapture(st) {
+  st = st || _st();
+  var entryCtx = typeof CZ_ENTRY_CONTEXT !== "undefined" ? CZ_ENTRY_CONTEXT : {};
+  if (entryCtx.hasRejectionContext) return false;
+  if (st.user_intent) return false;
+  if (typeof hasCompletedFinancialInputs === "function" && hasCompletedFinancialInputs(st)) {
+    return false;
+  }
+  return true;
+}
+
+function renderUserIntentCapture() {
+  var st = _st();
+  var pending = st._user_intent_pending;
+  var optsHtml = USER_INTENT_OPTIONS.map(function(opt) {
+    var selected = pending === opt.v;
+    return '<button type="button" data-user-intent-opt="' + opt.v + '" style="'
+      + "display:block;width:100%;max-width:100%;box-sizing:border-box;"
+      + "text-align:left;padding:16px 18px;margin-bottom:12px;"
+      + "border-radius:14px;cursor:pointer;font-size:15px;line-height:1.55;"
+      + "white-space:normal;word-wrap:break-word;overflow-wrap:break-word;"
+      + (selected
+        ? "background:rgba(91,124,255,.18);border:2px solid #5b7cff;color:rgba(255,255,255,.95);"
+        : "background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);color:rgba(255,255,255,.85);")
+      + '">' + opt.l + "</button>";
+  }).join("");
+
+  var canContinue = isValidUserIntent(pending);
+
+  return '<div style="padding:8px 0;max-width:100%;overflow-x:hidden;box-sizing:border-box;">'
+    + '<div style="font-size:26px;font-weight:900;line-height:1.25;margin-bottom:12px;'
+    + 'white-space:normal;word-wrap:break-word;">¿Qué querés lograr con Mi Plan?</div>'
+    + '<div style="font-size:16px;color:rgba(255,255,255,.7);line-height:1.65;margin-bottom:24px;'
+    + 'white-space:normal;word-wrap:break-word;">'
+    + "Elegí la opción que mejor describe tu objetivo principal hoy."
+    + "</div>"
+    + '<div style="width:100%;max-width:100%;">' + optsHtml + "</div>"
+    + '<button type="button" class="btn btn-primary" id="btn-user-intent-continue" '
+    + (canContinue ? "" : "disabled ")
+    + 'style="width:100%;max-width:100%;box-sizing:border-box;height:64px;font-size:19px;margin-top:8px;'
+    + (canContinue ? "" : "opacity:.45;")
+    + '">Continuar</button>'
+    + "</div>";
+}
+
+function updateUserIntentContinueState() {
+  var st = _st();
+  var pending = st._user_intent_pending;
+  var valid = isValidUserIntent(pending);
+  var btn = document.getElementById("btn-user-intent-continue");
+  if (btn) {
+    btn.disabled = !valid;
+    btn.style.opacity = valid ? "1" : ".45";
+  }
+  var opts = document.querySelectorAll("[data-user-intent-opt]");
+  for (var i = 0; i < opts.length; i++) {
+    var el = opts[i];
+    var val = el.getAttribute("data-user-intent-opt");
+    var selected = val === pending && valid;
+    if (selected) {
+      el.style.background = "rgba(91,124,255,.18)";
+      el.style.border = "2px solid #5b7cff";
+      el.style.color = "rgba(255,255,255,.95)";
+    } else {
+      el.style.background = "rgba(255,255,255,.04)";
+      el.style.border = "1px solid rgba(255,255,255,.09)";
+      el.style.color = "rgba(255,255,255,.85)";
+    }
+  }
+}
+
 function renderBridgeScreen() {
   return [
     '<div style="',
@@ -5745,6 +5844,14 @@ function renderAll() {
         entry_channel: (typeof detectEntryChannel === "function") ? detectEntryChannel() : "direct",
       });
     }
+    return;
+  }
+
+  // INTENT-01A — user intent capture gate (organic users, before financial flow)
+  if (shouldShowUserIntentCapture(st)) {
+    main.innerHTML = '<div class="fade">' + renderUserIntentCapture() + "</div>";
+    updateUserIntentContinueState();
+    updateSticky();
     return;
   }
 
@@ -5911,6 +6018,16 @@ window.CredizonaUI = {
   renderLowExpensesConfirmCard: renderLowExpensesConfirmCard,
   isRetryEligible: typeof isRetryEligible === "function" ? isRetryEligible : null,
   _rejectionCopy: _rejectionCopy,
+  normalizeUserIntent: normalizeUserIntent,
+  isValidUserIntent: isValidUserIntent,
+  shouldShowUserIntentCapture: shouldShowUserIntentCapture,
+  renderUserIntentCapture: renderUserIntentCapture,
+  updateUserIntentContinueState: updateUserIntentContinueState,
 };
+
+window.normalizeUserIntent = normalizeUserIntent;
+window.isValidUserIntent = isValidUserIntent;
+window.shouldShowUserIntentCapture = shouldShowUserIntentCapture;
+window.updateUserIntentContinueState = updateUserIntentContinueState;
 
 window.renderAll = renderAll;
