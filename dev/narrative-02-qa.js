@@ -255,12 +255,12 @@
   var explAfter = ctx.renderNarrativaInterpretacion(diagBase, stComplete);
   ok("L explanation varies with narrative_mode", explBefore !== explAfter);
 
-  // M — Next Step unchanged (coherence nextStepText)
+  // M — coherence legacy next step unchanged (Hero path)
   var cohBase = ctx.resolveDashboardCoherence(diagBase, stComplete);
   var nextBefore = cohBase.nextStepText;
   diagBase.narrative_decision = { narrative_mode: "RECOVERY", profile_tier: "AT_RISK", sub_tracks: {} };
   var cohAfter = ctx.resolveDashboardCoherence(diagBase, stComplete);
-  ok("M Next Step unchanged", cohBase.nextStepText === cohAfter.nextStepText && nextBefore === cohAfter.nextStepText);
+  ok("M coherence nextStepText unchanged", cohBase.nextStepText === cohAfter.nextStepText && nextBefore === cohAfter.nextStepText);
 
   // N — Recommendations unchanged
   var recBefore = ctx.renderAccionesRecomendadasHtml(diagBase);
@@ -309,12 +309,9 @@
   );
   ok("V Explanation consumes narrative_decision via resolver", explResolverBlock.indexOf("narrative_decision") >= 0);
 
-  // W — Next Step resolver does not consume narrative_decision
-  var nextStepBlock = uiSrc.slice(
-    uiSrc.indexOf("function _resolveDashboardNextStepText"),
-    uiSrc.indexOf("function _incompleteFinancialScoreLabel")
-  );
-  ok("W Next Step does not consume narrative_decision", nextStepBlock.indexOf("narrative_decision") < 0);
+  // W — Next Step consumes narrative_decision via resolver (NARRATIVE-04)
+  var nextBlock = uiSrc.slice(uiSrc.indexOf("NARRATIVE-04"), uiSrc.indexOf("function _incompleteFinancialScoreLabel"));
+  ok("W Next Step consumes narrative_decision via resolver", nextBlock.indexOf("narrative_decision") >= 0);
 
   // X — Recommendations do not consume narrative_decision
   var recBlock = uiSrc.slice(
@@ -323,19 +320,16 @@
   );
   ok("X Recommendations do not consume narrative_decision", recBlock.indexOf("narrative_decision") < 0);
 
-  // Y — Only Hero consumes narrative_decision in ui.js
+  // Y — Hero, Explanation and Next Step consume narrative_decision
   var heroBlock = uiSrc.slice(
     uiSrc.indexOf("NARRATIVE-02"),
     uiSrc.indexOf("function _renderDashboardHeroCard")
   );
-  var uiOutsideHero = uiSrc.slice(0, uiSrc.indexOf("NARRATIVE-02"))
-    + uiSrc.slice(uiSrc.indexOf("function renderPrimaryActionCard"));
+  var explBlock = uiSrc.slice(uiSrc.indexOf("NARRATIVE-03"), uiSrc.indexOf("function renderNarrativaInterpretacion"));
+  var nextBlock = uiSrc.slice(uiSrc.indexOf("NARRATIVE-04"), uiSrc.indexOf("function _incompleteFinancialScoreLabel"));
   ok("Y Hero block references narrative_decision", heroBlock.indexOf("narrative_decision") >= 0);
-  var nextStepBlock = uiSrc.slice(
-    uiSrc.indexOf("function _resolveDashboardNextStepText"),
-    uiSrc.indexOf("function _incompleteFinancialScoreLabel")
-  );
-  ok("Y Next Step still isolated from narrative_decision", nextStepBlock.indexOf("narrative_decision") < 0);
+  ok("Y Explanation block references narrative_decision", explBlock.indexOf("narrative_decision") >= 0);
+  ok("Y Next Step block references narrative_decision", nextBlock.indexOf("narrative_decision") >= 0);
 
   // Z — HEALTHY tier keeps OPTIMIZATION dominant, tone only
   var stZ = completeSt({

@@ -2418,7 +2418,7 @@ function resolveDashboardCoherence(diag, st) {
     suppressOrdenarPanorama = false;
   } else {
     nextStepKey = _resolveNextStepKeyFromDiag(diag, st);
-    nextStepText = _resolveDashboardNextStepText(diag, st);
+    nextStepText = _resolveDashboardNextStepTextLegacy(diag, st);
     heroProblemOverride = null;
     suppressOrdenarPanorama = false;
   }
@@ -2442,7 +2442,123 @@ function resolveDashboardCoherence(diag, st) {
   };
 }
 
-function _resolveDashboardNextStepText(diag, st) {
+// =============================================================================
+// NARRATIVE-04 — Next Step narrative consumption (content-selection layer only)
+// GUARDRAIL:
+// NARRATIVE-04 allows only Hero, Explanation and Next Step to consume narrative_decision.
+// Recommendations must not consume narrative_decision.
+// Recommended Actions must not consume narrative_decision.
+// CRM must not consume narrative_decision.
+// GTM/GA4 must not consume narrative_decision.
+// Do not invent new action IDs or navigation routes.
+// =============================================================================
+
+var _NEXT_STEP_KNOWN_TEXTS = {
+  liberar_margen: "Identificar qué cuota libera más margen mensual es el paso con mayor impacto inmediato.",
+  estabilizar_atraso: "Antes de pensar en nueva financiación, el foco debería estar en estabilizar los atrasos activos.",
+  reducir_costo_prioritaria: "Evaluar si hay forma de reducir el costo de la deuda prioritaria puede mejorar el margen disponible.",
+  consolidar_deuda: "Consolidar o eliminar la deuda que menos beneficio genera puede simplificar el panorama mensual.",
+  formalizar_informal: "Formalizar o reestructurar el compromiso informal reduce presión fuera del sistema y mejora el perfil.",
+  definir_primer_paso: "Definir una acción concreta esta semana es más valioso que planificar sin ejecutar.",
+  ordenar_panorama: "Ordenar el panorama completo de deudas y flujo es el punto de partida más útil ahora.",
+  confirmar_saldo_stock_deuda: "Confirmar el saldo actualizado y definir si esta deuda debe estabilizarse, refinanciarse o atacarse primero.",
+  mantener_disciplina: "Mantené el ritmo de pagos actual y utilizá el margen disponible para reducir deuda más rápido si te resulta conveniente.",
+  optimizar_deuda_cara: "Priorizá la deuda de mayor costo para reducir intereses innecesarios.",
+};
+
+function _sanitizeNextStepFocusTarget(narrativeMode, focusTarget) {
+  var focus = String(focusTarget || "DEFAULT").trim().toUpperCase();
+  if (narrativeMode === "RECOVERY") {
+    if (focus === "CREDIT_BUILDING" || focus === "LEARNING" || focus === "BUDGET_STABILIZATION") {
+      return "RECOVERY_URGENT";
+    }
+    return focus === "RECOVERY_URGENT" ? "RECOVERY_URGENT" : "DEFAULT";
+  }
+  if (narrativeMode === "STABILIZATION") {
+    if (focus === "CREDIT_BUILDING" || focus === "LEARNING" || focus === "RECOVERY_URGENT") {
+      return "BUDGET_STABILIZATION";
+    }
+    return focus === "BUDGET_STABILIZATION" ? "BUDGET_STABILIZATION" : "DEFAULT";
+  }
+  if (narrativeMode === "OPTIMIZATION") {
+    if (focus === "CREDIT_BUILDING" || focus === "LEARNING" || focus === "DEFAULT") return focus;
+    return "DEFAULT";
+  }
+  return "DEFAULT";
+}
+
+function _nextStepActionKeyForNarrative(narrativeMode, focusTarget, diag, st) {
+  diag = diag || {};
+  st = st || _st();
+  var fin = _finFromDiag(diag);
+  var iv2 = diag.interpretacion_v2 || {};
+
+  if (narrativeMode === "CLARITY") {
+    return "ordenar_panorama";
+  }
+  if (narrativeMode === "RECOVERY") {
+    if ((fin.dti_ratio || 0) >= 1) return "confirmar_saldo_stock_deuda";
+    if (iv2.causa_principal === "mora_activa" || (fin.cantMoras || 0) > 0) return "estabilizar_atraso";
+    if (focusTarget === "RECOVERY_URGENT") return "liberar_margen";
+    return "liberar_margen";
+  }
+  if (narrativeMode === "STABILIZATION") {
+    return "confirmar_saldo_stock_deuda";
+  }
+  if (narrativeMode === "OPTIMIZATION") {
+    if (focusTarget === "CREDIT_BUILDING") return "reducir_costo_prioritaria";
+    if (focusTarget === "LEARNING") return "ordenar_panorama";
+    if (_isZeroActiveDebtCompleteProfile(diag, st)) return "mantener_disciplina";
+    if (String(fin.costoDeudaNivel || "").toLowerCase() === "alto") return "optimizar_deuda_cara";
+    return "mantener_disciplina";
+  }
+  return null;
+}
+
+function _nextStepTextForActionKey(diag, st, actionKey) {
+  if (!actionKey) return null;
+  diag = diag || {};
+  st = st || _st();
+  if (actionKey === "confirmar_saldo_stock_deuda") return CZ_DTI_ACCION_PRIORITARIA;
+  var iv2 = diag.interpretacion_v2;
+  if (iv2 && iv2.narrativa_jerarquizada) {
+    var n = getNarrativaByTipo(iv2.narrativa_jerarquizada, "siguiente_paso");
+    if (n && n.accion === actionKey) {
+      if (n.texto) return n.texto;
+      if (typeof textoParaNarrativa === "function") {
+        var synthesized = textoParaNarrativa(n);
+        if (synthesized) return synthesized;
+      }
+    }
+  }
+  return _NEXT_STEP_KNOWN_TEXTS[actionKey] || null;
+}
+
+function _nextStepNarrativeBase(narrativeMode, focusTarget, diag, st) {
+  var actionKey = _nextStepActionKeyForNarrative(narrativeMode, focusTarget, diag, st);
+  var text = _nextStepTextForActionKey(diag, st, actionKey);
+  return { text: text, actionKey: actionKey };
+}
+
+function _applyNextStepNarrativeProfileTierTone(text, profileTier, narrativeMode, focusTarget) {
+  if (!text || !profileTier || !narrativeMode) return text;
+  var tier = String(profileTier).trim().toUpperCase();
+  var focus = String(focusTarget || "DEFAULT").trim().toUpperCase();
+  // Tone only — must never change actionKey / navigation family.
+  if (tier === "AT_RISK" && narrativeMode === "RECOVERY") {
+    if (text.indexOf("estabilizar") < 0 && text.indexOf("mora") < 0 && text.indexOf("margen") >= 0) {
+      return _NEXT_STEP_KNOWN_TEXTS.estabilizar_atraso || text;
+    }
+  }
+  if (tier === "HEALTHY" && narrativeMode === "OPTIMIZATION" && focus === "DEFAULT") {
+    if (text.indexOf("disciplina") < 0 && text.indexOf("margen disponible") < 0) {
+      return _NEXT_STEP_KNOWN_TEXTS.mantener_disciplina || text;
+    }
+  }
+  return text;
+}
+
+function _resolveDashboardNextStepTextLegacy(diag, st) {
   diag = diag || {};
   st = st || _st();
   if (isIncompleteFinancialProfile(diag, st)) return null;
@@ -2454,6 +2570,83 @@ function _resolveDashboardNextStepText(diag, st) {
   var finAccion = _finFromDiag(diag);
   if ((finAccion.dti_ratio || 0) >= 1) return CZ_DTI_ACCION_PRIORITARIA;
   return nPaso && nPaso.texto ? nPaso.texto : null;
+}
+
+function _coherenceOverridesNextStep(coherence, narrativeMode, focusTarget) {
+  if (!coherence || coherence.nextStepText == null) return false;
+  if (coherence.nextStepKey === "revisar_ingresos") return true;
+  if (coherence.profileTier === "healthy_organized" && narrativeMode === "OPTIMIZATION" && focusTarget === "DEFAULT") {
+    return true;
+  }
+  return false;
+}
+
+function resolveNextStepContent(diag, st, coherence) {
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+  diag = diag || _diag();
+  st = st || _st();
+
+  var narrativeMode = _normalizeHeroNarrativeMode(diag.narrative_decision);
+  if (!narrativeMode) {
+    var legacyText = coherence.nextStepText != null
+      ? coherence.nextStepText
+      : _resolveDashboardNextStepTextLegacy(diag, st);
+    return {
+      text: legacyText,
+      actionKey: coherence.nextStepKey || _resolveNextStepKeyFromDiag(diag, st),
+      source: "legacy",
+      narrativeMode: null,
+      profileTier: null,
+    };
+  }
+
+  if (_isCzDevMode()) {
+    try { console.log("[CZ Next Step] narrative_mode:", narrativeMode); } catch (e) {}
+  }
+
+  var profileTier = diag.narrative_decision && diag.narrative_decision.profile_tier
+    ? String(diag.narrative_decision.profile_tier).trim().toUpperCase()
+    : null;
+  var rawFocus = diag.narrative_decision && diag.narrative_decision.sub_tracks
+    ? diag.narrative_decision.sub_tracks.focus_target
+    : "DEFAULT";
+  var focusTarget = _sanitizeNextStepFocusTarget(narrativeMode, rawFocus);
+
+  var base = _nextStepNarrativeBase(narrativeMode, focusTarget, diag, st);
+  var text = null;
+  var actionKey = null;
+
+  if (focusTarget !== "DEFAULT" && base.text) {
+    text = base.text;
+    actionKey = base.actionKey;
+  } else if (_coherenceOverridesNextStep(coherence, narrativeMode, focusTarget)) {
+    text = coherence.nextStepText;
+    actionKey = coherence.nextStepKey || base.actionKey;
+  } else if (base.text) {
+    text = base.text;
+    actionKey = base.actionKey;
+  } else {
+    text = coherence.nextStepText != null
+      ? coherence.nextStepText
+      : _resolveDashboardNextStepTextLegacy(diag, st);
+    actionKey = coherence.nextStepKey || _resolveNextStepKeyFromDiag(diag, st);
+  }
+
+  text = _applyNextStepNarrativeProfileTierTone(text, profileTier, narrativeMode, focusTarget);
+
+  return {
+    text: text,
+    actionKey: actionKey,
+    source: "narrative",
+    narrativeMode: narrativeMode,
+    profileTier: profileTier,
+    focusTarget: focusTarget,
+  };
+}
+
+function _resolveDashboardNextStepText(diag, st, coherence) {
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+  return resolveNextStepContent(diag, st, coherence).text;
 }
 
 function _incompleteFinancialScoreLabel() {
@@ -3033,12 +3226,8 @@ function renderRecuperabilidadBadge(iv2) {
 // =============================================================================
 // NARRATIVE-03 — Explanation / "Qué está pasando" narrative consumption
 // GUARDRAIL:
-// NARRATIVE-03 allows ONLY Hero and Explanation to consume narrative_decision.
-// Next Step must not consume narrative_decision.
-// Recommendations must not consume narrative_decision.
-// Actions must not consume narrative_decision.
-// CRM must not consume narrative_decision.
-// GTM/GA4 must not consume narrative_decision.
+// GUARDRAIL (NARRATIVE-04): Hero, Explanation and Next Step may consume narrative_decision.
+// Recommendations, Actions, CRM, GTM/GA4 must not consume narrative_decision.
 // =============================================================================
 
 var _EXPLANATION_NARRATIVE_CAUSAS = {
@@ -3193,9 +3382,10 @@ function renderNarrativaInterpretacion(diag, st, coherence) {
 
   var nPresion   = getNarrativaByTipo(iv2.narrativa_jerarquizada, "presion_dominante");
   var nRecup     = getNarrativaByTipo(iv2.narrativa_jerarquizada, "recuperabilidad");
+  var nextStepResolved = resolveNextStepContent(diag, st, coherence);
   var textoPaso = coherence.suppressOrdenarPanorama
-    ? coherence.nextStepText
-    : (coherence.nextStepText || _resolveDashboardNextStepText(diag, st));
+    ? nextStepResolved.text
+    : (nextStepResolved.text || null);
   var explanationContent = resolveExplanationQueEstaPasando(diag, st, coherence);
   var textoPrincipal = explanationContent.text;
   var injectedCtaHtml = _resolveDiagnosisInjectedCtaHtml(diag, st);
@@ -3495,8 +3685,8 @@ function _renderNumerosAccordionShell(innerHtml) {
 
 // =============================================================================
 // NARRATIVE-02 — Hero narrative consumption (content-selection layer only)
-// GUARDRAIL (NARRATIVE-03): Hero and Explanation may consume narrative_decision.
-// Next Step, Recommendations, Actions, CRM, GTM/GA4 must not consume narrative_decision.
+// GUARDRAIL (NARRATIVE-04): Hero, Explanation and Next Step may consume narrative_decision.
+// Recommendations, Actions, CRM, GTM/GA4 must not consume narrative_decision.
 // =============================================================================
 
 var _HERO_NARRATIVE_MODES = ["CLARITY", "RECOVERY", "STABILIZATION", "OPTIMIZATION"];
@@ -3767,7 +3957,8 @@ function renderPrimaryActionCard(diag, st, coherence) {
     return "";
   }
 
-  var nextStepText = ((coherence && coherence.nextStepText) || "").trim();
+  var nextStepResolved = resolveNextStepContent(diag, st, coherence);
+  var nextStepText = (nextStepResolved.text || "").trim();
   if (!nextStepText) {
     return "";
   }
@@ -3925,7 +4116,8 @@ function renderTabPlan() {
     + '<div style="display:none;height:0;overflow:hidden;">' + renderAccionPrioritaria(diag) + '</div>'
     + (function() {
         if (coherence.hideAccionPrioritaria) return "";
-        var textoAccion = coherence.nextStepText || _resolveDashboardNextStepText(diag, st);
+        var nextStepResolved = resolveNextStepContent(diag, st, coherence);
+        var textoAccion = nextStepResolved.text;
         if (!textoAccion) return "";
         return '<div class="plan-card dash-tier-b dash-accion-prioritaria-card" style="border-color:rgba(255,255,255,.1);'
           + _dashSectionAccentCss("accion") + '">'
@@ -6339,6 +6531,8 @@ window.CredizonaUI = {
   isIncompleteFinancialProfile: isIncompleteFinancialProfile,
   _isZeroActiveDebtCompleteProfile: _isZeroActiveDebtCompleteProfile,
   _resolveDashboardNextStepText: _resolveDashboardNextStepText,
+  _resolveDashboardNextStepTextLegacy: _resolveDashboardNextStepTextLegacy,
+  resolveNextStepContent: resolveNextStepContent,
   resolveContextualActionSegment: resolveContextualActionSegment,
   renderContextualActionBlock: renderContextualActionBlock,
   _B7_SEGMENTS: _B7_SEGMENTS,

@@ -265,12 +265,15 @@
   var heroAfter = heroProblem(diagRecovery, stComplete);
   ok("M Hero unchanged when only sub_tracks change", heroBefore === heroAfter);
 
-  // N — Next Step unchanged
+  // N — coherence legacy path unchanged; connected next step may vary (NARRATIVE-04)
   var cohN = ctx.resolveDashboardCoherence(diagRecovery, stComplete);
   var nextBefore = cohN.nextStepText;
+  var connectedBefore = ctx.resolveNextStepContent(diagRecovery, stComplete, cohN).text;
   diagRecovery.narrative_decision = { narrative_mode: "STABILIZATION", profile_tier: "IMPROVING", sub_tracks: {} };
   var cohN2 = ctx.resolveDashboardCoherence(diagRecovery, stComplete);
-  ok("N Next Step unchanged", nextBefore === cohN2.nextStepText);
+  var connectedAfter = ctx.resolveNextStepContent(diagRecovery, stComplete, cohN2).text;
+  ok("N coherence nextStepText unchanged", nextBefore === cohN2.nextStepText);
+  ok("N connected next step varies with narrative", connectedBefore !== connectedAfter);
 
   // O — Recommendations unchanged
   var recBefore = ctx.renderAccionesRecomendadasHtml(diagRecovery);
@@ -278,11 +281,11 @@
   var recAfter = ctx.renderAccionesRecomendadasHtml(diagRecovery);
   ok("O Recommendations unchanged", recBefore === recAfter);
 
-  // P — Actions (primary action card) unchanged
+  // P — primary action card is a Next Step consumer (NARRATIVE-04)
   var actBefore = ctx.renderPrimaryActionCard(diagRecovery, stComplete, cohN2);
   diagRecovery.narrative_decision = { narrative_mode: "RECOVERY", profile_tier: "AT_RISK", sub_tracks: {} };
-  var actAfter = ctx.renderPrimaryActionCard(diagRecovery, stComplete, cohN2);
-  ok("P Actions unchanged", actBefore === actAfter);
+  var actAfter = ctx.renderPrimaryActionCard(diagRecovery, stComplete, ctx.resolveDashboardCoherence(diagRecovery, stComplete));
+  ok("P primary action card renders", typeof actBefore === "string" && typeof actAfter === "string");
 
   // Q–T — motor fields unchanged
   var scoreSnap = diagRecovery.scoreReset;
@@ -306,31 +309,29 @@
     && JSON.stringify(ctx.safeGTMPayload("miplan_started", { narrative_decision: "x" })).indexOf("narrative_decision") < 0);
 
   // X–Z — isolation
-  var nextStepBlock = uiSrc.slice(
-    uiSrc.indexOf("function _resolveDashboardNextStepText"),
-    uiSrc.indexOf("function _incompleteFinancialScoreLabel")
-  );
+  var nextBlock = uiSrc.slice(uiSrc.indexOf("NARRATIVE-04"), uiSrc.indexOf("function _incompleteFinancialScoreLabel"));
   var recBlock = uiSrc.slice(
     uiSrc.indexOf("function renderAccionesRecomendadasHtml"),
     uiSrc.indexOf("function renderHorizonteRecalificacion")
   );
   var actionBlock = uiSrc.slice(
-    uiSrc.indexOf("function renderPrimaryActionCard"),
-    uiSrc.indexOf("function renderTabPlan")
+    uiSrc.indexOf("function renderAccionesRecomendadasHtml"),
+    uiSrc.indexOf("function _renderTuSituacionHoy")
   );
-  ok("X Next Step does not consume narrative_decision", nextStepBlock.indexOf("narrative_decision") < 0);
+  ok("X Next Step consumes narrative_decision via resolver", nextBlock.indexOf("narrative_decision") >= 0);
   ok("Y Recommendations do not consume narrative_decision", recBlock.indexOf("narrative_decision") < 0);
-  ok("Z Actions do not consume narrative_decision", actionBlock.indexOf("narrative_decision") < 0);
+  ok("Z Recommended actions do not consume narrative_decision", actionBlock.indexOf("narrative_decision") < 0);
 
-  // AA — only Hero and Explanation consume narrative_decision
+  // AA — only Hero, Explanation and Next Step consume narrative_decision
   var heroBlock = uiSrc.slice(uiSrc.indexOf("NARRATIVE-02"), uiSrc.indexOf("function _resolveHeroNextActionText"));
   var explBlock = uiSrc.slice(uiSrc.indexOf("NARRATIVE-03"), uiSrc.indexOf("function renderNarrativaInterpretacion"));
-  var outsideHeroExpl = uiSrc.slice(0, uiSrc.indexOf("NARRATIVE-03"))
+  var outsideAllowed = uiSrc.slice(0, uiSrc.indexOf("NARRATIVE-04"))
+    + uiSrc.slice(uiSrc.indexOf("function _incompleteFinancialScoreLabel"), uiSrc.indexOf("NARRATIVE-03"))
     + uiSrc.slice(uiSrc.indexOf("function renderNarrativaInterpretacion"), uiSrc.indexOf("NARRATIVE-02"))
     + uiSrc.slice(uiSrc.indexOf("function _resolveHeroNextActionText"));
   ok("AA Hero block consumes narrative_decision", heroBlock.indexOf("narrative_decision") >= 0);
   ok("AA Explanation block consumes narrative_decision", explBlock.indexOf("narrative_decision") >= 0);
-  ok("AA only Hero and Explanation in ui.js", outsideHeroExpl.indexOf("narrative_decision") < 0);
+  ok("AA only Hero, Explanation and Next Step in ui.js", outsideAllowed.indexOf("narrative_decision") < 0);
 
   // AB — HEALTHY tone only
   var stAB = completeSt({
