@@ -6325,35 +6325,13 @@ function renderSeoIaVirginLanding() {
 // Shown when czuid was present but CRM returned null AND localStorage is empty.
 // Does NOT show financial cards, scores, or any diagnostic data.
 // =============================================================================
-function renderBridgeScreen() {
-  document.body.style.backgroundImage = "url('assets/hero.jpg')";
-  document.body.style.backgroundSize = "cover";
-  document.body.style.backgroundPosition = "center 78%";
-  document.body.style.backgroundAttachment = "fixed";
+function renderUnifiedLandingScreen(options) {
+  options = options || {};
+  var containerId = options.containerId || "bridge-landing-container";
+  var ctaId = options.ctaId || "btn-bridge-survey";
+  var scope = "#" + containerId;
 
-  if (!document.getElementById("miplan-hero-overlay")) {
-    var heroOverlay = document.createElement("div");
-    heroOverlay.id = "miplan-hero-overlay";
-    heroOverlay.style.cssText = [
-      "position:fixed",
-      "inset:0",
-      "z-index:0",
-      "pointer-events:none",
-      "will-change:transform,opacity",
-      "backface-visibility:hidden",
-      "background:linear-gradient(",
-      "to bottom,",
-      "rgba(10,20,40,0.92) 0%,",
-      "rgba(10,20,40,0.25) 22%,",
-      "rgba(10,20,40,0.32) 55%,",
-      "rgba(10,20,40,0.88) 80%,",
-      "rgba(10,20,40,0.97) 100%",
-      ")",
-    ].join("");
-    document.body.prepend(heroOverlay);
-  }
-
-  var bridgeLandingCss = [
+  var landingCss = [
     "#bridge-landing-container,#bridge-landing-container *,#bridge-landing-container *::before,#bridge-landing-container *::after{box-sizing:border-box;}",
     "#bridge-landing-container{",
     "--bg:#0f1e35;--card:#162a45;--cyan:#4dd9f0;--btn:#2a6bc7;--btn2:#3d80e0;",
@@ -6411,9 +6389,9 @@ function renderBridgeScreen() {
     "#bridge-landing-container .step-tag{display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:0.3px;}",
     "#bridge-landing-container .step-tag.on{color:var(--cyan);opacity:0.85;}",
     "#bridge-landing-container .gratis-word{color:#4dd9f0;font-style:italic;text-shadow:0 0 12px rgba(77,217,240,0.55),0 0 24px rgba(77,217,240,0.18),0 2px 6px rgba(0,0,0,0.95);-webkit-text-stroke:0.3px rgba(77,217,240,0.2);}",
-  ].join("");
+  ].join("").split("#bridge-landing-container").join(scope);
 
-  var bridgeLandingBody = [
+  var landingBody = [
     '<div class="page">',
     '<header class="au d1">',
     '<div class="logo-icon">',
@@ -6503,7 +6481,7 @@ function renderBridgeScreen() {
     '<span>🤝</span>',
     '<p><strong>Completamente gratuito.</strong> Sin costo, sin compromiso.</p>',
     '</div>',
-    '<button id="btn-bridge-survey" class="cta au d7" type="button">Quiero mi plan gratuito →</button>',
+    '<button id="' + ctaId + '" class="cta au d7" type="button">Quiero mi plan gratuito →</button>',
     '<div class="disclaimer">',
     'Herramienta de diagnóstico orientativo basada en la información que ingresás.',
     'No es una financiera, banco ni reporte oficial de Clearing, Equifax o BCU.',
@@ -6516,12 +6494,20 @@ function renderBridgeScreen() {
   return [
     '<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&display=swap" rel="stylesheet">',
     "<style>",
-    bridgeLandingCss,
+    landingCss,
     "</style>",
-    '<div id="bridge-landing-container" style="position:relative;z-index:1;">',
-    bridgeLandingBody,
+    '<div id="' + containerId + '" style="position:relative;z-index:1;">',
+    landingBody,
     "</div>",
   ].join("");
+}
+
+function renderBridgeScreen() {
+  _applyUnifiedLandingHeroBackground();
+  return renderUnifiedLandingScreen({
+    containerId: "bridge-landing-container",
+    ctaId: "btn-bridge-survey",
+  });
 }
 
 function renderAll() {
