@@ -6150,20 +6150,7 @@ function _applyUnifiedLandingHeroBackground() {
   if (!document.getElementById("miplan-hero-overlay")) {
     var overlay = document.createElement("div");
     overlay.id = "miplan-hero-overlay";
-    overlay.style.cssText = [
-      "position:fixed",
-      "inset:0",
-      "z-index:0",
-      "pointer-events:none",
-      "will-change:transform,opacity",
-      "backface-visibility:hidden",
-      "background:linear-gradient(to bottom,",
-      "rgba(10,20,40,0.92) 0%,",
-      "rgba(10,20,40,0.25) 22%,",
-      "rgba(10,20,40,0.32) 55%,",
-      "rgba(10,20,40,0.88) 80%,",
-      "rgba(10,20,40,0.97) 100%)",
-    ].join(";");
+    overlay.style.cssText = "position:fixed;inset:0;z-index:0;pointer-events:none;will-change:transform,opacity;backface-visibility:hidden;background:linear-gradient(to bottom,rgba(10,20,40,0.92) 0%,rgba(10,20,40,0.25) 22%,rgba(10,20,40,0.32) 55%,rgba(10,20,40,0.88) 80%,rgba(10,20,40,0.97) 100%)";
     document.body.prepend(overlay);
   }
 }
