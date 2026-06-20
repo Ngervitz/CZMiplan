@@ -6141,6 +6141,33 @@ function renderSeoIaOnboardingHeader() {
   ].join("");
 }
 
+function _applyUnifiedLandingHeroBackground() {
+  document.body.style.backgroundImage = "url('assets/hero.jpg')";
+  document.body.style.backgroundSize = "cover";
+  document.body.style.backgroundPosition = "center 78%";
+  document.body.style.backgroundAttachment = "fixed";
+
+  if (!document.getElementById("miplan-hero-overlay")) {
+    var overlay = document.createElement("div");
+    overlay.id = "miplan-hero-overlay";
+    overlay.style.cssText = [
+      "position:fixed",
+      "inset:0",
+      "z-index:0",
+      "pointer-events:none",
+      "will-change:transform,opacity",
+      "backface-visibility:hidden",
+      "background:linear-gradient(to bottom,",
+      "rgba(10,20,40,0.92) 0%,",
+      "rgba(10,20,40,0.25) 22%,",
+      "rgba(10,20,40,0.32) 55%,",
+      "rgba(10,20,40,0.88) 80%,",
+      "rgba(10,20,40,0.97) 100%)",
+    ].join(";");
+    document.body.prepend(overlay);
+  }
+}
+
 function renderSeoIaIntroBlock() {
   _applyUnifiedLandingHeroBackground();
   return renderUnifiedLandingScreen({
