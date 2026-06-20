@@ -6169,6 +6169,8 @@ function _applyUnifiedLandingHeroBackground() {
 }
 
 function renderSeoIaIntroBlock() {
+  var appHeader = document.querySelector('.header');
+  if (appHeader) appHeader.style.display = 'none';
   _applyUnifiedLandingHeroBackground();
   return renderUnifiedLandingScreen({
     containerId: "seo-ia-landing-container",
@@ -6503,6 +6505,8 @@ function renderUnifiedLandingScreen(options) {
 }
 
 function renderBridgeScreen() {
+  var appHeader = document.querySelector('.header');
+  if (appHeader) appHeader.style.display = 'none';
   _applyUnifiedLandingHeroBackground();
   return renderUnifiedLandingScreen({
     containerId: "bridge-landing-container",
@@ -6526,6 +6530,9 @@ function renderAll() {
     var _ov = document.getElementById(_landingOverlayIds[_oi]);
     if (_ov) _ov.remove();
   }
+
+  var appHeader = document.querySelector('.header');
+  if (appHeader) appHeader.style.display = '';
 
   updateHeader();
 
