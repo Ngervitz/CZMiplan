@@ -6332,13 +6332,13 @@ function renderUnifiedLandingScreen(options) {
   var scope = "#" + containerId;
 
   var landingCss = [
-    "#bridge-landing-container,#bridge-landing-container *,#bridge-landing-container *::before,#bridge-landing-container *::after{box-sizing:border-box;}",
+    "#bridge-landing-container *,#bridge-landing-container *::before,#bridge-landing-container *::after{box-sizing:border-box;margin:0;padding:0;}",
     "#bridge-landing-container{",
     "--bg:#0f1e35;--card:#162a45;--cyan:#4dd9f0;--btn:#2a6bc7;--btn2:#3d80e0;",
     "--text:#ffffff;--dim:#8facc8;--border:rgba(255,255,255,0.08);--glass:rgba(15,30,53,0.80);",
-    'font-family:"DM Sans",sans-serif;color:var(--text);min-height:100vh;overflow-x:hidden;',
+    'font-family:"DM Sans",sans-serif;color:var(--text);overflow-x:hidden;width:100%;',
     "}",
-    "#bridge-landing-container .page{position:relative;z-index:5;max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;padding:0 20px 36px;}",
+    "#bridge-landing-container .page{position:relative;z-index:1;width:100%;min-height:72vh;display:flex;flex-direction:column;padding:0 20px 36px;box-sizing:border-box;}",
     "#bridge-landing-container header{display:flex;align-items:center;gap:12px;padding:18px 0 0;flex-shrink:0;}",
     "#bridge-landing-container .logo-icon{width:46px;height:46px;background:linear-gradient(145deg,#2a6bc7,#1a4fa0);border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 14px rgba(42,107,199,0.45);overflow:hidden;position:relative;}",
     '#bridge-landing-container .logo-icon::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.12),transparent);}',
@@ -6496,7 +6496,7 @@ function renderUnifiedLandingScreen(options) {
     "<style>",
     landingCss,
     "</style>",
-    '<div id="' + containerId + '" style="position:relative;z-index:1;">',
+    '<div id="' + containerId + '" style="position:relative;z-index:1;width:100%;">',
     landingBody,
     "</div>",
   ].join("");
