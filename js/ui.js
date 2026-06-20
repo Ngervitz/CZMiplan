@@ -29,17 +29,48 @@ function _feedbackCategoryLabel(cat) {
 // Uses existing dark visual style only — no new CSS classes.
 // =============================================================================
 function renderMiPlanConsentScreen() {
-  return '<div style="padding:8px 0;">'
+  document.body.style.backgroundImage = "url('assets/montevideo.jpg')";
+  document.body.style.backgroundSize = "cover";
+  document.body.style.backgroundPosition = "center center";
+  document.body.style.backgroundAttachment = "fixed";
+
+  if (!document.getElementById("miplan-legal-overlay")) {
+    var legalOverlay = document.createElement("div");
+    legalOverlay.id = "miplan-legal-overlay";
+    legalOverlay.style.cssText = [
+      "position:fixed",
+      "inset:0",
+      "z-index:0",
+      "pointer-events:none",
+      "will-change:transform,opacity",
+      "backface-visibility:hidden",
+      "background:linear-gradient(",
+      "to bottom,",
+      "rgba(10,20,40,0.90) 0%,",
+      "rgba(10,20,40,0.62) 42%,",
+      "rgba(10,20,40,0.94) 100%",
+      ")",
+    ].join("");
+    document.body.prepend(legalOverlay);
+  }
+
+  var legalCardStyle = "background:rgba(8,18,36,0.88);color:#ffffff;"
+    + "border:1px solid rgba(255,255,255,0.16);border-radius:24px;"
+    + "box-shadow:0 24px 80px rgba(0,0,0,0.32);backdrop-filter:blur(10px);"
+    + "-webkit-backdrop-filter:blur(10px);padding:24px 20px;";
+
+  return '<div style="position:relative;z-index:1;padding:8px 0;">'
+    + '<div style="' + legalCardStyle + '">'
     + '<div style="font-size:26px;font-weight:900;line-height:1.2;margin-bottom:20px;">Antes de ver tu diagnóstico</div>'
-    + '<div style="font-size:16px;color:rgba(255,255,255,.7);line-height:1.7;margin-bottom:28px;">'
+    + '<div style="font-size:16px;color:rgba(255,255,255,.82);line-height:1.7;margin-bottom:28px;">'
     + 'Mi Plan es una herramienta de diagnóstico orientativo basada en la información que ingresás. '
     + 'No es una financiera, un banco ni un reporte oficial de Clearing, Equifax o BCU.'
     + '</div>'
 
     // Sprint 10.1 — free education banner (consent screen only)
-    + '<div style="background:rgba(64,215,255,.07);border:1px solid rgba(64,215,255,.22);border-radius:16px;padding:18px 20px;margin-bottom:24px;">'
+    + '<div style="background:rgba(64,215,255,.12);border:1px solid rgba(64,215,255,.28);border-radius:16px;padding:18px 20px;margin-bottom:24px;">'
     + '<div style="font-size:16px;font-weight:800;color:#40d7ff;margin-bottom:10px;">🤝 "Mi Plan" es gratuito.</div>'
-    + '<div style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;">'
+    + '<div style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.65;">'
     + 'Lo creamos para ayudarte a entender tu situación financiera real y que veas un camino de salida. '
     + 'No tiene costo. Al final del diagnóstico nos gustaría saber qué te fue útil y qué te faltó.'
     + '</div>'
@@ -48,8 +79,8 @@ function renderMiPlanConsentScreen() {
     + renderMiPlanLegalCheckboxes({ idTc: "chk-miplan-tc", idPrivacy: "chk-miplan-privacy" })
 
     // Disclaimer
-    + '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:24px;'
-    + 'padding:14px 16px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;">'
+    + '<div style="font-size:13px;color:rgba(255,255,255,.72);line-height:1.65;margin-bottom:24px;'
+    + 'padding:14px 16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;">'
     + 'El diagnóstico, los scores y las proyecciones son orientativos. '
     + 'No garantizan aprobación de crédito ni modifican registros externos.'
     + '</div>'
@@ -58,6 +89,7 @@ function renderMiPlanConsentScreen() {
     + '<button class="btn btn-primary" id="btn-miplan-consent-accept" disabled '
     + 'style="width:100%;height:64px;font-size:19px;opacity:.45;transition:opacity .2s;" '
     + 'onclick="this.disabled&&event.preventDefault();">Ver mi diagnóstico</button>'
+    + '</div>'
     + '</div>';
 }
 
@@ -6311,53 +6343,201 @@ function renderSeoIaVirginLanding() {
 // Does NOT show financial cards, scores, or any diagnostic data.
 // =============================================================================
 function renderBridgeScreen() {
-  return [
-    '<div style="',
-      'display:flex;flex-direction:column;align-items:center;',
-      'justify-content:center;min-height:60vh;',
-      'padding:32px 8px calc(80px + env(safe-area-inset-bottom));text-align:center;',
-    '">',
+  document.body.style.backgroundImage = "url('assets/hero.jpg')";
+  document.body.style.backgroundSize = "cover";
+  document.body.style.backgroundPosition = "center 78%";
+  document.body.style.backgroundAttachment = "fixed";
 
-    // Wordmark / brand anchor
-    '<div style="',
-      'font-size:13px;font-weight:700;letter-spacing:.12em;',
-      'color:#5b7cff;text-transform:uppercase;margin-bottom:36px;',
-    '">Credizona · Mi Plan</div>',
+  if (!document.getElementById("miplan-hero-overlay")) {
+    var heroOverlay = document.createElement("div");
+    heroOverlay.id = "miplan-hero-overlay";
+    heroOverlay.style.cssText = [
+      "position:fixed",
+      "inset:0",
+      "z-index:0",
+      "pointer-events:none",
+      "will-change:transform,opacity",
+      "backface-visibility:hidden",
+      "background:linear-gradient(",
+      "to bottom,",
+      "rgba(10,20,40,0.92) 0%,",
+      "rgba(10,20,40,0.25) 22%,",
+      "rgba(10,20,40,0.32) 55%,",
+      "rgba(10,20,40,0.88) 80%,",
+      "rgba(10,20,40,0.97) 100%",
+      ")",
+    ].join("");
+    document.body.prepend(heroOverlay);
+  }
 
-    // Title
-    '<h2 style="',
-      'font-size:22px;font-weight:800;color:rgba(255,255,255,.95);',
-      'line-height:1.35;margin:0 0 20px;max-width:340px;',
-    '">Todavia no pudimos interpretar que esta frenando tu perfil.</h2>',
+  var bridgeLandingCss = [
+    "#bridge-landing-container,#bridge-landing-container *,#bridge-landing-container *::before,#bridge-landing-container *::after{box-sizing:border-box;}",
+    "#bridge-landing-container{",
+    "--bg:#0f1e35;--card:#162a45;--cyan:#4dd9f0;--btn:#2a6bc7;--btn2:#3d80e0;",
+    "--text:#ffffff;--dim:#8facc8;--border:rgba(255,255,255,0.08);--glass:rgba(15,30,53,0.80);",
+    'font-family:"DM Sans",sans-serif;color:var(--text);min-height:100vh;overflow-x:hidden;',
+    "}",
+    "#bridge-landing-container .page{position:relative;z-index:5;max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;padding:0 20px 36px;}",
+    "#bridge-landing-container header{display:flex;align-items:center;gap:12px;padding:18px 0 0;flex-shrink:0;}",
+    "#bridge-landing-container .logo-icon{width:46px;height:46px;background:linear-gradient(145deg,#2a6bc7,#1a4fa0);border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 14px rgba(42,107,199,0.45);overflow:hidden;position:relative;}",
+    '#bridge-landing-container .logo-icon::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.12),transparent);}',
+    '#bridge-landing-container .logo-icon-text{font-family:"Sora",sans-serif;font-size:6.5px;font-weight:800;color:rgba(255,255,255,0.9);line-height:1.25;text-align:center;letter-spacing:0.3px;position:relative;z-index:1;}',
+    '#bridge-landing-container .logo-wordmark{font-family:"Sora",sans-serif;font-size:24px;font-weight:800;letter-spacing:-0.5px;text-shadow:0 2px 14px rgba(0,0,0,0.6);line-height:1;}',
+    "#bridge-landing-container .logo-wordmark span{color:var(--cyan);}",
+    "#bridge-landing-container .hero{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:22px 0 0;}",
+    "#bridge-landing-container .hero-label{display:inline-flex;align-items:center;gap:6px;font-family:\"Sora\",sans-serif;font-size:11px;font-weight:700;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;text-shadow:0 1px 8px rgba(0,0,0,0.5);}",
+    '#bridge-landing-container h1{font-family:"Sora",sans-serif;font-size:30px;font-weight:900;line-height:1.08;letter-spacing:-1px;margin-bottom:14px;text-shadow:0 2px 24px rgba(0,0,0,0.7);}',
+    "#bridge-landing-container h1 em{font-style:italic;color:var(--cyan);}",
+    "#bridge-landing-container .hero-desc{font-size:15px;line-height:1.65;color:rgba(255,255,255,0.75);margin-bottom:24px;text-shadow:0 1px 10px rgba(0,0,0,0.6);}",
+    "#bridge-landing-container .steps-row{display:flex;align-items:flex-start;margin-bottom:20px;}",
+    "#bridge-landing-container .step{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;}",
+    "#bridge-landing-container .step-arrow{display:flex;align-items:center;padding-bottom:32px;flex-shrink:0;}",
+    "#bridge-landing-container .step-emoji{font-size:36px;line-height:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.6));margin-bottom:2px;}",
+    "#bridge-landing-container .step-emoji.s2{filter:drop-shadow(0 0 10px rgba(77,217,240,0.5)) drop-shadow(0 2px 8px rgba(0,0,0,0.6));}",
+    "#bridge-landing-container .step-emoji.s3{filter:drop-shadow(0 0 10px rgba(17,168,125,0.45)) drop-shadow(0 2px 8px rgba(0,0,0,0.6));}",
+    "#bridge-landing-container .step-lbl{font-size:9.5px;font-weight:700;color:rgba(255,255,255,0.92);text-align:center;line-height:1.3;text-shadow:0 1px 8px rgba(0,0,0,0.9);}",
+    "#bridge-landing-container .step-lbl.on{color:var(--cyan);font-weight:700;}",
+    "#bridge-landing-container .bottom-block{background:transparent;border:none;border-radius:18px;padding:18px 16px 16px;}",
+    "#bridge-landing-container .section-label{font-family:\"Sora\",sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);opacity:0.85;margin-bottom:12px;}",
+    "#bridge-landing-container .features{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}",
+    "#bridge-landing-container .feat-card{background:rgba(15,30,53,0.35);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:12px 11px;display:flex;flex-direction:column;gap:5px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}",
+    "#bridge-landing-container .feat-icon{font-size:18px;}",
+    "#bridge-landing-container .feat-icon-wrap{width:36px;height:36px;border-radius:10px;border:1px solid;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}",
+    '#bridge-landing-container .feat-title{font-family:"Sora",sans-serif;font-size:11.5px;font-weight:700;line-height:1.3;}',
+    "#bridge-landing-container .feat-desc{font-size:10.5px;line-height:1.4;color:var(--dim);}",
+    "#bridge-landing-container .divider{height:1px;background:var(--border);margin:12px 0;}",
+    "#bridge-landing-container .free-line{display:flex;align-items:center;gap:9px;margin-bottom:14px;padding:12px 14px;background:linear-gradient(135deg,rgba(17,168,125,0.18),rgba(17,168,125,0.08));border:1.5px solid rgba(17,168,125,0.45);border-radius:12px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 0 20px rgba(17,168,125,0.12),inset 0 1px 0 rgba(255,255,255,0.06);}",
+    "#bridge-landing-container .free-line p{font-size:13px;line-height:1.4;color:rgba(255,255,255,0.85);}",
+    "#bridge-landing-container .free-line strong{color:#ffffff;font-weight:800;font-size:13.5px;}",
+    "#bridge-landing-container .cta{display:block;width:100%;padding:15px;background:linear-gradient(135deg,var(--btn),var(--btn2));border:none;border-radius:12px;color:#fff;font-family:\"Sora\",sans-serif;font-size:15.5px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;box-shadow:0 6px 26px rgba(42,107,199,0.5);margin-bottom:8px;transition:transform 0.15s;}",
+    "#bridge-landing-container .cta:active{transform:scale(0.98);}",
+    "#bridge-landing-container .cta-hint{text-align:center;font-size:11px;color:var(--dim);margin-bottom:12px;}",
+    "#bridge-landing-container .disclaimer{text-align:center;font-size:10px;line-height:1.6;color:rgba(143,172,200,0.5);}",
+    "@keyframes bridgeLandingFadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}",
+    "#bridge-landing-container .au{opacity:0;animation:bridgeLandingFadeUp 0.48s ease forwards;}",
+    "#bridge-landing-container .d1{animation-delay:0.04s;}#bridge-landing-container .d2{animation-delay:0.10s;}",
+    "#bridge-landing-container .d3{animation-delay:0.17s;}#bridge-landing-container .d4{animation-delay:0.24s;}",
+    "#bridge-landing-container .d5{animation-delay:0.31s;}#bridge-landing-container .d6{animation-delay:0.38s;}",
+    "#bridge-landing-container .d7{animation-delay:0.44s;}",
+    "#bridge-landing-container .privacy-line{display:flex;align-items:center;gap:9px;margin-bottom:14px;padding:10px 12px;background:rgba(15,30,53,0.35);border:1px solid rgba(77,217,240,0.2);border-radius:10px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}",
+    "#bridge-landing-container .privacy-line p{font-size:12.5px;line-height:1.4;color:var(--dim);}",
+    "#bridge-landing-container .privacy-line strong{color:var(--text);font-weight:700;}",
+    "#bridge-landing-container .perks{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:22px;}",
+    "#bridge-landing-container .perk-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(77,217,240,0.12);border:1px solid rgba(77,217,240,0.35);border-radius:100px;padding:6px 13px;font-size:12px;font-weight:600;color:var(--cyan);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);text-shadow:0 1px 6px rgba(0,0,0,0.5);}",
+    "#bridge-landing-container .d4b{animation-delay:0.27s;}",
+    "#bridge-landing-container .step-tag{display:inline-block;margin-top:4px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:0.3px;}",
+    "#bridge-landing-container .step-tag.on{color:var(--cyan);opacity:0.85;}",
+    "#bridge-landing-container .gratis-word{color:#4dd9f0;font-style:italic;text-shadow:0 0 12px rgba(77,217,240,0.55),0 0 24px rgba(77,217,240,0.18),0 2px 6px rgba(0,0,0,0.95);-webkit-text-stroke:0.3px rgba(77,217,240,0.2);}",
+  ].join("");
 
-    // Subtext
-    '<p style="',
-      'font-size:15px;color:#8390b5;line-height:1.65;',
-      'max-width:340px;margin:0 0 40px;',
-    '">',
-      _rejectionCopy(
-        "El rechazo financiero no siempre depende solo de ingresos o Clearing. ",
-        "Tu perfil financiero no depende solo de ingresos o Clearing. "
-      ),
-      'Mi Plan analiza organizacion financiera, presion mensual y habitos ',
-      'para detectar que puede estar afectando tu situacion hoy.',
-    '</p>',
-
-    // CTA
-    '<button id="btn-bridge-survey" style="',
-      'background:#5b7cff;color:#fff;border:none;',
-      'border-radius:16px;padding:18px 32px;',
-      'font-size:17px;font-weight:800;cursor:pointer;',
-      'width:100%;max-width:340px;line-height:1.3;',
-      'box-shadow:0 4px 20px rgba(91,124,255,.35);',
-    '">Completar diagnostico inicial</button>',
-
-    // Helper text
-    '<p style="',
-      'font-size:13px;color:#5a6480;margin:14px 0 0;',
-    '">Te lleva menos de 2 minutos.</p>',
-
+  var bridgeLandingBody = [
+    '<div class="page">',
+    '<header class="au d1">',
+    '<div class="logo-icon">',
+    '<div class="logo-icon-text">CREDI<br>ZONA</div>',
     '</div>',
+    '<div class="logo-wordmark">Credizona <span>Mi Plan</span></div>',
+    '</header>',
+    '<div class="hero">',
+    '<div class="hero-top">',
+    '<h1 class="au d2">',
+    'Diagnóstico financiero<br>',
+    '<em class="gratis-word">gratis</em>',
+    '</h1>',
+    '<p class="hero-desc au d3">',
+    'Conocé dónde estás parado en menos de 4 minutos y tomá el control.',
+    'Sin tecnicismos, sin vueltas.',
+    '</p>',
+    '<div class="steps-row au d4">',
+    '<div class="step">',
+    '<div class="step-emoji">📋</div>',
+    '<div class="step-lbl">Completás el<br>diagnóstico<br><span class="step-tag">⏱️ 4 min</span></div>',
+    '</div>',
+    '<div class="step-arrow">',
+    '<svg width="28" height="16" viewBox="0 0 28 16" fill="none" xmlns="http://www.w3.org/2000/svg">',
+    '<line x1="0" y1="8" x2="20" y2="8" stroke="url(#arr1)" stroke-width="1.5" stroke-dasharray="3 2"/>',
+    '<polygon points="20,4 28,8 20,12" fill="#4dd9f0" opacity="0.7"/>',
+    '<defs>',
+    '<linearGradient id="arr1" x1="0" y1="0" x2="1" y2="0">',
+    '<stop offset="0%" stop-color="#2a6bc7" stop-opacity="0.4"/>',
+    '<stop offset="100%" stop-color="#4dd9f0" stop-opacity="0.9"/>',
+    '</linearGradient>',
+    '</defs>',
+    '</svg>',
+    '</div>',
+    '<div class="step">',
+    '<div class="step-emoji s2">🔍</div>',
+    '<div class="step-lbl on">Analizamos<br>tu perfil<br><span class="step-tag on">🔒 100% Seguro</span></div>',
+    '</div>',
+    '<div class="step-arrow">',
+    '<svg width="28" height="16" viewBox="0 0 28 16" fill="none" xmlns="http://www.w3.org/2000/svg">',
+    '<line x1="0" y1="8" x2="20" y2="8" stroke="url(#arr2)" stroke-width="1.5" stroke-dasharray="3 2"/>',
+    '<polygon points="20,4 28,8 20,12" fill="#11a87d" opacity="0.7"/>',
+    '<defs>',
+    '<linearGradient id="arr2" x1="0" y1="0" x2="1" y2="0">',
+    '<stop offset="0%" stop-color="#4dd9f0" stop-opacity="0.4"/>',
+    '<stop offset="100%" stop-color="#11a87d" stop-opacity="0.9"/>',
+    '</linearGradient>',
+    '</defs>',
+    '</svg>',
+    '</div>',
+    '<div class="step">',
+    '<div class="step-emoji s3">🎯</div>',
+    '<div class="step-lbl">Tu panel<br>personalizado</div>',
+    '</div>',
+    '</div>',
+    '</div>',
+    '<div class="bottom-block au d6">',
+    '<div class="privacy-line">',
+    '<span>🔐</span>',
+    '<p>Tu información es <strong>privada y confidencial.</strong></p>',
+    '</div>',
+    '<p class="section-label">¿Qué incluye?</p>',
+    '<div class="features">',
+    '<div class="feat-card">',
+    '<div class="feat-icon-wrap" style="background:rgba(42,107,199,0.18);border-color:rgba(42,107,199,0.35);">📊</div>',
+    '<div class="feat-title">Tu perfil financiero</div>',
+    '<div class="feat-desc">Entendés exactamente dónde estás parado hoy.</div>',
+    '</div>',
+    '<div class="feat-card">',
+    '<div class="feat-icon-wrap" style="background:rgba(77,217,240,0.14);border-color:rgba(77,217,240,0.32);">🗺️</div>',
+    '<div class="feat-title">Tu plan de acción</div>',
+    '<div class="feat-desc">Pasos concretos según tu situación declarada.</div>',
+    '</div>',
+    '<div class="feat-card">',
+    '<div class="feat-icon-wrap" style="background:rgba(234,179,8,0.14);border-color:rgba(234,179,8,0.28);">⚡</div>',
+    '<div class="feat-title">Resultado al instante</div>',
+    '<div class="feat-desc">Lo ves en pantalla ni bien terminás. Sin esperas.</div>',
+    '</div>',
+    '<div class="feat-card">',
+    '<div class="feat-icon-wrap" style="background:rgba(17,168,125,0.14);border-color:rgba(17,168,125,0.32);">🔒</div>',
+    '<div class="feat-title">No afecta tu historial</div>',
+    '<div class="feat-desc">No es solicitud de crédito.</div>',
+    '</div>',
+    '</div>',
+    '<div class="divider"></div>',
+    '<div class="free-line">',
+    '<span>🤝</span>',
+    '<p><strong>Completamente gratuito.</strong> Sin costo, sin compromiso.</p>',
+    '</div>',
+    '<button id="btn-bridge-survey" class="cta au d7" type="button">Quiero mi plan gratuito →</button>',
+    '<div class="disclaimer">',
+    'Herramienta de diagnóstico orientativo basada en la información que ingresás.',
+    'No es una financiera, banco ni reporte oficial de Clearing, Equifax o BCU.',
+    '</div>',
+    '</div>',
+    '</div>',
+    '</div>',
+  ].join("");
+
+  return [
+    '<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&display=swap" rel="stylesheet">',
+    "<style>",
+    bridgeLandingCss,
+    "</style>",
+    '<div id="bridge-landing-container" style="position:relative;z-index:1;">',
+    bridgeLandingBody,
+    "</div>",
   ].join("");
 }
 
@@ -6365,6 +6545,18 @@ function renderAll() {
   var st = _st();
   var main = document.getElementById("main-content");
   if (!main) return;
+
+  document.body.style.backgroundImage = "";
+  document.body.style.backgroundSize = "";
+  document.body.style.backgroundPosition = "";
+  document.body.style.backgroundAttachment = "";
+  document.body.style.filter = "";
+
+  var _landingOverlayIds = ["miplan-hero-overlay", "miplan-legal-overlay"];
+  for (var _oi = 0; _oi < _landingOverlayIds.length; _oi++) {
+    var _ov = document.getElementById(_landingOverlayIds[_oi]);
+    if (_ov) _ov.remove();
+  }
 
   updateHeader();
 
