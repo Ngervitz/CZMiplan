@@ -6239,6 +6239,13 @@ function renderSeoIaSurveyQuestion(qIndex) {
 }
 
 function renderSeoIaSurveyLegalsAndCta() {
+  var seoLegalLabelStyle = "display:flex;align-items:flex-start;gap:14px;cursor:pointer;"
+    + "background:rgba(8,18,36,0.82);border:1px solid rgba(255,255,255,0.16);border-radius:14px;"
+    + "padding:16px 18px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);";
+  var seoLegalDisclaimerStyle = "font-size:13px;color:rgba(255,255,255,.78);line-height:1.65;margin-bottom:24px;"
+    + "padding:14px 16px;background:rgba(8,18,36,0.78);border:1px solid rgba(255,255,255,0.14);"
+    + "border-radius:12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);";
+
   return [
     '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);">',
       '<h2 style="font-size:20px;font-weight:800;line-height:1.35;color:#fff;margin:0 0 12px;">',
@@ -6247,9 +6254,21 @@ function renderSeoIaSurveyLegalsAndCta() {
       '<p style="font-size:15px;color:rgba(255,255,255,.75);line-height:1.65;margin:0 0 24px;">',
         'Aceptá los términos para ver tu resultado orientativo.',
       '</p>',
-      renderMiPlanLegalCheckboxes({ idTc: "chk-seo-ia-tc", idPrivacy: "chk-seo-ia-privacy" }),
-      '<div style="font-size:13px;color:#8390b5;line-height:1.65;margin-bottom:24px;',
-        'padding:14px 16px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;">',
+      '<label style="' + seoLegalLabelStyle + 'margin-bottom:18px;">',
+        '<input type="checkbox" id="chk-seo-ia-tc" style="width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">',
+        '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.55;">',
+          'Leí y acepto los ',
+          '<a href="/tyc.html" target="_blank" rel="noopener" style="color:#a78bfa;text-decoration:underline;">Términos y Condiciones de Mi Plan</a>',
+        '</span>',
+      '</label>',
+      '<label style="' + seoLegalLabelStyle + 'margin-bottom:24px;">',
+        '<input type="checkbox" id="chk-seo-ia-privacy" style="width:22px;height:22px;margin-top:2px;flex-shrink:0;accent-color:#a78bfa;cursor:pointer;">',
+        '<span style="font-size:15px;color:rgba(255,255,255,.85);line-height:1.55;">',
+          'Leí y acepto la ',
+          '<a href="/privacidad.html" target="_blank" rel="noopener" style="color:#a78bfa;text-decoration:underline;">Política de Privacidad de Mi Plan</a>',
+        '</span>',
+      '</label>',
+      '<div style="' + seoLegalDisclaimerStyle + '">',
         'El diagnóstico, los scores y las proyecciones son orientativos. ',
         'No garantizan aprobación de crédito ni modifican registros externos.',
       '</div>',
