@@ -6148,8 +6148,6 @@ function _enterFullscreenMode() {
 
 function renderSeoIaIntroBlock() {
   _enterFullscreenMode();
-  var onbHeader = document.getElementById('seo-ia-onboarding-header');
-  if (onbHeader) onbHeader.style.display = 'none';
   _applyUnifiedLandingHeroBackground();
   return renderUnifiedLandingScreen({
     containerId: "seo-ia-landing-container",
@@ -6328,7 +6326,7 @@ function renderSeoIaOnboarding() {
     '<div id="cz-seo-ia-onboarding" style="',
       onboardingContainerStyle,
     '">',
-    renderSeoIaOnboardingHeader(),
+    (ob.phase !== "intro" ? renderSeoIaOnboardingHeader() : ""),
     body,
     '</div>',
   ].join("");
@@ -6550,9 +6548,6 @@ function renderAll() {
 
   var appHeader = document.querySelector('.header');
   if (appHeader) appHeader.style.display = '';
-
-  var onbHeader = document.getElementById('seo-ia-onboarding-header');
-  if (onbHeader) onbHeader.style.display = '';
 
   updateHeader();
 
