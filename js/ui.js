@@ -6119,7 +6119,7 @@ function shouldBypassMiPlanConsentForSeoIa() {
 
 function renderSeoIaOnboardingHeader() {
   return [
-    '<div style="text-align:center;margin-bottom:28px;">',
+    '<div id="seo-ia-onboarding-header" style="text-align:center;margin-bottom:28px;">',
       '<div style="font-size:13px;font-weight:700;letter-spacing:.12em;color:#5b7cff;text-transform:uppercase;margin-bottom:8px;">',
         'Credizona · Mi Plan',
       '</div>',
@@ -6142,9 +6142,14 @@ function _applyUnifiedLandingHeroBackground() {
   }
 }
 
+function _enterFullscreenMode() {
+  document.body.classList.add('cz-fullscreen-mode');
+}
+
 function renderSeoIaIntroBlock() {
-  var appHeader = document.querySelector('.header');
-  if (appHeader) appHeader.style.display = 'none';
+  _enterFullscreenMode();
+  var onbHeader = document.getElementById('seo-ia-onboarding-header');
+  if (onbHeader) onbHeader.style.display = 'none';
   _applyUnifiedLandingHeroBackground();
   return renderUnifiedLandingScreen({
     containerId: "seo-ia-landing-container",
@@ -6315,10 +6320,13 @@ function renderSeoIaOnboarding() {
     body = renderSeoIaSurveyLegalsAndCta();
   }
 
+  var onboardingContainerStyle = ob.phase === "intro"
+    ? "min-height:0;padding:0;max-width:100%;margin:0;"
+    : "min-height:60vh;padding:16px 8px calc(80px + env(safe-area-inset-bottom));max-width:420px;margin:0 auto;";
+
   return [
     '<div id="cz-seo-ia-onboarding" style="',
-      'min-height:60vh;padding:16px 8px calc(80px + env(safe-area-inset-bottom));',
-      'max-width:420px;margin:0 auto;',
+      onboardingContainerStyle,
     '">',
     renderSeoIaOnboardingHeader(),
     body,
@@ -6542,6 +6550,9 @@ function renderAll() {
 
   var appHeader = document.querySelector('.header');
   if (appHeader) appHeader.style.display = '';
+
+  var onbHeader = document.getElementById('seo-ia-onboarding-header');
+  if (onbHeader) onbHeader.style.display = '';
 
   updateHeader();
 
