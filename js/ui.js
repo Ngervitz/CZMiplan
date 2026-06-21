@@ -6278,6 +6278,9 @@ function renderSeoIaOnboarding() {
   } else if (ob.phase === "intent") {
     body = renderSeoIaUserIntentP11();
   } else if (ob.phase === "legals") {
+    var appHeader = document.querySelector('.header');
+    if (appHeader) appHeader.style.display = 'none';
+
     document.body.style.backgroundImage = "url('assets/montevideo.jpg')";
     document.body.style.backgroundSize = "cover";
     document.body.style.backgroundPosition = "center center";
