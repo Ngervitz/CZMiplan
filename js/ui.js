@@ -32,25 +32,12 @@ function renderMiPlanConsentScreen() {
   document.body.style.backgroundImage = "url('assets/montevideo.jpg')";
   document.body.style.backgroundSize = "cover";
   document.body.style.backgroundPosition = "center center";
-  document.body.style.backgroundAttachment = "fixed";
+  document.body.style.backgroundAttachment = "scroll";
 
   if (!document.getElementById("miplan-legal-overlay")) {
     var legalOverlay = document.createElement("div");
     legalOverlay.id = "miplan-legal-overlay";
-    legalOverlay.style.cssText = [
-      "position:fixed",
-      "inset:0",
-      "z-index:0",
-      "pointer-events:none",
-      "will-change:transform,opacity",
-      "backface-visibility:hidden",
-      "background:linear-gradient(",
-      "to bottom,",
-      "rgba(10,20,40,0.90) 0%,",
-      "rgba(10,20,40,0.62) 42%,",
-      "rgba(10,20,40,0.94) 100%",
-      ")",
-    ].join("");
+    legalOverlay.style.cssText = "position:fixed;inset:0;z-index:0;pointer-events:none;will-change:transform,opacity;backface-visibility:hidden;background:linear-gradient(to bottom,rgba(10,20,40,0.90) 0%,rgba(10,20,40,0.62) 42%,rgba(10,20,40,0.94) 100%)";
     document.body.prepend(legalOverlay);
   }
 
@@ -6145,7 +6132,7 @@ function _applyUnifiedLandingHeroBackground() {
   document.body.style.backgroundImage = "url('assets/hero.jpg')";
   document.body.style.backgroundSize = "cover";
   document.body.style.backgroundPosition = "center 78%";
-  document.body.style.backgroundAttachment = "fixed";
+  document.body.style.backgroundAttachment = "scroll";
 
   if (!document.getElementById("miplan-hero-overlay")) {
     var overlay = document.createElement("div");
