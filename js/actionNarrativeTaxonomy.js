@@ -21,6 +21,7 @@
     OPTIMIZATION: "OPTIMIZATION",
     LEARNING: "LEARNING",
     UNIVERSAL: "UNIVERSAL",
+    CLARITY: "CLARITY",
   });
 
   var CZ_NARRATIVE_FAMILY_LIST = Object.freeze([
@@ -29,6 +30,7 @@
     CZ_NARRATIVE_FAMILIES.OPTIMIZATION,
     CZ_NARRATIVE_FAMILIES.LEARNING,
     CZ_NARRATIVE_FAMILIES.UNIVERSAL,
+    CZ_NARRATIVE_FAMILIES.CLARITY,
   ]);
 
   function _freezeFamilyArray(families) {
@@ -64,6 +66,18 @@
     historial_6_meses: ["OPTIMIZATION"],
     verificar_antes_solicitar: ["OPTIMIZATION", "LEARNING"],
     bcu_post_regularizacion_recal: ["STABILIZATION"],
+    revisar_costos_tarjetas: ["OPTIMIZATION"],
+    consolidar_informacion_tarjetas: ["CLARITY", "STABILIZATION"],
+    priorizar_deuda_mas_cara: ["STABILIZATION"],
+    revisar_conveniencia_refinanciacion: ["STABILIZATION"],
+    ordenar_deudas_por_impacto: ["STABILIZATION"],
+    comparar_costo_creditos: ["OPTIMIZATION", "STABILIZATION"],
+    verificar_actualizacion_historial: ["STABILIZATION", "LEARNING"],
+    documentar_regularizaciones: ["STABILIZATION"],
+    revisar_historial_antes_credito: ["OPTIMIZATION", "LEARNING"],
+    definir_meta_reserva: ["OPTIMIZATION"],
+    reservar_parte_flujo: ["OPTIMIZATION"],
+    revisar_capacidad_ahorro: ["OPTIMIZATION"],
   });
 
   var CZ_NEXT_STEP_ACTION_TAXONOMY = _buildFrozenTaxonomyMap({

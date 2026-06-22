@@ -2072,6 +2072,42 @@ var _BANCO_ACCIONES_MAESTRO = [
   { id: "bcu_post_regularizacion_recal", categoria: 4, planMin: 2, sinMora: true,
     texto: "Si regularizaste alguna deuda recientemente, verificá que el acreedor haya actualizado el reporte en el BCU. Ese paso es necesario para que el cambio se refleje en tu historial.",
     tipo: "accion", urgencia: "media" },
+  { id: "revisar_costos_tarjetas", categoria: 3, requiereFlujoPositivo: true,
+    texto: "Identificá tarjetas que ya no usás pero siguen generando costos fijos mensuales.",
+    tipo: "accion", urgencia: "baja" },
+  { id: "consolidar_informacion_tarjetas", categoria: 4, requiereTotalDeuda: true,
+    texto: "Registrá el límite, disponible y saldo actual de cada tarjeta que tenés activa.",
+    tipo: "accion", urgencia: "media" },
+  { id: "priorizar_deuda_mas_cara", categoria: 3, requiereTotalDeuda: true,
+    texto: "Identificá cuál de tus deudas genera mayor costo o presión mensual para atacarla primero.",
+    tipo: "accion", urgencia: "media" },
+  { id: "revisar_conveniencia_refinanciacion", categoria: 3, requiereTotalDeuda: true,
+    texto: "Evaluá si refinanciar alguna deuda reduce la cuota mensual real o solo extiende el plazo. Prestá atención al costo total, no solo a la cuota.",
+    tipo: "accion", urgencia: "media" },
+  { id: "ordenar_deudas_por_impacto", categoria: 3, requiereTotalPago: true,
+    texto: "Ordená tus deudas según el impacto que tienen en tu flujo mensual disponible.",
+    tipo: "accion", urgencia: "media" },
+  { id: "comparar_costo_creditos", categoria: 4,
+    texto: "Compará el costo total de tus compromisos financieros actuales.",
+    tipo: "accion", urgencia: "baja" },
+  { id: "verificar_actualizacion_historial", categoria: 4, requiereTotalDeuda: true,
+    texto: "Verificá si tu historial en el Clearing o el BCU refleja correctamente los pagos realizados.",
+    tipo: "accion", urgencia: "baja" },
+  { id: "documentar_regularizaciones", categoria: 4, requiereTotalDeuda: true,
+    texto: "Conservá comprobantes de cancelaciones o convenios realizados con acreedores.",
+    tipo: "accion", urgencia: "media" },
+  { id: "revisar_historial_antes_credito", categoria: 4,
+    texto: "Revisá tu historial crediticio antes de iniciar nuevas solicitudes.",
+    tipo: "accion", urgencia: "baja" },
+  { id: "definir_meta_reserva", categoria: 3, requiereFlujoPositivo: true,
+    texto: "Definí una meta concreta para crear un margen de reserva ante imprevistos financieros.",
+    tipo: "accion", urgencia: "baja" },
+  { id: "reservar_parte_flujo", categoria: 3, requiereFlujoPositivo: true,
+    texto: "Evaluá destinar una parte del flujo libre mensual a cubrir imprevistos.",
+    tipo: "accion", urgencia: "baja" },
+  { id: "revisar_capacidad_ahorro", categoria: 3, requiereFlujoPositivo: true,
+    texto: "Analizá cuánto margen mensual podrías conservar sin comprometer tus pagos actuales.",
+    tipo: "accion", urgencia: "baja" },
 ];
 
 function tieneBloqueo(tipo, bloqueadores) {
@@ -2091,6 +2127,8 @@ function _evalCtxAcciones(diag) {
   var prio = (diag && diag.prio) || null;
   var planId = (diag && diag.planId) || 1;
   var flujo = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  var totalDeuda = fin.totalDeuda != null ? fin.totalDeuda : 0;
+  var totalPago = fin.totalPago != null ? fin.totalPago : 0;
   var ingreso = (typeof PRE !== "undefined" && PRE.ingreso) ? PRE.ingreso : 0;
 
   var totalGastos = typeof getTotalMonthlyExpenses === "function"
@@ -2117,6 +2155,8 @@ function _evalCtxAcciones(diag) {
     planId: planId,
     bl: bl,
     flujo: flujo,
+    totalDeuda: totalDeuda,
+    totalPago: totalPago,
     ingreso: ingreso,
     totalGastos: totalGastos,
     situacion: prio ? (prio.situacion_ui || null) : null,
@@ -2135,8 +2175,16 @@ function _cumpleCondicionAccionMaestro(tpl, ctx) {
   if (tpl.id === "bcu_categoria_real") {
     return ctx.planId >= 2 || ctx.tieneMora;
   }
+  if (tpl.id === "comparar_costo_creditos") {
+    return ctx.totalDeuda > 0 && ctx.flujo >= 0;
+  }
+  if (tpl.id === "revisar_historial_antes_credito") {
+    return ctx.flujo >= 0 && !ctx.tieneMora;
+  }
   if (tpl.requiereMora) return ctx.tieneMora;
   if (tpl.requiereMoraSolo) return tieneBloqueo("mora", ctx.bl);
+  if (tpl.requiereTotalDeuda) return ctx.totalDeuda > 0;
+  if (tpl.requiereTotalPago) return ctx.totalPago > 0;
   if (tpl.requiereFlujoPositivo) return ctx.flujo > 0;
   if (tpl.requiereFlujoNegativo) return ctx.flujo < 0;
   if (tpl.requierePrio) return ctx.prio !== null;
