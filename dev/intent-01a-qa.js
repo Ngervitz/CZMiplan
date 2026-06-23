@@ -17,16 +17,82 @@
 
   var _stored = null;
 
+  function createMockClassList(initial) {
+    var classes = (initial || "").split(/\s+/).filter(Boolean);
+    return {
+      add: function(name) {
+        if (name && classes.indexOf(name) < 0) classes.push(name);
+      },
+      remove: function(name) {
+        classes = classes.filter(function(c) { return c !== name; });
+      },
+      toggle: function(name, force) {
+        var has = classes.indexOf(name) >= 0;
+        if (force === true) {
+          if (!has) classes.push(name);
+          return true;
+        }
+        if (force === false) {
+          classes = classes.filter(function(c) { return c !== name; });
+          return false;
+        }
+        if (has) {
+          classes = classes.filter(function(c) { return c !== name; });
+          return false;
+        }
+        classes.push(name);
+        return true;
+      },
+      contains: function(name) {
+        return classes.indexOf(name) >= 0;
+      },
+    };
+  }
+
+  function createMockElement() {
+    return {
+      id: "",
+      style: { cssText: "" },
+      classList: createMockClassList(),
+      remove: function() {},
+      prepend: function() {},
+    };
+  }
+
+  function createTestDocument() {
+    var created = [];
+    var body = createMockElement();
+    body.prepend = function(node) {
+      body._prepended = node;
+    };
+    return {
+      body: body,
+      getElementById: function(id) {
+        for (var i = 0; i < created.length; i++) {
+          if (created[i].id === id) return created[i];
+        }
+        return null;
+      },
+      querySelector: function(sel) {
+        if (sel === ".header") return createMockElement();
+        return null;
+      },
+      querySelectorAll: function() { return []; },
+      addEventListener: function() {},
+      createElement: function() {
+        var el = createMockElement();
+        created.push(el);
+        return el;
+      },
+    };
+  }
+
   function makeSandbox(search) {
     search = search || "";
     if (search && search.indexOf("?") !== 0) search = "?" + search;
     var sandbox = {
       window: null,
-      document: {
-        getElementById: function() { return null; },
-        querySelectorAll: function() { return []; },
-        addEventListener: function() {},
-      },
+      document: createTestDocument(),
       console: console,
       parseFloat: parseFloat,
       isFinite: isFinite,

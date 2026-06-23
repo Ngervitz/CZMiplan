@@ -33,17 +33,83 @@
     );
   }
 
+  function createMockClassList(initial) {
+    var classes = (initial || "").split(/\s+/).filter(Boolean);
+    return {
+      add: function(name) {
+        if (name && classes.indexOf(name) < 0) classes.push(name);
+      },
+      remove: function(name) {
+        classes = classes.filter(function(c) { return c !== name; });
+      },
+      toggle: function(name, force) {
+        var has = classes.indexOf(name) >= 0;
+        if (force === true) {
+          if (!has) classes.push(name);
+          return true;
+        }
+        if (force === false) {
+          classes = classes.filter(function(c) { return c !== name; });
+          return false;
+        }
+        if (has) {
+          classes = classes.filter(function(c) { return c !== name; });
+          return false;
+        }
+        classes.push(name);
+        return true;
+      },
+      contains: function(name) {
+        return classes.indexOf(name) >= 0;
+      },
+    };
+  }
+
+  function createMockElement() {
+    return {
+      id: "",
+      style: {},
+      classList: createMockClassList(),
+      remove: function() {},
+      prepend: function() {},
+    };
+  }
+
+  function createTestDocument() {
+    var created = [];
+    var body = createMockElement();
+    body.prepend = function(node) {
+      body._prepended = node;
+    };
+    return {
+      body: body,
+      getElementById: function(id) {
+        for (var i = 0; i < created.length; i++) {
+          if (created[i].id === id) return created[i];
+        }
+        return null;
+      },
+      querySelector: function(sel) {
+        if (sel === ".header") return createMockElement();
+        return null;
+      },
+      querySelectorAll: function() { return []; },
+      addEventListener: function() {},
+      createElement: function() {
+        var el = createMockElement();
+        created.push(el);
+        return el;
+      },
+    };
+  }
+
   function boot(search) {
     global.window = global;
     global.window.location = {
       search: search || "?p1=A&p2=B&p3=A&p4=B&p5=A&p6=B&p7=A&p8=B&p9=A&p10=B",
       href: "",
     };
-    global.document = {
-      getElementById: function() { return null; },
-      querySelectorAll: function() { return []; },
-      addEventListener: function() {},
-    };
+    global.document = createTestDocument();
     global.trackEvent = function() {};
     global.trackCRMEvent = function() {};
     global.enviarCRM = function() {};
@@ -1023,7 +1089,7 @@
     window.CZ_ENTRY_CONTEXT = { hasRejectionContext: false };
     var bridgeNeutral = renderBridgeScreen();
     ok("FIX-01B bridge neutral copy",
-      bridgeNeutral.indexOf("Tu perfil financiero no depende solo de ingresos o Clearing") >= 0);
+      bridgeNeutral.indexOf("Conoc\u00e9 d\u00f3nde est\u00e1s parado en menos de 4 minutos") >= 0);
     ok("FIX-01B bridge no rechazo financiero",
       bridgeNeutral.indexOf("El rechazo financiero no siempre depende") < 0);
 
@@ -1732,7 +1798,7 @@
       microRegularizada: "Estado registrado como regularizada. Conviene verificar que el acreedor lo refleje.",
       diagScreenC: "complicando una evaluación crediticia hoy",
       diagModifier: "afectando tu perfil financiero hoy",
-      seoIntro: "pasos concretos para ordenar tu situación financiera declarada",
+      seoIntro: "Pasos concretos seg\u00fan tu situaci\u00f3n declarada",
     };
     var FORBIDDEN = [
       "para que el banco te apruebe",

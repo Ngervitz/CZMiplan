@@ -80,7 +80,7 @@
   ok("A plan 4 assigned", caseA.diag.planId === 4);
   ok("A no Situación financiera in Hero", caseA.hero.indexOf("Situación financiera:") < 0);
   ok("A no green Estable in Hero", !/🟢[^<]{0,40}Estable/.test(caseA.hero));
-  ok("A critical problem preserved", caseA.hero.indexOf("punto critico") >= 0);
+  ok("A critical problem preserved", caseA.hero.indexOf("punto crítico") >= 0);
 
   // B — Plan 1 complete
   var caseB = runCase({
