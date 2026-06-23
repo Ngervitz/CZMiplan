@@ -3941,6 +3941,14 @@ function _renderDashboardHeroCard(diag, st, coherence) {
   var statusLabel = heroContent.statusLabel;
   var nextAction = heroContent.nextAction;
 
+  // GUARDRAIL UX-CONSOLIDATION-01:
+  // Hero must not render embedded next-step
+  // when Primary Action Card is visible.
+  // Primary Action Card is the single owner
+  // of next-step guidance when it renders.
+  var suppressEmbeddedNextStep =
+    _willRenderPrimaryActionCard(diag, st, coherence);
+
   return '<div class="cz-hero-card plan-card dash-tier-a" id="cz-dashboard-hero" style="border-color:' + pc + '55;'
     + 'background:linear-gradient(165deg,' + pc + '18 0%,rgba(255,255,255,.04) 58%);'
     + 'padding:24px 22px;margin-bottom:4px;">'
@@ -3956,7 +3964,7 @@ function _renderDashboardHeroCard(diag, st, coherence) {
     + (heroProblema
         ? '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:14px;">' + heroProblema + "</div>"
         : "")
-    + (nextAction
+    + (nextAction && !suppressEmbeddedNextStep
         ? '<div style="padding:14px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;">'
           + '<div style="font-size:12px;font-weight:800;color:#8390b5;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">'
           + "Próximo paso recomendado"
@@ -3965,6 +3973,29 @@ function _renderDashboardHeroCard(diag, st, coherence) {
           + "</div>"
         : "")
     + "</div>";
+}
+
+function _willRenderPrimaryActionCard(diag, st, coherence) {
+  try {
+    diag = diag || (typeof _diag === "function" ? _diag() : null);
+    st = st || (typeof _st === "function" ? _st() : null);
+    if (!diag || !st) return false;
+    if (typeof isIncompleteFinancialProfile === "function"
+        && isIncompleteFinancialProfile(diag, st)) {
+      return false;
+    }
+    coherence = coherence || (typeof resolveDashboardCoherence === "function"
+      ? resolveDashboardCoherence(diag, st)
+      : null);
+    if (typeof resolveNextStepContent !== "function") return false;
+    var nextStepResolved = resolveNextStepContent(diag, st, coherence);
+    var nextStepText = nextStepResolved && nextStepResolved.text
+      ? String(nextStepResolved.text).trim()
+      : "";
+    return nextStepText.length > 0;
+  } catch (e) {
+    return false;
+  }
 }
 
 function renderPrimaryActionCard(diag, st, coherence) {
