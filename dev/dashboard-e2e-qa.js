@@ -959,9 +959,26 @@
       var narr = renderNarrativaInterpretacion(diag, st, coh);
       var tab = renderTabPlan();
       var incomplete = isIncompleteFinancialProfile(diag, st);
-      var heroOwns = !!(coh && coh.nextStepText && !incomplete);
+      var primaryRenders = typeof _willRenderPrimaryActionCard === "function"
+        ? _willRenderPrimaryActionCard(diag, st, coh)
+        : (!incomplete
+            && typeof resolveNextStepContent === "function"
+            && (resolveNextStepContent(diag, st, coh).text || "").trim().length > 0);
+      var heroOwns = !!(coh && coh.nextStepText && !incomplete && !primaryRenders);
 
-      if (heroOwns) {
+      if (primaryRenders) {
+        var primaryUx1d = renderPrimaryActionCard(diag, st, coh);
+        var primaryNextText = typeof resolveNextStepContent === "function"
+          ? (resolveNextStepContent(diag, st, coh).text || "").trim()
+          : "";
+        ok(pid + " UX-1d primary renders", primaryUx1d.length > 0);
+        ok(pid + " UX-1d hero no Próximo paso", hero.indexOf("Próximo paso recomendado") < 0);
+        ok(pid + " UX-1d hero no legacy nextStepText",
+          !coh.nextStepText || hero.indexOf(coh.nextStepText) < 0);
+        ok(pid + " UX-1d primary owns next step",
+          primaryNextText && primaryUx1d.indexOf(primaryNextText) >= 0);
+        ok(pid + " UX-1d narr no Primer paso", narr.indexOf("Primer paso recomendado") < 0);
+      } else if (heroOwns) {
         ok(pid + " UX-1d hero Próximo paso", hero.indexOf("Próximo paso recomendado") >= 0);
         ok(pid + " UX-1d hero nextStepText", coh.nextStepText && hero.indexOf(coh.nextStepText) >= 0);
         ok(pid + " UX-1d narr no Primer paso", narr.indexOf("Primer paso recomendado") < 0);
