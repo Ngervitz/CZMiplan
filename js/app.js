@@ -2988,14 +2988,29 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // Clear default "0" on monto/pago focus so typing does not prepend (new + edit debt forms)
+    // Prefill profile fields: select-all on focus so typing replaces URL/demo values
     main.addEventListener("focusin", function(e) {
-      var focusField = e.target.getAttribute("data-deuda-field");
+      var t = e.target;
+      if (!t || !t.id) return;
+
+      if (t.id === "inp-profile-nombre"
+          || t.id === "inp-profile-email"
+          || t.id === "inp-ingreso-mensual") {
+        if (String(t.value || "").length > 0 && typeof t.select === "function") {
+          setTimeout(function() {
+            if (document.activeElement === t) t.select();
+          }, 0);
+        }
+        return;
+      }
+
+      var focusField = t.getAttribute("data-deuda-field");
       if (focusField !== "monto" && focusField !== "pago") return;
-      var focusIdx = parseInt(e.target.getAttribute("data-deuda-idx"), 10);
+      var focusIdx = parseInt(t.getAttribute("data-deuda-idx"), 10);
       if (isNaN(focusIdx) || !st.deudas[focusIdx]) return;
-      e.target.dataset.prefocusValue = e.target.value;
-      if (String(e.target.value).trim() === "0") {
-        e.target.value = "";
+      t.dataset.prefocusValue = t.value;
+      if (String(t.value).trim() === "0") {
+        t.value = "";
         st.deudas[focusIdx][focusField] = "";
       }
     });

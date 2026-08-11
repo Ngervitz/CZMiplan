@@ -5,8 +5,8 @@
 (function(global) {
   "use strict";
 
-  /** Review build only — set false before production release. */
-  var PLUS_MOCK_MODE = true;
+  /** Production default — set true only for local mock review builds / QA. */
+  var PLUS_MOCK_MODE = false;
 
   /** Display string derived from CZ_PLUS_PRICE_UYU (js/config.js). */
   var _plusPriceUyu = (typeof global.CZ_PLUS_PRICE_UYU !== "undefined")
