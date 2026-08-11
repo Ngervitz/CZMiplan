@@ -4930,20 +4930,19 @@ function renderPlusPresentation() {
       + '<p class="plus-example-note">⚠ Existe una diferencia entre la información declarada y la registrada.</p>'
       + "</div>"
       + '<div class="plus-price-context">Informe financiero completo</div>'
-      + '<div class="plus-price-block">'
-      + '<div class="plus-price-amount">$'
+      + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-obtener-informe">'
+      + '<span class="plus-cta-label">Ver mi situación real</span>'
+      + '<span class="plus-cta-price-sep" aria-hidden="true"> — </span>'
+      + '<span class="plus-cta-price">$'
       + Number(typeof CZ_PLUS_PRICE_UYU !== "undefined" ? CZ_PLUS_PRICE_UYU : 0)
           .toLocaleString("es-UY", { maximumFractionDigits: 0 })
-      + ' <span class="plus-price-iva">(IVA incluido)</span></div>'
-      + '<div class="plus-price-note">Pago único</div>'
-      + '<div class="plus-price-note">3 cuotas de $'
+      + "</span></button>"
+      + '<p id="plus-cta-inline-msg" class="plus-cta-inline-msg" style="display:none;"></p>'
+      + '<div class="plus-price-note plus-price-offer">'
+      + "Pago único (IVA incluido) · o 3 cuotas de $"
       + Math.round((typeof CZ_PLUS_PRICE_UYU !== "undefined" ? CZ_PLUS_PRICE_UYU : 0) / 3)
           .toLocaleString("es-UY", { maximumFractionDigits: 0 })
-      + " sin recargo (IVA incluido)</div>"
-      + "</div>"
-      + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-obtener-informe">'
-      + "Ver mi situación real</button>"
-      + '<p id="plus-cta-inline-msg" class="plus-cta-inline-msg" style="display:none;"></p>'
+      + " sin recargo</div>"
       + '<div class="plus-secure-line" aria-label="Conexión segura">'
       + '<svg class="plus-secure-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" '
       + 'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'

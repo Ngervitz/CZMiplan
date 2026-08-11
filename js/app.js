@@ -3806,7 +3806,9 @@ document.addEventListener("DOMContentLoaded", function() {
       }
 
       // Sprint 14.0 — Mi Plan Plus tab CTA
-      if (e.target.id === "btn-plus-obtener-informe") {
+      // closest: CTA label/price live in child spans; keep same onPlusCtaClick path
+      if (e.target.id === "btn-plus-obtener-informe"
+          || (e.target.closest && e.target.closest("#btn-plus-obtener-informe"))) {
         onPlusCtaClick();
         return;
       }
