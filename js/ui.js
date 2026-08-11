@@ -4931,12 +4931,28 @@ function renderPlusPresentation() {
       + "</div>"
       + '<div class="plus-price-context">Informe financiero completo</div>'
       + '<div class="plus-price-block">'
-      + '<div class="plus-price-amount">$1.290</div>'
+      + '<div class="plus-price-amount">$'
+      + Number(typeof CZ_PLUS_PRICE_UYU !== "undefined" ? CZ_PLUS_PRICE_UYU : 0)
+          .toLocaleString("es-UY", { maximumFractionDigits: 0 })
+      + "</div>"
       + '<div class="plus-price-note">IVA incluido · Pago único</div>'
+      + '<div class="plus-price-note">3 cuotas de $'
+      + Math.round((typeof CZ_PLUS_PRICE_UYU !== "undefined" ? CZ_PLUS_PRICE_UYU : 0) / 3)
+          .toLocaleString("es-UY", { maximumFractionDigits: 0 })
+      + " sin recargo</div>"
       + "</div>"
       + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-obtener-informe">'
       + "Ver mi situación real</button>"
       + '<p id="plus-cta-inline-msg" class="plus-cta-inline-msg" style="display:none;"></p>'
+      + '<div class="plus-secure-line" aria-label="Conexión segura">'
+      + '<svg class="plus-secure-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" '
+      + 'xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+      + '<rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/>'
+      + '<path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" '
+      + 'stroke-linecap="round"/>'
+      + "</svg>"
+      + '<span>Conexión segura (SSL)</span>'
+      + "</div>"
       + _renderPlusClaudeTestBlock()
       + '<p class="plus-disclaimer">El informe se genera en base a los datos disponibles en BCU '
       + "y Clearing al momento de la consulta.</p>"

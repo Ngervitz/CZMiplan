@@ -465,6 +465,9 @@ var CZ_PLUS_PAYMENT_LIVE = false;
 var CZ_PLUS_BCU_CLEARING_LIVE = false;
 var CZ_HANDY_ENDPOINT = "";
 
+// Mi Plan Plus — precio único (UYU). Usar esta constante; no hardcodear 1290 en UI/tracking.
+const CZ_PLUS_PRICE_UYU = 1290;
+
 // Sprint 14.2 — Claude LLM (key solo en Vercel env; nunca en el browser en producción)
 var CZ_CLAUDE_API_KEY = "";
 var CZ_CLAUDE_MODEL = "claude-sonnet-4-5";

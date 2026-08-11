@@ -987,7 +987,7 @@ function completarCompraPlus() {
 
   if (typeof trackEvent === "function") {
     trackEvent(CZ_EVENT_NAMES.PLUS_PURCHASED, {
-      value:    1290,
+      value:    (typeof CZ_PLUS_PRICE_UYU !== "undefined" ? CZ_PLUS_PRICE_UYU : 0),
       currency: "UYU",
     });
   }

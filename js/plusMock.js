@@ -8,8 +8,13 @@
   /** Review build only — set false before production release. */
   var PLUS_MOCK_MODE = true;
 
-  /** Single source for Plus mock price display — edit here only. */
-  var CZ_PLUS_PRICE_DISPLAY = "UYU 1.290 IVA incluido";
+  /** Display string derived from CZ_PLUS_PRICE_UYU (js/config.js). */
+  var _plusPriceUyu = (typeof global.CZ_PLUS_PRICE_UYU !== "undefined")
+    ? Number(global.CZ_PLUS_PRICE_UYU)
+    : ((typeof CZ_PLUS_PRICE_UYU !== "undefined") ? Number(CZ_PLUS_PRICE_UYU) : 0);
+  var CZ_PLUS_PRICE_DISPLAY = "UYU "
+    + _plusPriceUyu.toLocaleString("es-UY", { maximumFractionDigits: 0 })
+    + " IVA incluido";
 
   var PLUS_MOCK_DATA = {
     peor: {

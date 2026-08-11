@@ -1049,6 +1049,14 @@ select option{background:#0a1026;}
 .plus-price-note{
   font-size:13px;color:rgba(255,255,255,.45);margin-top:8px;line-height:1.4;
 }
+.plus-secure-line{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  font-size:12px;color:rgba(255,255,255,.4);line-height:1.4;
+  margin:-4px 0 14px;max-width:100%;
+}
+.plus-secure-icon{
+  flex-shrink:0;color:rgba(255,255,255,.4);
+}
 .plus-cta-btn{
   width:100%;max-width:100%;height:56px;font-size:17px;font-weight:800;
   box-sizing:border-box;margin-bottom:12px;

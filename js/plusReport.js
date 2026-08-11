@@ -272,7 +272,7 @@ function getMockPlusInput() {
     ],
     contexto_producto: {
       producto: "mi_plan_plus",
-      precio_uyu: 1290,
+      precio_uyu: (typeof CZ_PLUS_PRICE_UYU !== "undefined" ? CZ_PLUS_PRICE_UYU : 0),
       incluye: ["BCU", "Clearing", "IA", "PDF"],
     },
   };
