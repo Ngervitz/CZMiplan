@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "initiative": "DECISION-PROVENANCE-01",
+  "phase": "Etapa2-Fase1-PASO-A",
+  "captured_at": "2026-08-11T19:31:52.448Z",
+  "commit": "d5f41b97703ec4393cab46150481863b53045df0",
+  "surfaces": [
+    "financial_stage",
+    "next_step.actionKey",
+    "next_step.text",
+    "acciones_visibles"
+  ],
+  "canonical_acciones": "post_ui_filters_visible_only",
+  "profile_count": 41,
+  "stage_histogram": {
+    "CLARIDAD": 7,
+    "OPTIMIZACION": 5,
+    "RECUPERACION": 19,
+    "ESTABILIZACION": 10
+  },
+  "files": {
+    "surfaces": "surfaces.jsonl"
+  }
+}
