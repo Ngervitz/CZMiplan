@@ -21,4 +21,9 @@ node dev/decision-provenance/fs-layer-a-qa.js
 
 Requires harness override `CZ_DECISION_PROVENANCE=true` after product load (see `harness.js`). Product default remains `false`.
 
-See `FINDINGS-PROV-FS.md` for Phase 1 results and BUG-FS-CLARITY-LOW-MISS.
+See `FINDINGS-PROV-FS.md` / `FINDINGS-PROV-ACT.md` for phase results.
+
+```bash
+node dev/decision-provenance/fs-layer-a-qa.js
+node dev/decision-provenance/act-layer-a-qa.js
+```

@@ -159,28 +159,40 @@ function runMotor(ctx, opts) {
 
 /**
  * Acciones finales visibles post-filtros UI (DEC-PROV-01).
- * Excludes UX1D2-suppressed rows. Includes full non-suppressed set
- * (collapse "Ver más" is progressive disclosure of the same set).
+ * Prefer product helper when available; fallback mirrors prior harness logic.
  */
 function captureVisibleAcciones(ctx, diag, st) {
+  if (typeof ctx.resolveCanonicalVisibleAcciones === "function") {
+    var canonical = ctx.resolveCanonicalVisibleAcciones(diag, st);
+    return (canonical || []).map(function(a) {
+      return {
+        id: a.id,
+        urgencia: a.urgencia || null,
+        tipo: a.tipo || null,
+      };
+    });
+  }
   var acciones = typeof ctx.seleccionarAccionesRecomendadas === "function"
     ? ctx.seleccionarAccionesRecomendadas(diag)
     : [];
-  if (typeof ctx.isIncompleteFinancialProfile === "function"
-      && ctx.isIncompleteFinancialProfile(diag, st)) {
-    acciones = ctx._filterAccionesForIncompleteProfile(acciones);
-  }
-  if (diag && diag.planId === 5 && acciones.length < 3
-      && typeof ctx._fallbackAccionesPlan5 === "function") {
-    var fb5 = ctx._fallbackAccionesPlan5();
-    for (var fi = 0; fi < fb5.length && acciones.length < 3; fi++) {
-      if (!acciones.some(function(a) { return a.id === fb5[fi].id; })) {
-        acciones.push(fb5[fi]);
+  if (typeof ctx.applyAccionesPostMotorTransforms === "function") {
+    acciones = ctx.applyAccionesPostMotorTransforms(diag, st, acciones);
+  } else {
+    if (typeof ctx.isIncompleteFinancialProfile === "function"
+        && ctx.isIncompleteFinancialProfile(diag, st)) {
+      acciones = ctx._filterAccionesForIncompleteProfile(acciones);
+    }
+    if (diag && diag.planId === 5 && acciones.length < 3
+        && typeof ctx._fallbackAccionesPlan5 === "function") {
+      var fb5 = ctx._fallbackAccionesPlan5();
+      for (var fi = 0; fi < fb5.length && acciones.length < 3; fi++) {
+        if (!acciones.some(function(a) { return a.id === fb5[fi].id; })) {
+          acciones.push(fb5[fi]);
+        }
       }
     }
+    if (acciones.length > 5) acciones = acciones.slice(0, 5);
   }
-  if (acciones.length > 5) acciones = acciones.slice(0, 5);
-
   var suppressFlujo = false;
   if (typeof ctx._ux1d2ShouldSuppressFlujoNegativoAccion === "function") {
     var ux = ctx._ux1d2ShouldSuppressFlujoNegativoAccion(diag, acciones, st);

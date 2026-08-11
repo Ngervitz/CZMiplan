@@ -5535,23 +5535,79 @@ function _fallbackAccionesPlan5() {
   ];
 }
 
+/**
+ * Post-motor UI transforms shared by render and canonical surface (DEC-PROV-01).
+ * Does not apply UX1D2 exclusion — that differs between DOM hide vs canonical drop.
+ */
+function applyAccionesPostMotorTransforms(diag, st, acciones) {
+  st = st || _st();
+  acciones = (acciones || []).slice();
+  if (typeof isIncompleteFinancialProfile === "function"
+      && isIncompleteFinancialProfile(diag, st)) {
+    acciones = _filterAccionesForIncompleteProfile(acciones);
+  }
+  if (diag && diag.planId === 5 && acciones.length < 3) {
+    var fb5 = _fallbackAccionesPlan5();
+    var wantProv = typeof _decisionProvenanceEnabled === "function"
+      && _decisionProvenanceEnabled();
+    for (var fi = 0; fi < fb5.length && acciones.length < 3; fi++) {
+      if (!acciones.some(function(a) { return a.id === fb5[fi].id; })) {
+        var padItem = Object.assign({}, fb5[fi]);
+        if (wantProv) {
+          padItem.selection_reason = {
+            schema_version: 1,
+            decision: "accion",
+            value: padItem.id,
+            reason_code: "ACT_UI_PLAN5_PAD",
+            source_layer: "renderAccionesRecomendadasHtml",
+            evidence: {
+              planId: 5,
+              selected_len_before: acciones.length,
+            },
+          };
+          padItem.retention_reason = null;
+        }
+        acciones.push(padItem);
+      }
+    }
+  }
+  if (acciones.length > 5) acciones = acciones.slice(0, 5);
+  return acciones;
+}
+
+/**
+ * DEC-PROV-01 canonical visible actions for a future assistant_context.
+ * Prefer passing `accionesOpt` = the same motor array already used by UI
+ * to avoid a second independent selection.
+ * Includes Ver-más-collapsed items; excludes UX1D2-suppressed.
+ */
+function resolveCanonicalVisibleAcciones(diag, st, accionesOpt) {
+  st = st || _st();
+  diag = diag || _diag();
+  var acciones;
+  if (accionesOpt) {
+    acciones = accionesOpt.slice();
+  } else if (typeof seleccionarAccionesRecomendadas === "function") {
+    acciones = seleccionarAccionesRecomendadas(diag);
+  } else {
+    acciones = [];
+  }
+  acciones = applyAccionesPostMotorTransforms(diag, st, acciones);
+  var ux1d2 = _ux1d2ShouldSuppressFlujoNegativoAccion(diag, acciones, st);
+  if (ux1d2.suppressFlujoNegativo) {
+    acciones = acciones.filter(function(a) {
+      return !(a && a.id === "flujo_negativo_accion");
+    });
+  }
+  return acciones;
+}
+
 function renderAccionesRecomendadasHtml(diag) {
   var st = _st();
   var acciones = typeof seleccionarAccionesRecomendadas === "function"
     ? seleccionarAccionesRecomendadas(diag)
     : [];
-  if (isIncompleteFinancialProfile(diag, st)) {
-    acciones = _filterAccionesForIncompleteProfile(acciones);
-  }
-  if (diag && diag.planId === 5 && acciones.length < 3) {
-    var fb5 = _fallbackAccionesPlan5();
-    for (var fi = 0; fi < fb5.length && acciones.length < 3; fi++) {
-      if (!acciones.some(function(a) { return a.id === fb5[fi].id; })) {
-        acciones.push(fb5[fi]);
-      }
-    }
-  }
-  if (acciones.length > 5) acciones = acciones.slice(0, 5);
+  acciones = applyAccionesPostMotorTransforms(diag, st, acciones);
   _trackAccionesMostradasOnce(diag, acciones);
 
   var ux1d2 = _ux1d2ShouldSuppressFlujoNegativoAccion(diag, acciones, st);
@@ -6779,6 +6835,8 @@ window.CredizonaUI = {
   _ZERO_PAYMENT_DEBT_CLARIFICATION: _ZERO_PAYMENT_DEBT_CLARIFICATION,
   _filterAccionesForIncompleteProfile: _filterAccionesForIncompleteProfile,
   _ux1d2ShouldSuppressFlujoNegativoAccion: _ux1d2ShouldSuppressFlujoNegativoAccion,
+  applyAccionesPostMotorTransforms: applyAccionesPostMotorTransforms,
+  resolveCanonicalVisibleAcciones: resolveCanonicalVisibleAcciones,
   renderAccionesRecomendadasHtml: renderAccionesRecomendadasHtml,
   _renderTuSituacionHoy: _renderTuSituacionHoy,
   renderConfianzaDiagnostico: renderConfianzaDiagnostico,

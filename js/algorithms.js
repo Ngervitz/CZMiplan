@@ -2593,6 +2593,58 @@ function _setTaxonomySelectionMeta(diag, mode, discardCount) {
   diag.taxonomy_discard_count = discardCount != null ? discardCount : 0;
 }
 
+function _actProvenanceTrimEvidence(evidence) {
+  var ev = evidence || {};
+  var keys = Object.keys(ev);
+  if (keys.length <= 8) return ev;
+  var trimmed = {};
+  for (var i = 0; i < 8; i++) trimmed[keys[i]] = ev[keys[i]];
+  return trimmed;
+}
+
+function _attachActionSelectionReason(action, reasonCode, evidence) {
+  if (!_decisionProvenanceEnabled() || !action) return action;
+  action.selection_reason = {
+    schema_version: 1,
+    decision: "accion",
+    value: action.id,
+    reason_code: reasonCode,
+    source_layer: "seleccionarAccionesRecomendadas",
+    evidence: _actProvenanceTrimEvidence(evidence),
+  };
+  return action;
+}
+
+function _attachActionRetentionReason(action, reasonCode, evidence) {
+  if (!_decisionProvenanceEnabled() || !action) return action;
+  action.retention_reason = {
+    schema_version: 1,
+    decision: "accion_retention",
+    value: action.id,
+    reason_code: reasonCode,
+    source_layer: "applyNarrativeTaxonomyFilterToSelected",
+    evidence: _actProvenanceTrimEvidence(evidence),
+  };
+  return action;
+}
+
+function _stampFallbackActionProvenance(acciones) {
+  if (!_decisionProvenanceEnabled() || !acciones) return acciones;
+  for (var i = 0; i < acciones.length; i++) {
+    if (!acciones[i]) continue;
+    acciones[i].selection_reason = {
+      schema_version: 1,
+      decision: "accion",
+      value: acciones[i].id,
+      reason_code: "ACT_FALLBACK",
+      source_layer: "seleccionarAccionesRecomendadas",
+      evidence: { bank: "fallback" },
+    };
+    acciones[i].retention_reason = null;
+  }
+  return acciones;
+}
+
 function applyNarrativeTaxonomyFilterToSelected(diag, candidateActions) {
   var candidates = candidateActions || [];
 
@@ -2603,9 +2655,19 @@ function applyNarrativeTaxonomyFilterToSelected(diag, candidateActions) {
   var taxonomy = _getActionNarrativeTaxonomyModule();
   var narrativeDecision = diag.narrative_decision;
   var narrativeMode = narrativeDecision && narrativeDecision.narrative_mode;
+  var wantProv = _decisionProvenanceEnabled();
+  var ri;
 
   if (!taxonomy || !narrativeDecision || !_isValidNarrativeModeForTaxonomyFilter(narrativeMode)) {
     _setTaxonomySelectionMeta(diag, "legacy_fallback", 0);
+    if (wantProv) {
+      for (ri = 0; ri < candidates.length; ri++) {
+        _attachActionRetentionReason(candidates[ri], "ACT_TAX_SKIP", {
+          action_selection_mode: "legacy_fallback",
+          taxonomy_discard_count: 0,
+        });
+      }
+    }
     return candidates;
   }
 
@@ -2620,10 +2682,30 @@ function applyNarrativeTaxonomyFilterToSelected(diag, candidateActions) {
 
   if (filtered.length >= CZ_TAXONOMY_FILTER_MIN_ACTIONS) {
     _setTaxonomySelectionMeta(diag, "taxonomy", discardCount);
+    if (wantProv) {
+      for (ri = 0; ri < filtered.length; ri++) {
+        _attachActionRetentionReason(filtered[ri], "ACT_TAX_PASS", {
+          narrative_mode: narrativeMode,
+        });
+      }
+    }
     return filtered;
   }
 
   _setTaxonomySelectionMeta(diag, "legacy_fallback", discardCount);
+  if (wantProv) {
+    for (ri = 0; ri < candidates.length; ri++) {
+      _attachActionRetentionReason(candidates[ri], "ACT_TAX_RESTORE_MIN", {
+        narrative_mode: narrativeMode,
+        action_selection_mode: "legacy_fallback",
+        taxonomy_discard_count: discardCount,
+        min_actions: CZ_TAXONOMY_FILTER_MIN_ACTIONS,
+        would_pass_taxonomy: _actionPassesNarrativeTaxonomyFilter(
+          candidates[ri], narrativeMode, taxonomy
+        ),
+      });
+    }
+  }
   return candidates;
 }
 
@@ -2654,12 +2736,13 @@ function _fallbackAccionesRecomendadas() {
     }
   }
   out = _dedupCat2Acciones(out);
-  return out.length ? out : [{
+  var result = out.length ? out : [{
     id: "bcu_clearing_distintos",
     texto: "El BCU y el Clearing son dos registros distintos. Podés estar limpio en uno y con problemas en el otro.",
     tipo: "accion",
     urgencia: "media",
   }];
+  return _stampFallbackActionProvenance(result);
 }
 
 function seleccionarAccionesRecomendadas(diag) {
@@ -2668,6 +2751,7 @@ function seleccionarAccionesRecomendadas(diag) {
 
     var ctx = _evalCtxAcciones(diag);
     var qualified = { 1: [], 2: [], 3: [], 4: [] };
+    var wantProv = _decisionProvenanceEnabled();
 
     for (var bi = 0; bi < _BANCO_ACCIONES_MAESTRO.length; bi++) {
       var tpl = _BANCO_ACCIONES_MAESTRO[bi];
@@ -2687,12 +2771,26 @@ function seleccionarAccionesRecomendadas(diag) {
     var ci;
     var cat1added = 0;
     for (ci = 0; ci < qualified[1].length && cat1added < 3; ci++) {
+      if (wantProv) {
+        _attachActionSelectionReason(qualified[1][ci], "ACT_PICK_C1", {
+          categoria: 1,
+          quota_max: 3,
+          pick_slot: cat1added,
+        });
+      }
       selected.push(qualified[1][ci]);
       cat1added++;
     }
     var cat2added = 0;
     for (ci = 0; ci < qualified[2].length && cat2added < 2; ci++) {
       if (!_accionYaSeleccionada(selected, qualified[2][ci].id)) {
+        if (wantProv) {
+          _attachActionSelectionReason(qualified[2][ci], "ACT_PICK_C2", {
+            categoria: 2,
+            quota_max: 2,
+            pick_slot: cat2added,
+          });
+        }
         selected.push(qualified[2][ci]);
         cat2added++;
       }
@@ -2702,6 +2800,12 @@ function seleccionarAccionesRecomendadas(diag) {
     cat34 = _ordenarPorUrgenciaEnCategoria(cat34);
     for (ci = 0; ci < cat34.length && selected.length < 5; ci++) {
       if (!_accionYaSeleccionada(selected, cat34[ci].id)) {
+        if (wantProv) {
+          _attachActionSelectionReason(cat34[ci], "ACT_PICK_C34", {
+            selected_len_before: selected.length,
+            cap: 5,
+          });
+        }
         selected.push(cat34[ci]);
       }
     }
@@ -2717,7 +2821,14 @@ function seleccionarAccionesRecomendadas(diag) {
     }
     allRemain = _ordenarAccionesRecomendadasFinal(allRemain, ctx.planId);
     while (selected.length < 5 && allRemain.length) {
-      selected.push(allRemain.shift());
+      var fillItem = allRemain.shift();
+      if (wantProv) {
+        _attachActionSelectionReason(fillItem, "ACT_FILL", {
+          selected_len_before: selected.length,
+          cap: 5,
+        });
+      }
+      selected.push(fillItem);
     }
 
     // STEP 3 — BCU Cat 2 dedup (max 2, priority order) before final sort/slice
