@@ -213,6 +213,9 @@ function captureVisibleAcciones(ctx, diag, st) {
 
 function captureNextStep(ctx, diag, st) {
   var coherence = ctx.resolveDashboardCoherence(diag, st);
+  if (typeof ctx.attachNextStepProvenance === "function") {
+    ctx.attachNextStepProvenance(diag, st, coherence);
+  }
   var ns = ctx.resolveNextStepContent(diag, st, coherence);
   var primaryWould = typeof ctx._willRenderPrimaryActionCard === "function"
     ? ctx._willRenderPrimaryActionCard(diag, st, coherence)
@@ -222,6 +225,7 @@ function captureNextStep(ctx, diag, st) {
     text: ns && ns.text != null ? String(ns.text) : null,
     source: ns && ns.source != null ? ns.source : null,
     primary_owns_display: !!primaryWould,
+    provenance: diag.next_step_provenance || null,
   };
 }
 

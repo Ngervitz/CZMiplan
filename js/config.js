@@ -11,8 +11,8 @@ const STORAGE_KEY       = "cr_v3";
 const API_TOKEN         = "";
 
 // DECISION-PROVENANCE-01 — additive explainability (default off; safe for production)
-// When true, attachFinancialStageToDiag may set diag.financial_stage_provenance.
-// Must not alter financial_stage / next_step / acciones values.
+// When true, may set financial_stage_provenance / action selection+retention / next_step_provenance.
+// Must not alter financial_stage / next_step / acciones functional values.
 var CZ_DECISION_PROVENANCE = false;
 
 // Per-module algorithm version constants — used by buildDiagnosisSnapshot()

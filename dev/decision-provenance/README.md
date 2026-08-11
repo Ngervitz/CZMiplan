@@ -34,5 +34,6 @@ When `next_step_provenance.value` and the effective user-visible content diverge
 ```bash
 node dev/decision-provenance/fs-layer-a-qa.js
 node dev/decision-provenance/act-layer-a-qa.js
+node dev/decision-provenance/ns-layer-a-qa.js
 node dev/decision-provenance/ns-etapa1-trace.js
 ```

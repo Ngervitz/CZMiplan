@@ -2600,23 +2600,176 @@ function _coherenceOverridesNextStep(coherence, narrativeMode, focusTarget) {
   return false;
 }
 
+// =============================================================================
+// DECISION-PROVENANCE-01 — PROV-NS (additive; gated by CZ_DECISION_PROVENANCE)
+// source_layer stable enum: NS_L3_CONTENT | NS_L4_HERO (not JS function names)
+// =============================================================================
+
+function _nsProvenanceWanted() {
+  return typeof _decisionProvenanceEnabled === "function" && _decisionProvenanceEnabled();
+}
+
+function _nsTrimEvidence(ev) {
+  ev = ev || {};
+  var keys = Object.keys(ev);
+  if (keys.length <= 8) return ev;
+  var trimmed = {};
+  for (var i = 0; i < 8; i++) trimmed[keys[i]] = ev[keys[i]];
+  return trimmed;
+}
+
+function _nsTextRefForEffectiveText(text, actionKey) {
+  if (text == null || text === "") return null;
+  if (text === _REVISAR_INGRESOS_NEXT_STEP) return "const:revisar_ingresos";
+  if (text === _ZERO_ACTIVE_DEBT_NEXT_STEP) return "const:zero_active_debt";
+  if (text === CZ_DTI_ACCION_PRIORITARIA) return "const:dti_accion_prioritaria";
+  var knownKeys = Object.keys(_NEXT_STEP_KNOWN_TEXTS);
+  for (var i = 0; i < knownKeys.length; i++) {
+    var k = knownKeys[i];
+    if (_NEXT_STEP_KNOWN_TEXTS[k] === text) return "known:" + k;
+  }
+  if (actionKey === "optimizar_deuda_cara"
+      && text.indexOf("Priorizá la deuda de mayor costo") === 0) {
+    return "coh:healthy_alto";
+  }
+  if (actionKey === "mantener_disciplina"
+      && text.indexOf("Mantené el ritmo de pagos actual") === 0) {
+    return "coh:healthy_mantener";
+  }
+  if (actionKey && _NEXT_STEP_KNOWN_TEXTS[actionKey]) return "known:" + actionKey;
+  return null;
+}
+
+function _nsTextRefFromCoherence(coherence) {
+  if (!coherence) return null;
+  if (coherence.nextStepKey === "revisar_ingresos") return "const:revisar_ingresos";
+  if (coherence.profileTier === "healthy_organized") {
+    if (coherence.nextStepKey === "optimizar_deuda_cara") return "coh:healthy_alto";
+    if (coherence.nextStepKey === "mantener_disciplina") return "coh:healthy_mantener";
+  }
+  return _nsTextRefForEffectiveText(coherence.nextStepText, coherence.nextStepKey);
+}
+
+function _nsCostoNivel(fin) {
+  return String((fin && fin.costoDeudaNivel) || "").toLowerCase() === "alto" ? "alto" : "other";
+}
+
+function _nsReasonForNarrativeBase(narrativeMode, focusTarget, actionKey, diag, st) {
+  var fin = _finFromDiag(diag);
+  var iv2 = (diag && diag.interpretacion_v2) || {};
+  if (narrativeMode === "CLARITY") return "NS_NARR_CLARITY";
+  if (narrativeMode === "RECOVERY") {
+    if ((fin.dti_ratio || 0) >= 1) return "NS_NARR_RECOVERY_DTI";
+    if (iv2.causa_principal === "mora_activa" || (fin.cantMoras || 0) > 0) {
+      return "NS_NARR_RECOVERY_MORA";
+    }
+    return "NS_NARR_RECOVERY_LIBERAR";
+  }
+  if (narrativeMode === "STABILIZATION") return "NS_NARR_STABILIZATION";
+  if (narrativeMode === "OPTIMIZATION") {
+    if (focusTarget === "CREDIT_BUILDING") return "NS_NARR_OPT_CREDIT_BUILDING";
+    if (focusTarget === "LEARNING") return "NS_NARR_OPT_LEARNING";
+    if (_isZeroActiveDebtCompleteProfile(diag, st)) return "NS_NARR_OPT_ZERO_DEBT";
+    if (String(fin.costoDeudaNivel || "").toLowerCase() === "alto") {
+      return "NS_NARR_OPT_COSTO_ALTO";
+    }
+    return "NS_NARR_OPT_MANTENER";
+  }
+  return "NS_FALLBACK_COHERENCE_OR_LEGACY";
+}
+
+function _nsEvidenceForNarrativeReason(reasonCode, narrativeMode, focusTarget, actionKey) {
+  if (reasonCode === "NS_NARR_CLARITY") return { narrative_mode: "CLARITY" };
+  if (reasonCode === "NS_NARR_STABILIZATION") return { narrative_mode: "STABILIZATION" };
+  if (reasonCode === "NS_NARR_RECOVERY_DTI") {
+    return { narrative_mode: narrativeMode, dti_ge_1: true };
+  }
+  if (reasonCode === "NS_NARR_RECOVERY_MORA") {
+    return { narrative_mode: narrativeMode, mora: true };
+  }
+  if (reasonCode === "NS_NARR_RECOVERY_LIBERAR") {
+    return { narrative_mode: narrativeMode, focus_target: focusTarget };
+  }
+  if (reasonCode === "NS_NARR_OPT_ZERO_DEBT") {
+    return { narrative_mode: narrativeMode, zero_active_debt: true };
+  }
+  if (reasonCode === "NS_NARR_OPT_COSTO_ALTO") {
+    return { narrative_mode: narrativeMode, costo_nivel: "alto" };
+  }
+  if (reasonCode === "NS_NARR_FOCUS_NONDEFAULT") {
+    return {
+      narrative_mode: narrativeMode,
+      focus_target: focusTarget,
+      action_key: actionKey,
+    };
+  }
+  return { narrative_mode: narrativeMode, focus_target: focusTarget };
+}
+
+function _nsDetectToneCode(textBefore, textAfter, profileTier, narrativeMode, focusTarget) {
+  if (!textBefore || !textAfter || textBefore === textAfter) return null;
+  var tier = String(profileTier || "").trim().toUpperCase();
+  var focus = String(focusTarget || "DEFAULT").trim().toUpperCase();
+  if (tier === "AT_RISK" && narrativeMode === "RECOVERY"
+      && textAfter === _NEXT_STEP_KNOWN_TEXTS.estabilizar_atraso) {
+    return "NS_TONE_AT_RISK_SWAP_ESTABILIZAR";
+  }
+  if (tier === "HEALTHY" && narrativeMode === "OPTIMIZATION" && focus === "DEFAULT"
+      && textAfter === _NEXT_STEP_KNOWN_TEXTS.mantener_disciplina) {
+    return "NS_TONE_HEALTHY_SWAP_MANTENER";
+  }
+  return null;
+}
+
+function _nsBuildContentProvenance(fields) {
+  var prov = {
+    schema_version: 1,
+    decision: "next_step",
+    value: fields.value,
+    text_ref: fields.text_ref,
+    reason_code: fields.reason_code,
+    source_layer: fields.source_layer || "NS_L3_CONTENT",
+    evidence: _nsTrimEvidence(fields.evidence || {}),
+    display: fields.display || { status: "none", surface: "none" },
+  };
+  if (fields.tone_code) prov.tone_code = fields.tone_code;
+  return prov;
+}
+
 function resolveNextStepContent(diag, st, coherence) {
   coherence = coherence || resolveDashboardCoherence(diag, st);
   diag = diag || _diag();
   st = st || _st();
+  var wantProv = _nsProvenanceWanted();
 
   var narrativeMode = _normalizeHeroNarrativeMode(diag.narrative_decision);
   if (!narrativeMode) {
     var legacyText = coherence.nextStepText != null
       ? coherence.nextStepText
       : _resolveDashboardNextStepTextLegacy(diag, st);
-    return {
+    var legacyKey = coherence.nextStepKey || _resolveNextStepKeyFromDiag(diag, st);
+    var legacyOut = {
       text: legacyText,
-      actionKey: coherence.nextStepKey || _resolveNextStepKeyFromDiag(diag, st),
+      actionKey: legacyKey,
       source: "legacy",
       narrativeMode: null,
       profileTier: null,
     };
+    if (wantProv) {
+      var legacyRef = coherence.nextStepText != null
+        ? _nsTextRefFromCoherence(coherence)
+        : _nsTextRefForEffectiveText(legacyText, legacyKey);
+      legacyOut.provenance = _nsBuildContentProvenance({
+        value: legacyKey,
+        text_ref: legacyRef,
+        reason_code: "NS_LEGACY_NO_NARRATIVE",
+        source_layer: "NS_L3_CONTENT",
+        evidence: { legacy: true },
+        tone_code: null,
+        display: { status: "none", surface: "none" },
+      });
+    }
+    return legacyOut;
   }
 
   if (_isCzDevMode()) {
@@ -2634,26 +2787,65 @@ function resolveNextStepContent(diag, st, coherence) {
   var base = _nextStepNarrativeBase(narrativeMode, focusTarget, diag, st);
   var text = null;
   var actionKey = null;
+  var reasonCode = null;
+  var evidence = null;
+  var textRef = null;
 
   if (focusTarget !== "DEFAULT" && base.text) {
     text = base.text;
     actionKey = base.actionKey;
+    reasonCode = "NS_NARR_FOCUS_NONDEFAULT";
+    evidence = _nsEvidenceForNarrativeReason(reasonCode, narrativeMode, focusTarget, actionKey);
+    textRef = _nsTextRefForEffectiveText(text, actionKey);
   } else if (_coherenceOverridesNextStep(coherence, narrativeMode, focusTarget)) {
     text = coherence.nextStepText;
     actionKey = coherence.nextStepKey || base.actionKey;
+    if (coherence.nextStepKey === "revisar_ingresos") {
+      reasonCode = "NS_COH_REVISAR_INGRESOS";
+      evidence = {
+        coherence_profile_tier: coherence.profileTier || null,
+        coherence_next_step_key: "revisar_ingresos",
+      };
+    } else {
+      reasonCode = "NS_COH_HEALTHY_OPTIMIZATION";
+      evidence = {
+        coherence_profile_tier: "healthy_organized",
+        narrative_mode: narrativeMode,
+        focus_target: focusTarget,
+        coherence_next_step_key: coherence.nextStepKey || null,
+        costo_nivel: _nsCostoNivel(_finFromDiag(diag)),
+      };
+    }
+    textRef = _nsTextRefFromCoherence(coherence);
   } else if (base.text) {
     text = base.text;
     actionKey = base.actionKey;
+    reasonCode = _nsReasonForNarrativeBase(narrativeMode, focusTarget, actionKey, diag, st);
+    evidence = _nsEvidenceForNarrativeReason(reasonCode, narrativeMode, focusTarget, actionKey);
+    textRef = _nsTextRefForEffectiveText(text, actionKey);
   } else {
     text = coherence.nextStepText != null
       ? coherence.nextStepText
       : _resolveDashboardNextStepTextLegacy(diag, st);
     actionKey = coherence.nextStepKey || _resolveNextStepKeyFromDiag(diag, st);
+    reasonCode = "NS_FALLBACK_COHERENCE_OR_LEGACY";
+    evidence = {
+      used_coherence_text: coherence.nextStepText != null,
+      coherence_next_step_key: coherence.nextStepKey || null,
+    };
+    textRef = coherence.nextStepText != null
+      ? _nsTextRefFromCoherence(coherence)
+      : _nsTextRefForEffectiveText(text, actionKey);
   }
 
+  var textBeforeTone = text;
   text = _applyNextStepNarrativeProfileTierTone(text, profileTier, narrativeMode, focusTarget);
+  var toneCode = _nsDetectToneCode(textBeforeTone, text, profileTier, narrativeMode, focusTarget);
+  if (toneCode) {
+    textRef = _nsTextRefForEffectiveText(text, actionKey);
+  }
 
-  return {
+  var out = {
     text: text,
     actionKey: actionKey,
     source: "narrative",
@@ -2661,6 +2853,140 @@ function resolveNextStepContent(diag, st, coherence) {
     profileTier: profileTier,
     focusTarget: focusTarget,
   };
+  if (wantProv) {
+    out.provenance = _nsBuildContentProvenance({
+      value: actionKey,
+      text_ref: textRef,
+      reason_code: reasonCode,
+      source_layer: "NS_L3_CONTENT",
+      evidence: evidence,
+      tone_code: toneCode,
+      display: { status: "none", surface: "none" },
+    });
+  }
+  return out;
+}
+
+function _nsHeroReasonFromCoherence(coherence) {
+  if (!coherence) return { reason_code: "NS_HERO_COH_LEGACY", evidence: {} };
+  if (coherence.nextStepKey === "revisar_ingresos") {
+    return {
+      reason_code: "NS_HERO_COH_REVISAR_INGRESOS",
+      evidence: { plan_guardrail_reason: "ingreso_cero" },
+    };
+  }
+  if (coherence.profileTier === "healthy_organized") {
+    if (coherence.nextStepKey === "optimizar_deuda_cara") {
+      return {
+        reason_code: "NS_HERO_COH_HEALTHY_ALTO",
+        evidence: { profile_tier: "healthy_organized", costo_nivel: "alto" },
+      };
+    }
+    if (coherence.nextStepKey === "mantener_disciplina") {
+      return {
+        reason_code: "NS_HERO_COH_HEALTHY_MANTENER",
+        evidence: { profile_tier: "healthy_organized" },
+      };
+    }
+  }
+  return {
+    reason_code: "NS_HERO_COH_LEGACY",
+    evidence: { coherence_next_step_key: coherence.nextStepKey || null },
+  };
+}
+
+/**
+ * Finalize next_step_provenance on diag (FLAG ON only).
+ * Call after coherence is known; safe to call multiple times (idempotent for same inputs).
+ */
+function attachNextStepProvenance(diag, st, coherence) {
+  if (!_nsProvenanceWanted() || !diag) {
+    if (diag && diag.next_step_provenance) delete diag.next_step_provenance;
+    return diag;
+  }
+  st = st || _st();
+  coherence = coherence || resolveDashboardCoherence(diag, st);
+  var resolved = resolveNextStepContent(diag, st, coherence);
+  var incomplete = typeof isIncompleteFinancialProfile === "function"
+    && isIncompleteFinancialProfile(diag, st);
+  var primaryOwns = _willRenderPrimaryActionCard(diag, st, coherence);
+  var heroText = null;
+  if (!incomplete) {
+    heroText = _resolveHeroNextActionText(diag, st, coherence);
+  }
+  var heroShows = !primaryOwns && !!(heroText && String(heroText).trim());
+
+  var base = resolved.provenance;
+  if (!base) {
+    // Should not happen when flag ON; build minimal stamp to avoid silent loss.
+    base = _nsBuildContentProvenance({
+      value: resolved.actionKey,
+      text_ref: _nsTextRefForEffectiveText(resolved.text, resolved.actionKey),
+      reason_code: "NS_FALLBACK_COHERENCE_OR_LEGACY",
+      source_layer: "NS_L3_CONTENT",
+      evidence: { used_coherence_text: false },
+      tone_code: null,
+      display: { status: "none", surface: "none" },
+    });
+  }
+
+  var finalProv;
+  if (primaryOwns) {
+    finalProv = _nsBuildContentProvenance({
+      value: base.value,
+      text_ref: base.text_ref,
+      reason_code: base.reason_code,
+      source_layer: "NS_L3_CONTENT",
+      evidence: base.evidence,
+      tone_code: base.tone_code || null,
+      display: { status: "visible", surface: "primary_action_card" },
+    });
+  } else if (heroShows) {
+    var usedCoherenceText = !!(coherence.nextStepText
+      && String(coherence.nextStepText) === String(heroText));
+    if (usedCoherenceText) {
+      var heroMeta = _nsHeroReasonFromCoherence(coherence);
+      finalProv = _nsBuildContentProvenance({
+        value: coherence.nextStepKey || base.value,
+        text_ref: _nsTextRefFromCoherence(coherence),
+        reason_code: heroMeta.reason_code,
+        source_layer: "NS_L4_HERO",
+        evidence: heroMeta.evidence,
+        tone_code: null,
+        display: { status: "visible", surface: "hero_embedded" },
+      });
+    } else {
+      finalProv = _nsBuildContentProvenance({
+        value: base.value,
+        text_ref: base.text_ref,
+        reason_code: "NS_HERO_RESOLVE_CONTENT",
+        source_layer: "NS_L4_HERO",
+        evidence: (function() {
+          var ev = {};
+          var src = base.evidence || {};
+          var sk = Object.keys(src);
+          for (var si = 0; si < sk.length; si++) ev[sk[si]] = src[sk[si]];
+          ev.resolved_reason_code = base.reason_code;
+          return ev;
+        })(),
+        tone_code: base.tone_code || null,
+        display: { status: "visible", surface: "hero_embedded" },
+      });
+    }
+  } else {
+    finalProv = _nsBuildContentProvenance({
+      value: base.value,
+      text_ref: base.text_ref,
+      reason_code: base.reason_code,
+      source_layer: "NS_L3_CONTENT",
+      evidence: base.evidence,
+      tone_code: base.tone_code || null,
+      display: { status: "none", surface: "none" },
+    });
+  }
+
+  diag.next_step_provenance = finalProv;
+  return diag;
 }
 
 function _resolveDashboardNextStepText(diag, st, coherence) {
@@ -4067,6 +4393,9 @@ function renderTabPlan() {
   var diag   = _diag();
   var st     = _st();
   var coherence = resolveDashboardCoherence(diag, st);
+  if (typeof attachNextStepProvenance === "function") {
+    attachNextStepProvenance(diag, st, coherence);
+  }
   var fin    = diag.fin;
   var pc     = diag.plan.color;
   var prio   = diag.prio;
@@ -6818,6 +7147,7 @@ window.CredizonaUI = {
   _resolveDashboardNextStepText: _resolveDashboardNextStepText,
   _resolveDashboardNextStepTextLegacy: _resolveDashboardNextStepTextLegacy,
   resolveNextStepContent: resolveNextStepContent,
+  attachNextStepProvenance: attachNextStepProvenance,
   resolveContextualActionSegment: resolveContextualActionSegment,
   renderContextualActionBlock: renderContextualActionBlock,
   _B7_SEGMENTS: _B7_SEGMENTS,
