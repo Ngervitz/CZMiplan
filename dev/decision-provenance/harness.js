@@ -70,9 +70,7 @@ function createCtx(opts) {
   ctx.window = ctx;
   ctx.global = ctx;
   ctx.location = { search: "", href: "http://localhost/" };
-  if (opts.CZ_DECISION_PROVENANCE) {
-    ctx.CZ_DECISION_PROVENANCE = true;
-  }
+  ctx._wantDecisionProvenance = !!opts.CZ_DECISION_PROVENANCE;
   return ctx;
 }
 
@@ -94,6 +92,11 @@ function loadProduct(ctx) {
   load(ctx, "js/crm.js");
   load(ctx, "js/ui.js");
   load(ctx, "js/app.js");
+  // config.js defaults the flag to false; re-apply harness override after load.
+  if (ctx._wantDecisionProvenance) {
+    ctx.CZ_DECISION_PROVENANCE = true;
+    if (ctx.window) ctx.window.CZ_DECISION_PROVENANCE = true;
+  }
 }
 
 var GOOD_SURVEY = {

@@ -19,4 +19,6 @@ node dev/decision-provenance/capture-baseline.js
 node dev/decision-provenance/fs-layer-a-qa.js
 ```
 
-Requires `CZ_DECISION_PROVENANCE` enabled inside the QA harness (flag default remains `false` in product).
+Requires harness override `CZ_DECISION_PROVENANCE=true` after product load (see `harness.js`). Product default remains `false`.
+
+See `FINDINGS-PROV-FS.md` for Phase 1 results and BUG-FS-CLARITY-LOW-MISS.

@@ -10,6 +10,11 @@ const ALGORITHM_VERSION = "reset_v3_dark";
 const STORAGE_KEY       = "cr_v3";
 const API_TOKEN         = "";
 
+// DECISION-PROVENANCE-01 — additive explainability (default off; safe for production)
+// When true, attachFinancialStageToDiag may set diag.financial_stage_provenance.
+// Must not alter financial_stage / next_step / acciones values.
+var CZ_DECISION_PROVENANCE = false;
+
 // Per-module algorithm version constants — used by buildDiagnosisSnapshot()
 const BEHAVIORAL_ALGORITHM_VERSION  = "survey_v2_simple";
 const FINANCIAL_ALGORITHM_VERSION   = "financial_v3_dark";

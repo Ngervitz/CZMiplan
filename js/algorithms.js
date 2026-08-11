@@ -1284,22 +1284,204 @@ function _stageHasRelevantLiabilities(fin) {
   return totalDeuda > 0 || totalPago > 0 || dti >= STAGE_DTI_RELEVANT_LIABILITY;
 }
 
+function _decisionProvenanceEnabled() {
+  if (typeof CZ_DECISION_PROVENANCE !== "undefined" && CZ_DECISION_PROVENANCE) return true;
+  if (typeof window !== "undefined" && window.CZ_DECISION_PROVENANCE) return true;
+  return false;
+}
+
+function _fsProvenance(reasonCode, value, evidence) {
+  var ev = evidence || {};
+  var keys = Object.keys(ev);
+  if (keys.length > 8) {
+    var trimmed = {};
+    for (var i = 0; i < 8; i++) trimmed[keys[i]] = ev[keys[i]];
+    ev = trimmed;
+  }
+  return {
+    schema_version: 1,
+    decision: "financial_stage",
+    value: value,
+    reason_code: reasonCode,
+    source_layer: "resolveFinancialStage",
+    evidence: ev,
+  };
+}
+
+// Mirrors _stageHasInsufficientData first-match order (read-only attribution).
+function _fsReasonInsufficient(diag, st, fin, iv2) {
+  var income = _stageIncome(st, fin);
+  if (income <= 0) {
+    return _fsProvenance("FS_INSUFF_INCOME", "CLARIDAD", { income: income });
+  }
+  if (typeof hasCompletedFinancialInputs === "function") {
+    if (!hasCompletedFinancialInputs(st || {})) {
+      return _fsProvenance("FS_INSUFF_INPUTS", "CLARIDAD", {
+        has_completed_financial_inputs: false,
+      });
+    }
+  } else if (st && !st.financial_income_complete && income <= 0) {
+    return _fsProvenance("FS_INSUFF_INPUTS", "CLARIDAD", {
+      financial_income_complete: false,
+      income: income,
+    });
+  }
+  if (!fin || fin.flujoLibre == null || !isFinite(fin.flujoLibre)) {
+    return _fsProvenance("FS_INSUFF_FLUJO", "CLARIDAD", {
+      flujoLibre_missing: true,
+    });
+  }
+  return _fsProvenance("FS_INSUFF_INPUTS", "CLARIDAD", {});
+}
+
+// Mirrors _stageHasRecoveryPressure first-match order (read-only attribution).
+function _fsReasonRecovery(diag, fin, iv2) {
+  fin = fin || {};
+  iv2 = iv2 || {};
+  var flujoLibre = fin.flujoLibre != null ? fin.flujoLibre : 0;
+  var ratio = fin.ratio != null ? fin.ratio : 0;
+  var cantMoras = fin.cantMoras || 0;
+  var behav = fin.behavioral || {};
+
+  if (flujoLibre < 0) {
+    return _fsProvenance("FS_REC_FLUJO_NEG", "RECUPERACION", { flujoLibre: flujoLibre });
+  }
+  if (cantMoras > 0) {
+    return _fsProvenance("FS_REC_CANT_MORAS", "RECUPERACION", { cantMoras: cantMoras });
+  }
+  if (diag && diag.mora_activa) {
+    return _fsProvenance("FS_REC_DIAG_MORA", "RECUPERACION", { mora_activa: true });
+  }
+  if (iv2.has_mora_or_deje_pagar) {
+    return _fsProvenance("FS_REC_IV2_MORA", "RECUPERACION", { has_mora_or_deje_pagar: true });
+  }
+  if (behav.tiene_mora_declarada) {
+    return _fsProvenance("FS_REC_BEHAV_MORA", "RECUPERACION", { tiene_mora_declarada: true });
+  }
+  if (ratio >= STAGE_RATIO_ALTO) {
+    return _fsProvenance("FS_REC_RATIO_ALTO", "RECUPERACION", {
+      ratio: ratio,
+      threshold: STAGE_RATIO_ALTO,
+    });
+  }
+  if (iv2.severity_level === "critico") {
+    return _fsProvenance("FS_REC_SEV_CRIT", "RECUPERACION", {
+      severity_level: "critico",
+      ratio: ratio,
+      totalPago: fin.totalPago || 0,
+      threshold_opt_max: STAGE_RATIO_OPTIMIZACION_MAX,
+    });
+  }
+  if (iv2.severity_level === "alto" && (flujoLibre < 0 || ratio >= STAGE_RATIO_OPTIMIZACION_MAX)) {
+    return _fsProvenance("FS_REC_SEV_ALTO", "RECUPERACION", {
+      severity_level: "alto",
+      ratio: ratio,
+      flujoLibre: flujoLibre,
+      threshold_opt_max: STAGE_RATIO_OPTIMIZACION_MAX,
+    });
+  }
+  if (iv2.severe_latent_pressure && flujoLibre < 0) {
+    return _fsProvenance("FS_REC_LATENT", "RECUPERACION", {
+      severe_latent_pressure: true,
+      flujoLibre: flujoLibre,
+    });
+  }
+  return _fsProvenance("FS_REC_FLUJO_NEG", "RECUPERACION", { flujoLibre: flujoLibre });
+}
+
+// Mirrors _stageLowConfidenceBlocksStaging first-match order.
+function _fsReasonLowConfidence(diag, st, fin, iv2) {
+  if (diag && diag.missing_payment_information && fin.flujoLibre < 0) {
+    return _fsProvenance("FS_CLARITY_LOW_MISS", "CLARIDAD", {
+      confidence_level: "low",
+      missing_payment_information: true,
+      flujoLibre: fin.flujoLibre,
+    });
+  }
+  if (iv2.missing_payment_information && fin.flujoLibre < 0) {
+    return _fsProvenance("FS_CLARITY_LOW_MISS", "CLARIDAD", {
+      confidence_level: "low",
+      missing_payment_information: true,
+      flujoLibre: fin.flujoLibre,
+    });
+  }
+  if (iv2.interpretacion_parcial) {
+    var noDebtDeclared = !!(st && st.no_debts_declared);
+    var hasLiabilities = _stageHasRelevantLiabilities(fin);
+    if (!hasLiabilities && !noDebtDeclared) {
+      return _fsProvenance("FS_CLARITY_LOW_PARCIAL", "CLARIDAD", {
+        confidence_level: "low",
+        interpretacion_parcial: true,
+        no_debts_declared: noDebtDeclared,
+        has_liabilities: hasLiabilities,
+      });
+    }
+  }
+  return _fsProvenance("FS_CLARITY_LOW_PARCIAL", "CLARIDAD", {
+    confidence_level: "low",
+  });
+}
+
+function _fsReasonLiabilities(fin) {
+  fin = fin || {};
+  var totalDeuda = fin.totalDeuda || 0;
+  var totalPago = fin.totalPago || 0;
+  var dti = fin.dti_ratio != null ? fin.dti_ratio : 0;
+  if (totalDeuda > 0) {
+    return _fsProvenance("FS_ESTAB_DEUDA", "ESTABILIZACION", { totalDeuda: totalDeuda });
+  }
+  if (totalPago > 0) {
+    return _fsProvenance("FS_ESTAB_PAGO", "ESTABILIZACION", { totalPago: totalPago });
+  }
+  return _fsProvenance("FS_ESTAB_DTI", "ESTABILIZACION", {
+    dti_ratio: dti,
+    threshold: STAGE_DTI_RELEVANT_LIABILITY,
+  });
+}
+
 function resolveFinancialStage(diag, st) {
   diag = diag || {};
   st = st || {};
   var fin = diag.fin || {};
   var iv2 = diag.interpretacion_v2 || {};
+  var wantProv = _decisionProvenanceEnabled();
+  var provenance = null;
+  var stage;
 
-  if (_stageHasInsufficientData(diag, st, fin, iv2)) return "CLARIDAD";
-  if (_stageHasRecoveryPressure(diag, fin, iv2)) return "RECUPERACION";
-  if (_stageLowConfidenceBlocksStaging(diag, st, fin, iv2)) return "CLARIDAD";
-  if (_stageHasRelevantLiabilities(fin)) return "ESTABILIZACION";
-  return "OPTIMIZACION";
+  if (_stageHasInsufficientData(diag, st, fin, iv2)) {
+    stage = "CLARIDAD";
+    if (wantProv) provenance = _fsReasonInsufficient(diag, st, fin, iv2);
+  } else if (_stageHasRecoveryPressure(diag, fin, iv2)) {
+    stage = "RECUPERACION";
+    if (wantProv) provenance = _fsReasonRecovery(diag, fin, iv2);
+  } else if (_stageLowConfidenceBlocksStaging(diag, st, fin, iv2)) {
+    stage = "CLARIDAD";
+    if (wantProv) provenance = _fsReasonLowConfidence(diag, st, fin, iv2);
+  } else if (_stageHasRelevantLiabilities(fin)) {
+    stage = "ESTABILIZACION";
+    if (wantProv) provenance = _fsReasonLiabilities(fin);
+  } else {
+    stage = "OPTIMIZACION";
+    if (wantProv) {
+      provenance = _fsProvenance("FS_OPT_DEFAULT", "OPTIMIZACION", {
+        flujoLibre: fin.flujoLibre != null ? fin.flujoLibre : 0,
+        totalDeuda: fin.totalDeuda || 0,
+        totalPago: fin.totalPago || 0,
+        dti_ratio: fin.dti_ratio != null ? fin.dti_ratio : 0,
+      });
+    }
+  }
+
+  resolveFinancialStage._lastProvenance = wantProv ? provenance : null;
+  return stage;
 }
 
 function attachFinancialStageToDiag(diag, st) {
   if (!diag) return diag;
   diag.financial_stage = resolveFinancialStage(diag, st);
+  if (_decisionProvenanceEnabled() && resolveFinancialStage._lastProvenance) {
+    diag.financial_stage_provenance = resolveFinancialStage._lastProvenance;
+  }
   if (typeof attachNarrativeDecisionToDiag === "function") {
     attachNarrativeDecisionToDiag(diag, st);
   }
