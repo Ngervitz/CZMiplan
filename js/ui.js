@@ -4934,12 +4934,12 @@ function renderPlusPresentation() {
       + '<div class="plus-price-amount">$'
       + Number(typeof CZ_PLUS_PRICE_UYU !== "undefined" ? CZ_PLUS_PRICE_UYU : 0)
           .toLocaleString("es-UY", { maximumFractionDigits: 0 })
-      + "</div>"
-      + '<div class="plus-price-note">IVA incluido · Pago único</div>'
+      + ' <span class="plus-price-iva">(IVA incluido)</span></div>'
+      + '<div class="plus-price-note">Pago único</div>'
       + '<div class="plus-price-note">3 cuotas de $'
       + Math.round((typeof CZ_PLUS_PRICE_UYU !== "undefined" ? CZ_PLUS_PRICE_UYU : 0) / 3)
           .toLocaleString("es-UY", { maximumFractionDigits: 0 })
-      + " sin recargo</div>"
+      + " sin recargo (IVA incluido)</div>"
       + "</div>"
       + '<button type="button" class="btn btn-primary plus-cta-btn" id="btn-plus-obtener-informe">'
       + "Ver mi situación real</button>"

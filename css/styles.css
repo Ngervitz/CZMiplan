@@ -1046,6 +1046,10 @@ select option{background:#0a1026;}
   font-size:32px;font-weight:900;color:rgba(255,255,255,.92);
   line-height:1;letter-spacing:-.5px;word-break:break-word;
 }
+.plus-price-iva{
+  font-size:13px;font-weight:600;color:rgba(255,255,255,.45);
+  letter-spacing:0;margin-left:4px;vertical-align:middle;
+}
 .plus-price-note{
   font-size:13px;color:rgba(255,255,255,.45);margin-top:8px;line-height:1.4;
 }
