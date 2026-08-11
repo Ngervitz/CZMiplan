@@ -92,10 +92,11 @@ Different mechanisms, same conceptual invariant — justified by product models.
 | WHY_DIAGNOSIS | READY_FOR_CONTEXT_DESIGN | `financial_stage_provenance` carries winning `reason_code` + evidence |
 | EXPLAIN_ACTION | READY_FOR_CONTEXT_DESIGN | selection + retention + canonical visible list; suppress excluded |
 | EXPLAIN_NEXT_STEP | READY_FOR_CONTEXT_DESIGN | `value` + `reason_code` + `evidence` + `text_ref` + `tone_code` + `display`; Response Contract must reconcile tone divergence |
-| MAIN_BLOCKER | OUT_OF_SCOPE / NEEDS_CONTEXT_DESIGN_REVIEW | No dedicated blocker provenance in this initiative; review when reopening ACC |
+| MAIN_BLOCKER | READY_FOR_CONTEXT_DESIGN | Still **IN_SCOPE_V1** for ACC: pre-existing motor facts `interpretacion_v2.causa_principal` / `patron_deuda` (+ related `bloqueadores` / narrativa) are deterministic and sufficient to reopen context design **without** new provenance. Does **not** depend on PROV-FS/ACT/NS. Prior `OUT_OF_SCOPE / NEEDS_CONTEXT_DESIGN_REVIEW` row was a **classification error** (confused “no new PROV-* field” with “not ready”). |
 
 **Caveat:** before production assistant consumers rely on FS/ACT `source_layer` string values, address `PROVENANCE-SOURCE-LAYER-DEBT` (POST_CLOSE_REQUIRED for that consumer milestone — not a provenance-initiative closure blocker).
 
+**MAIN_BLOCKER clarification (post-close correction):** No new provenance gap was discovered during global close. Absence of a dedicated `blocker_provenance` object does not invalidate IN_SCOPE_V1 readiness.
 ---
 
 ## G. QA consolidated
