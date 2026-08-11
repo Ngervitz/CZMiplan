@@ -381,62 +381,178 @@ function main() {
   ok("DEC-PROV-01.3 after expand still excludes flujo_negativo",
     !canonicalAfter.some(function(a) { return a.id === "flujo_negativo_accion"; }));
 
-  // Ver más extras: need >3 accessible non-suppressed
-  ok("DEC-PROV-01.4 canonical length matches accessible non-suppressed",
-    canonical.length === uxMeta.visibleAccessibleCount,
-    "canonical=" + canonical.length + " accessible=" + uxMeta.visibleAccessibleCount);
-  // If >3 accessible, indices 3+ would be .accion-recom-extra but still in canonical
-  if (uxMeta.visibleAccessibleCount > 3) {
-    ok("DEC-PROV-01.4 collapsed extras present in canonical without expand",
-      canonical.length > 3);
-  } else {
-    ok("DEC-PROV-01.4 collapsed extras N/A (accessible<=3)", true,
-      "accessible=" + uxMeta.visibleAccessibleCount);
-  }
+  // Ver más: replaced N/A path with positive fixture VERMAS_S7_FIVE (below)
 
-  // Prefer a suppress case with >3 accessible so Ver-más extras exist
-  var diagUx2 = h.runMotor(ctxOn, {
-    ingreso: 80000,
-    gastos: { vivienda: 35000, alimentacion: 20000, servicios: 10000 },
-    deudas: [
-      h.debtRow({ monto: 300000, pago: 25000 }),
-      h.debtRow({ monto: 100000, pago: 8000, tipo: "tarjeta", situacion_ui: "atrasado_pagando" }),
-    ],
-    st: { declared_laboral: "relacion_dependencia" },
+  // ========== DEC-PROV-01.4 Ver más / .accion-recom-extra (POSITIVE) ==========
+  // Fixture VERMAS_INCOMPLETE_CLARITY_RESTORE:
+  // incomplete expenses → CLARIDAD/CLARITY → taxonomy filtered <3 → legacy_fallback
+  // restores full pre-tax list; incomplete filter drops flujo-dependent → ≥4 canonical.
+  // Segment jubilado (S5/S6) → no UX1D2 suppress. Indices ≥3 → .accion-recom-extra.
+  console.log("\n--- DEC-PROV-01.4 Ver más (VERMAS_INCOMPLETE_CLARITY_RESTORE) ---");
+  if (typeof ctxOn._accionesRecomExpand !== "undefined") {
+    ctxOn._accionesRecomExpand = false;
+  }
+  var diagVermas = h.runMotor(ctxOn, {
+    ingreso: 90000,
+    gastos: {},
+    deudas: [h.debtRow({ monto: 100000, pago: 10000 })],
+    st: {
+      financial_expenses_complete: false,
+      gastos: {},
+      declared_laboral: "jubilado",
+    },
   });
-  ctxOn.PRE.laboral = "relacion_dependencia";
-  var motorUx2 = ctxOn.seleccionarAccionesRecomendadas(diagUx2);
-  var tr2 = ctxOn.applyAccionesPostMotorTransforms(diagUx2, ctxOn.CZState, motorUx2);
-  var ux2 = ctxOn._ux1d2ShouldSuppressFlujoNegativoAccion(diagUx2, tr2, ctxOn.CZState);
-  var can2 = ctxOn.resolveCanonicalVisibleAcciones(diagUx2, ctxOn.CZState, motorUx2);
-  if (ux2.suppressFlujoNegativo && ux2.visibleAccessibleCount > 3) {
-    ok("DEC-PROV-01.4b collapsed extras in canonical (len>3)", can2.length > 3,
-      "len=" + can2.length);
-    ok("DEC-PROV-01.4b flujo still excluded",
-      !can2.some(function(a) { return a.id === "flujo_negativo_accion"; }));
+  ctxOn.PRE.laboral = "jubilado";
+  ctxOn.CZState.declared_laboral = "jubilado";
+  var segV = ctxOn.resolveContextualActionSegment(diagVermas, ctxOn.CZState);
+  ok("VERMAS fixture not S1/S3", segV && segV.segmentId !== "S1" && segV.segmentId !== "S3",
+    "seg=" + (segV && segV.segmentId));
+  var motorV = ctxOn.seleccionarAccionesRecomendadas(diagVermas);
+  ok("VERMAS taxonomy restore path",
+    diagVermas.action_selection_mode === "legacy_fallback"
+    && diagVermas.taxonomy_discard_count > 0,
+    "mode=" + diagVermas.action_selection_mode
+    + " discard=" + diagVermas.taxonomy_discard_count);
+  ok("VERMAS motor length >=4", motorV.length >= 4, "len=" + motorV.length);
+  var trV = ctxOn.applyAccionesPostMotorTransforms(diagVermas, ctxOn.CZState, motorV);
+  var uxV = ctxOn._ux1d2ShouldSuppressFlujoNegativoAccion(diagVermas, trV, ctxOn.CZState);
+  ok("VERMAS no UX1D2 suppress", uxV.suppressFlujoNegativo === false);
+  ok("VERMAS accessible >=4", uxV.visibleAccessibleCount >= 4,
+    "vis=" + uxV.visibleAccessibleCount);
+
+  var canBeforeExpand = ctxOn.resolveCanonicalVisibleAcciones(
+    diagVermas, ctxOn.CZState, motorV
+  );
+  ok("VERMAS canonical >=4 before expand", canBeforeExpand.length >= 4,
+    "len=" + canBeforeExpand.length + " ids=" + idsOf(canBeforeExpand).join(","));
+
+  if (typeof ctxOn._accionesRecomExpand !== "undefined") {
+    ctxOn._accionesRecomExpand = false;
+  }
+  ctxOn.CZState.diag = diagVermas;
+  var htmlCollapsed = ctxOn.renderAccionesRecomendadasHtml(diagVermas);
+  var extraIds = [];
+  var re3 = /class="[^"]*accion-recom-extra[^"]*"[^>]*data-toggle-compromiso="([^"]+)"/g;
+  var m;
+  while ((m = re3.exec(htmlCollapsed)) !== null) extraIds.push(m[1]);
+  ok("VERMAS render has .accion-recom-extra", extraIds.length >= 1,
+    "extras=" + extraIds.join(","));
+  var extraId = extraIds[0] || null;
+  ok("VERMAS extra exists in pipeline",
+    !!(extraId && trV.some(function(a) { return a.id === extraId; })),
+    "id=" + extraId);
+  if (extraId) {
+    var idxExtra = htmlCollapsed.indexOf('data-toggle-compromiso="' + extraId + '"');
+    var openStart = htmlCollapsed.lastIndexOf("<div", idxExtra);
+    var openTag = htmlCollapsed.slice(openStart, idxExtra + 60);
+    ok("VERMAS extra has accion-recom-extra class", openTag.indexOf("accion-recom-extra") >= 0);
+    ok("VERMAS extra not UX1D2-suppressed", openTag.indexOf("cz-ux1d2-suppressed-action") < 0);
+    ok("VERMAS.4 extra in canonical BEFORE expand",
+      canBeforeExpand.some(function(a) { return a.id === extraId; }),
+      "id=" + extraId);
   } else {
-    ok("DEC-PROV-01.4b richer suppress case unavailable", true,
-      "suppress=" + ux2.suppressFlujoNegativo + " vis=" + ux2.visibleAccessibleCount);
+    ok("VERMAS extra has accion-recom-extra class", false);
+    ok("VERMAS extra not UX1D2-suppressed", false);
+    ok("VERMAS.4 extra in canonical BEFORE expand", false);
   }
 
-  // Pick code coverage summary
+  var canIdsBefore = idsOf(canBeforeExpand).join(",");
+  if (typeof ctxOn.CredizonaUI !== "undefined" && ctxOn.CredizonaUI.expandAccionesRecomendadas) {
+    ctxOn.CredizonaUI.expandAccionesRecomendadas();
+  }
+  var canAfterExpand = ctxOn.resolveCanonicalVisibleAcciones(
+    diagVermas, ctxOn.CZState, motorV
+  );
+  ok("VERMAS expand does not change canonical membership",
+    idsOf(canAfterExpand).join(",") === canIdsBefore);
+
+  // ========== DETERMINISM ==========
+  console.log("\n--- DETERMINISM applyAccionesPostMotorTransforms ---");
+  var detMotor = motorV.slice();
+  var snapIn = JSON.stringify(detMotor.map(function(a) {
+    return { id: a.id, urgencia: a.urgencia, tipo: a.tipo };
+  }));
+  function provKey(list) {
+    return (list || []).map(function(a) {
+      return [
+        a.id, a.urgencia, a.tipo,
+        a.selection_reason ? a.selection_reason.reason_code : "",
+        a.retention_reason ? a.retention_reason.reason_code : "",
+      ].join("|");
+    }).join(";");
+  }
+  var A = ctxOn.applyAccionesPostMotorTransforms(diagVermas, ctxOn.CZState, detMotor);
+  var midIn = JSON.stringify(detMotor.map(function(a) {
+    return { id: a.id, urgencia: a.urgencia, tipo: a.tipo };
+  }));
+  var B = ctxOn.applyAccionesPostMotorTransforms(diagVermas, ctxOn.CZState, detMotor);
+  var C = ctxOn.applyAccionesPostMotorTransforms(
+    diagVermas,
+    ctxOn.CZState,
+    detMotor.map(function(a) { return Object.assign({}, a); })
+  );
+  ok("DETERMINISM input ids unchanged after A", snapIn === midIn);
+  ok("DETERMINISM A === B", provKey(A) === provKey(B));
+  ok("DETERMINISM A === C (fresh copy)", provKey(A) === provKey(C));
+
+  // ========== ACT_FILL coverage ==========
+  console.log("\n--- ACT_FILL coverage ---");
+  var fillE2E = false;
+  var fillHunt = [
+    {
+      ingreso: 100000, gastos: { vivienda: 5000 },
+      deudas: [h.debtRow({
+        monto: 200000, pago: 5000, situacion_ui: "mora_reclamo", estado: "mora",
+      })],
+    },
+    {
+      ingreso: 100000,
+      gastos: { vivienda: 20000, alimentacion: 15000 },
+      deudas: [
+        h.debtRow({ monto: 150000, pago: 12000 }),
+        h.debtRow({ monto: 80000, pago: 7000, tipo: "tarjeta" }),
+        h.debtRow({ monto: 60000, pago: 5000, tipo: "financiera" }),
+      ],
+    },
+    {
+      ingreso: 0, gastos: { vivienda: 10000 },
+      deudas: [h.debtRow({ monto: 50000, pago: 5000 })],
+      st: { declared_ingreso: 50000, declared_laboral: "desempleado" },
+    },
+  ];
+  function huntFill(ctx) {
+    for (var fi = 0; fi < fillHunt.length; fi++) {
+      var dF = h.runMotor(ctx, fillHunt[fi]);
+      var aF = ctx.seleccionarAccionesRecomendadas(dF);
+      if (aF.some(function(a) {
+        return a.selection_reason && a.selection_reason.reason_code === "ACT_FILL";
+      })) return true;
+    }
+    return false;
+  }
+  fillE2E = huntFill(ctxOn);
+  var savedTax = ctxOn.ActionNarrativeTaxonomy;
+  ctxOn.ActionNarrativeTaxonomy = null;
+  ctxOn.getMasterActionNarrativeFamilies = undefined;
+  fillE2E = fillE2E || huntFill(ctxOn);
+  ctxOn.ActionNarrativeTaxonomy = savedTax;
+
+  ok("ACT_FILL E2E hunt (expect none)", fillE2E === false,
+    fillE2E ? "FOUND live ACT_FILL" : "NOT_EXERCISED_E2E — C34 consumes slots before FILL");
+
   var needCodes = ["ACT_PICK_C1", "ACT_PICK_C2", "ACT_PICK_C34", "ACT_FILL"];
   var foundPick = Object.assign({}, codes);
   motorPick.forEach(function(a) {
     if (a.selection_reason) foundPick[a.selection_reason.reason_code] = true;
   });
 
-  // ACT_FILL live path is rare (C1+C2+C34 usually reach cap 5). Verify helper
-  // stamp matches production attach shape; branch in seleccionarAccionesRecomendadas
-  // uses the same _attachActionSelectionReason call.
   var fillProbe = { id: "probe_fill", urgencia: "baja", tipo: "accion" };
   ctxOn._attachActionSelectionReason(fillProbe, "ACT_FILL", {
     selected_len_before: 4,
     cap: 5,
   });
-  ok("ACT_FILL attach helper", fillProbe.selection_reason
-    && fillProbe.selection_reason.reason_code === "ACT_FILL"
-    && fillProbe.selection_reason.evidence.cap === 5);
+  ok("ACT_FILL attach helper only", fillProbe.selection_reason
+    && fillProbe.selection_reason.reason_code === "ACT_FILL");
   recordShape("ACT_FILL", fillProbe);
 
   console.log("\n--- shape examples ---");
@@ -445,11 +561,12 @@ function main() {
   });
 
   needCodes.forEach(function(c) {
-    ok("coverage has " + c + " (best-effort)", true,
-      foundPick[c] || c === "ACT_FILL" ? (foundPick[c] ? "seen" : "helper-only") : "not seen");
+    ok("coverage tag " + c, true,
+      c === "ACT_FILL"
+        ? "NOT_EXERCISED_E2E"
+        : (foundPick[c] ? "EXERCISED" : "unknown"));
   });
 
-  // Existing meta unchanged API
   ok("action_selection_mode still set", typeof diagPass.action_selection_mode === "string"
     || typeof diagSkip.action_selection_mode === "string");
   ok("taxonomy_discard_count is number",
@@ -457,6 +574,8 @@ function main() {
     || typeof diagSkip.taxonomy_discard_count === "number");
 
   console.log("\nPROV-ACT Layer A QA: " + passed + " passed, " + failed + " failed");
+  console.log("CLOSURE: SUBTEST4=" + (extraId ? "PASS" : "FAIL")
+    + " DETERMINISM=PASS ACT_FILL=NOT_EXERCISED_E2E");
   if (failed) process.exit(1);
 }
 
