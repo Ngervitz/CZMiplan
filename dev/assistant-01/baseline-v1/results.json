@@ -1,0 +1,551 @@
+{
+  "baseline_id": "ASSISTANT_HARNESS_BASELINE_V1",
+  "captured_at": "2026-08-12T17:05:35.349Z",
+  "git_head": "f79cdc9eb00b91592736956897135e3794450f45",
+  "system_prompt": {
+    "path": "dev/assistant-01/system-prompt-v1.txt",
+    "version": "v1",
+    "sha256": "6086b4ccaaa7fc416f10009f6c7121dcf92b8097c8b007508c40eccc1e723580",
+    "bytes": 5072
+  },
+  "layers": {
+    "PRE_LLM_GUARDS": "executed",
+    "LLM_RESPONSE_CONTRACT": "LIVE_MODEL_QA_NOT_EXERCISED"
+  },
+  "text_ref_audit": {
+    "gap_id": "TEXT_REF_RESOLUTION_GAP",
+    "integration_ready": false,
+    "notes": [
+      "Production stamps text_ref from effective POST-tone text (js/ui.js:2841-2846).",
+      "No exported id→copy resolver exists in production.",
+      "Fallback known:actionKey (js/ui.js:2639) can stamp a ref even if shown text is not that key's catalog copy.",
+      "const:dti_accion_prioritaria and known:confirmar_saldo_stock_deuda share the same copy.",
+      "coh:healthy_alto copy equals known:optimizar_deuda_cara; coh:healthy_mantener equals known:mantener_disciplina.",
+      "Contract fixtures may include visible_copy already resolved; that does not prove the production pipeline."
+    ],
+    "checks": [
+      {
+        "id": "text_ref_dev_known:liberar_margen",
+        "status": "PASS",
+        "resolved": {
+          "ok": true,
+          "reason": "known",
+          "copy": "Identificar qué cuota libera más margen mensual es el paso con mayor impacto inmediato.",
+          "family": "known",
+          "key": "liberar_margen"
+        }
+      },
+      {
+        "id": "text_ref_dev_known:estabilizar_atraso",
+        "status": "PASS",
+        "resolved": {
+          "ok": true,
+          "reason": "known",
+          "copy": "Antes de pensar en nueva financiación, el foco debería estar en estabilizar los atrasos activos.",
+          "family": "known",
+          "key": "estabilizar_atraso"
+        }
+      },
+      {
+        "id": "text_ref_dev_const:revisar_ingresos",
+        "status": "PASS",
+        "resolved": {
+          "ok": true,
+          "reason": "const",
+          "copy": "El primer paso es revisar tu situación de ingresos para confirmar si actualmente contás con una fuente de ingresos estable o si necesitás generar una nueva.",
+          "family": "const",
+          "key": "revisar_ingresos"
+        }
+      },
+      {
+        "id": "text_ref_dev_const:zero_active_debt",
+        "status": "PASS",
+        "resolved": {
+          "ok": true,
+          "reason": "const",
+          "copy": "Revisá periódicamente tus gastos y tu margen disponible para mantener una situación financiera saludable.",
+          "family": "const",
+          "key": "zero_active_debt"
+        }
+      },
+      {
+        "id": "text_ref_dev_const:dti_accion_prioritaria",
+        "status": "PASS",
+        "resolved": {
+          "ok": true,
+          "reason": "const",
+          "copy": "Confirmar el saldo actualizado y definir si esta deuda debe estabilizarse, refinanciarse o atacarse primero.",
+          "family": "const",
+          "key": "dti_accion_prioritaria"
+        }
+      },
+      {
+        "id": "text_ref_dev_coh:healthy_alto",
+        "status": "PASS",
+        "resolved": {
+          "ok": true,
+          "reason": "coh",
+          "copy": "Priorizá la deuda de mayor costo para reducir intereses innecesarios.",
+          "family": "coh",
+          "key": "healthy_alto"
+        }
+      },
+      {
+        "id": "text_ref_dev_coh:healthy_mantener",
+        "status": "PASS",
+        "resolved": {
+          "ok": true,
+          "reason": "coh",
+          "copy": "Mantené el ritmo de pagos actual y utilizá el margen disponible para reducir deuda más rápido si te resulta conveniente.",
+          "family": "coh",
+          "key": "healthy_mantener"
+        }
+      },
+      {
+        "id": "text_ref_dev_known:does_not_exist",
+        "status": "PASS",
+        "resolved": {
+          "ok": false,
+          "reason": "unmapped_id",
+          "copy": null,
+          "family": "known",
+          "key": "does_not_exist"
+        }
+      },
+      {
+        "id": "text_ref_dev_raw-unprefixed",
+        "status": "PASS",
+        "resolved": {
+          "ok": false,
+          "reason": "unknown_format",
+          "copy": null
+        }
+      },
+      {
+        "id": "text_ref_dev_null",
+        "status": "PASS",
+        "resolved": {
+          "ok": false,
+          "reason": "empty",
+          "copy": null
+        }
+      }
+    ]
+  },
+  "totals": {
+    "pre_llm": {
+      "pass": 19,
+      "fail": 0,
+      "total": 19
+    },
+    "builder": {
+      "pass": 3,
+      "fail": 0,
+      "total": 3
+    },
+    "llm": {
+      "exercised": false,
+      "status": "LIVE_MODEL_QA_NOT_EXERCISED",
+      "fixture_count": 29,
+      "model": null
+    }
+  },
+  "pre_llm_results": [
+    {
+      "id": "D1_why_available",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D1_why_missing",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": false,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP",
+          "Q_EXPLAIN_ACTION"
+        ]
+      }
+    },
+    {
+      "id": "D2_blocker_available",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D2_blocker_missing_null",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": false,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_EXPLAIN_NEXT_STEP",
+          "Q_EXPLAIN_ACTION"
+        ]
+      }
+    },
+    {
+      "id": "D2_blocker_missing_empty",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": false,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_EXPLAIN_NEXT_STEP",
+          "Q_EXPLAIN_ACTION"
+        ]
+      }
+    },
+    {
+      "id": "D3_ns_display_none",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": false,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_ACTION"
+        ]
+      }
+    },
+    {
+      "id": "D4_ux1d2_suppressed_not_qualified",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": false
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D4_canonical_visible_qualifies",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D4_ver_mas_collapsed_qualifies",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D5_visible_without_selection_reason",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": false
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D6_multiple_no_selection",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D6_multiple_after_disambiguation",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D7_all_four_top3",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D7_no_why",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": false,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP",
+          "Q_EXPLAIN_ACTION"
+        ]
+      }
+    },
+    {
+      "id": "D7_no_blocker",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": false,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_EXPLAIN_NEXT_STEP",
+          "Q_EXPLAIN_ACTION"
+        ]
+      }
+    },
+    {
+      "id": "D7_no_next",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": false,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_ACTION"
+        ]
+      }
+    },
+    {
+      "id": "D7_no_action",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": false
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    },
+    {
+      "id": "D7_only_action",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": false,
+          "Q_MAIN_BLOCKER": false,
+          "Q_EXPLAIN_NEXT_STEP": false,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_EXPLAIN_ACTION"
+        ]
+      }
+    },
+    {
+      "id": "P_text_ref_null_display_visible",
+      "status": "PASS",
+      "extra": {
+        "avail": {
+          "Q_WHY_STAGE": true,
+          "Q_MAIN_BLOCKER": true,
+          "Q_EXPLAIN_NEXT_STEP": true,
+          "Q_EXPLAIN_ACTION": true
+        },
+        "top3": [
+          "Q_WHY_STAGE",
+          "Q_MAIN_BLOCKER",
+          "Q_EXPLAIN_NEXT_STEP"
+        ]
+      }
+    }
+  ],
+  "builder_results": [
+    {
+      "id": "Q_builder_why_has_action",
+      "status": "PASS",
+      "extra": {
+        "reason": "CONTEXT_BUILDER_GAP_EXTRA_FIELDS",
+        "extras": [
+          "action_id",
+          "selection_reason"
+        ],
+        "missing": [
+          "financial_stage",
+          "reason_code"
+        ]
+      }
+    },
+    {
+      "id": "Q_builder_action_has_fs",
+      "status": "PASS",
+      "extra": {
+        "reason": "CONTEXT_BUILDER_GAP_EXTRA_FIELDS",
+        "extras": [
+          "financial_stage",
+          "reason_code",
+          "evidence"
+        ],
+        "missing": [
+          "action_id",
+          "selection_reason"
+        ]
+      }
+    },
+    {
+      "id": "Q_builder_blocker_has_ns",
+      "status": "PASS",
+      "extra": {
+        "reason": "CONTEXT_BUILDER_GAP_EXTRA_FIELDS",
+        "extras": [
+          "value",
+          "text_ref",
+          "reason_code"
+        ],
+        "missing": [
+          "causa_principal"
+        ]
+      }
+    }
+  ],
+  "llm_results": [],
+  "variance": {},
+  "live": {
+    "exercised": false,
+    "reason": "LIVE_MODEL_QA_NOT_EXERCISED",
+    "detail": null,
+    "model": null,
+    "temperature": null,
+    "max_tokens": null
+  },
+  "coverage": {
+    "FREE_TEXT_ASSISTANT_INPUT": "DEFERRED_TO_V1.1",
+    "INTENT_ROUTER": "DEFERRED_TO_V1.1",
+    "OUT_OF_SCOPE": "DEFERRED_TO_V1.1",
+    "AMBIGUOUS": "DEFERRED_TO_V1.1",
+    "PRODUCTION_ENDPOINT": "NOT_PRESENT",
+    "ASSISTANT_CONTEXT_BUILDER_PRODUCTION": "NOT_PRESENT",
+    "TEXT_REF_PRODUCTION_RESOLVER": "NOT_PRESENT",
+    "LIVE_MODEL_QA": "LIVE_MODEL_QA_NOT_EXERCISED"
+  },
+  "freeze": {
+    "PRODUCTION_CODE_CHANGES": "NONE",
+    "SYSTEM_PROMPT_MUTATED": false,
+    "BUG_NS_GUARD_REASON": "NOT_FIXED",
+    "BUG_FS_CLARITY_LOW_MISS": "UNCHANGED",
+    "PROVENANCE_SOURCE_LAYER_DEBT": "UNCHANGED"
+  }
+}

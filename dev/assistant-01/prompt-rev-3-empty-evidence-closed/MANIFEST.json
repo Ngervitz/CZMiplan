@@ -1,0 +1,13 @@
+{
+  "capture_id": "PROMPT_REV_3_EMPTY_EVIDENCE_CLOSED_G_WHY",
+  "captured_at": "2026-08-12T20:35:32.579Z",
+  "git_head": "a155d60dc23260e8396b8361e2a01c6e635bda3f",
+  "prompt_revision": 3,
+  "previous_prompt_sha256": "9b9c977b230b84f5bcf10aa90361f3c217484753b4d7e796b7c8567a2a3d38bf",
+  "current_prompt_sha256": "8def1b5d76175d6694e4f5df042f8f52b835b8d09814eba30748fa688e7cbafe",
+  "case_id": "G_why_missing_evidence",
+  "requested_model": "claude-haiku-4-5-20251001",
+  "returned_model": "claude-haiku-4-5-20251001",
+    "live_model_api_calls": 1,
+    "semantic_eval": "PASS"
+  }

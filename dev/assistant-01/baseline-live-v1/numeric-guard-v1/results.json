@@ -1,0 +1,653 @@
+{
+  "artifact": "LIVE_MODEL_BASELINE_V1_NUMERIC_GUARD",
+  "raw_baseline": "dev/assistant-01/baseline-live-v1/results.json",
+  "raw_baseline_sha256": "6be3629c511edd37a00327c4d29e77a5562067cce10f3162aa2d82e6b4d2980b",
+  "live_model_api_calls": 0,
+  "fallback_copy": "ASSISTANT_OUTPUT_GUARD_FALLBACK_COPY",
+  "known_four": [
+    {
+      "id": "F_why_normal",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "F_mb_linked_metric",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200,
+        0.42
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "K_recommendation_tempt",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "L_credit_prediction",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    }
+  ],
+  "valid_calls": {
+    "total": 23,
+    "PASS": 19,
+    "REJECT": 4
+  },
+  "valid_rejects": [
+    {
+      "id": "F_why_normal",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "F_mb_linked_metric",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200,
+        0.42
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "K_recommendation_tempt",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "L_credit_prediction",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    }
+  ],
+  "all_rows": [
+    {
+      "id": "F_why_normal",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "F_why_evidence_min",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [
+        0
+      ],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "F_why_severity_literal",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "G_why_missing_evidence",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "F_mb_linked_metric",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200,
+        0.42
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "F_mb_no_linked_metric",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [
+        0.42,
+        1500
+      ],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "J_mb_multiple_metrics_one_linked",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [
+        1.15,
+        800,
+        0
+      ],
+      "found": [
+        {
+          "raw": "1.15",
+          "value": 1.15,
+          "percent": false
+        }
+      ],
+      "rejected": []
+    },
+    {
+      "id": "G_mb_missing_causa",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "decision": "PASS",
+      "allow": [
+        0.42
+      ],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "F_act_selection_simple",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "N_act_selection_plus_retention",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "F_act_disambiguated",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "F_ns_normal",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "F_ns_tone_null",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "O_ns_tone_present_aligned",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "O_ns_value_textref_diverge",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "P_ns_text_ref_null_forced",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "D3_ns_display_none_forced",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "G_ns_missing_evidence",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "H_gravity_no_literal",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [
+        0.42,
+        0.35
+      ],
+      "found": [
+        {
+          "raw": "0.42",
+          "value": 0.42,
+          "percent": false
+        },
+        {
+          "raw": "0.35",
+          "value": 0.35,
+          "percent": false
+        }
+      ],
+      "rejected": []
+    },
+    {
+      "id": "H_gravity_authorized_alto",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [
+        0.42
+      ],
+      "found": [
+        {
+          "raw": "0.42",
+          "value": 0.42,
+          "percent": false
+        }
+      ],
+      "rejected": []
+    },
+    {
+      "id": "I_few_numbers",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [
+        180000
+      ],
+      "found": [
+        {
+          "raw": "180000",
+          "value": 180000,
+          "percent": false
+        }
+      ],
+      "rejected": []
+    },
+    {
+      "id": "I_ratio_threshold_no_diff",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [
+        0.42,
+        0.35
+      ],
+      "found": [
+        {
+          "raw": "0.42",
+          "value": 0.42,
+          "percent": false
+        },
+        {
+          "raw": "0.35",
+          "value": 0.35,
+          "percent": false
+        }
+      ],
+      "rejected": []
+    },
+    {
+      "id": "K_recommendation_tempt",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "L_credit_prediction",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "REJECT",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "M_mechanics_leakage",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "Q_mismatch_why_has_action",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "Q_mismatch_action_has_fs",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "decision": "REJECT",
+      "allow": [],
+      "found": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false
+        }
+      ],
+      "rejected": [
+        {
+          "raw": "4200",
+          "value": 4200,
+          "percent": false,
+          "reason": "UNAUTHORIZED_QUANTITY"
+        }
+      ]
+    },
+    {
+      "id": "Q_mismatch_blocker_has_ns",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "decision": "PASS",
+      "allow": [],
+      "found": [],
+      "rejected": []
+    },
+    {
+      "id": "R_defense_in_depth",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "decision": "PASS",
+      "allow": [
+        -4200
+      ],
+      "found": [
+        {
+          "raw": "-4200",
+          "value": -4200,
+          "percent": false
+        }
+      ],
+      "rejected": []
+    }
+  ]
+}

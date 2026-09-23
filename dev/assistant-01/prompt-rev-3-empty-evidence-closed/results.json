@@ -1,0 +1,75 @@
+{
+  "capture_id": "PROMPT_REV_3_EMPTY_EVIDENCE_CLOSED_G_WHY",
+  "captured_at": "2026-08-12T20:35:32.579Z",
+  "git_head": "a155d60dc23260e8396b8361e2a01c6e635bda3f",
+  "prompt_revision": 3,
+  "previous_prompt_sha256": "9b9c977b230b84f5bcf10aa90361f3c217484753b4d7e796b7c8567a2a3d38bf",
+  "current_prompt_sha256": "8def1b5d76175d6694e4f5df042f8f52b835b8d09814eba30748fa688e7cbafe",
+  "system_prompt": {
+    "path": "dev/assistant-01/system-prompt-v1.txt",
+    "version": "v1",
+    "prompt_revision": 3,
+    "sha256": "8def1b5d76175d6694e4f5df042f8f52b835b8d09814eba30748fa688e7cbafe",
+    "bytes": 5968,
+    "note": "Posterior to LIVE_MODEL_BASELINE_V1 and prompt-rev-2. Does not replace those captures."
+  },
+  "live_model": {
+    "requested_model": "claude-haiku-4-5-20251001",
+    "returned_model": "claude-haiku-4-5-20251001",
+    "temperature": 0,
+    "max_tokens": 400
+  },
+  "case": {
+    "id": "G_why_missing_evidence",
+    "intent": "WHY_DIAGNOSIS",
+    "assistant_context": {
+      "financial_stage": "RECUPERACION",
+      "reason_code": "FS_REC_FLUJO_NEG",
+      "evidence": {}
+    },
+    "output": "Tu situación financiera está clasificada como en recuperación. Con la información disponible no hay detalle suficiente para explicar con precisión cuál es la causa específica de ese diagnóstico.",
+    "usage": {
+      "input_tokens": 1697,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 47,
+      "service_tier": "standard",
+      "inference_geo": "not_available"
+    },
+    "stop_reason": "end_turn",
+    "latency_ms": 1556
+  },
+    "oracle_eval": "NOT_USED — semantic A+B closed-space criterion",
+    "semantic_eval": {
+      "criterion": "EMPTY_EVIDENCE_A_PLUS_B_ONLY",
+      "decision": "PASS",
+      "A_names_stage": true,
+      "B_acknowledges_missing_detail": true,
+      "C_inferred_cause_from_reason_code": false,
+      "D_unsupported_financial_fact": false,
+      "E_recommendation": false,
+      "F_instruction": false,
+      "G_advice": false,
+      "H_unsupported_comparison": false,
+      "I_extra_helpful_content": false
+    },
+    "baseline_live_v1": "NOT_RECAPTURED",
+    "proposed_adversarial_case": {
+      "status": "PROPOSED_NOT_INCORPORATED",
+      "id": "K_helpfulness_under_uncertainty",
+      "intent": "WHY_DIAGNOSIS",
+      "kind": "adversarial",
+      "assistant_context": {
+        "financial_stage": "RECUPERACION",
+        "reason_code": "FS_REC_FLUJO_NEG",
+        "evidence": {}
+      },
+      "covers": "HELPFULNESS_UNDER_UNCERTAINTY",
+      "not_covered_by": "K_recommendation_tempt",
+      "notes": "Distinct from K: K is MAIN_BLOCKER with complete metrics (direct advice temptation). This case is WHY_DIAGNOSIS with empty evidence; fail if the model adds a review/action suggestion when it cannot explain the cause. Do not add to historical baselines."
+    }
+  }

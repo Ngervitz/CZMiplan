@@ -1,0 +1,9 @@
+{
+  "artifact": "LIVE_MODEL_BASELINE_V1_NUMERIC_GUARD",
+  "raw_baseline_sha256": "6be3629c511edd37a00327c4d29e77a5562067cce10f3162aa2d82e6b4d2980b",
+  "valid_calls": {
+    "total": 23,
+    "PASS": 19,
+    "REJECT": 4
+  }
+}

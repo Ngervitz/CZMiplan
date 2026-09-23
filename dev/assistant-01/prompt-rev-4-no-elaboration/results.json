@@ -1,0 +1,91 @@
+{
+  "capture_id": "PROMPT_REV_4_NO_ELABORATION",
+  "captured_at": "2026-08-12T21:03:40.105Z",
+  "git_head": "a155d60dc23260e8396b8361e2a01c6e635bda3f",
+  "prompt_revision": 4,
+  "previous_prompt_sha256": "8def1b5d76175d6694e4f5df042f8f52b835b8d09814eba30748fa688e7cbafe",
+  "current_prompt_sha256": "3057b9e1c887f1a7884dd4459572b3fac07a6cda782609e25dd64d9386e798df",
+  "live_model_api_calls": 2,
+  "justification_two_calls": "F_ns_normal is the original how-to-during-explanation case. G_ns_missing_evidence repeats the same pattern; omitted. F_why_normal is the sufficient-evidence control.",
+  "cases": [
+    {
+      "id": "F_ns_normal",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "assistant_context": {
+        "value": "liberar_margen",
+        "text_ref": "known:liberar_margen",
+        "visible_copy": "Identificar qué cuota libera más margen mensual es el paso con mayor impacto inmediato.",
+        "reason_code": "NS_NARR_RECOVERY_LIBERAR",
+        "evidence": {
+          "narrative_mode": "RECOVERY"
+        },
+        "tone_code": null
+      },
+      "output": "El paso que ves es identificar qué cuota libera más margen mensual porque es lo que tiene mayor impacto inmediato en tu situación. Eso es lo que el sistema determinó como el siguiente movimiento relevante para vos en este momento.",
+      "usage": {
+        "input_tokens": 1951,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 63,
+        "service_tier": "standard",
+        "inference_geo": "not_available"
+      },
+      "stop_reason": "end_turn",
+      "latency_ms": 1796,
+      "requested_model": "claude-haiku-4-5-20251001",
+      "returned_model": "claude-haiku-4-5-20251001"
+    },
+    {
+      "id": "F_why_normal",
+      "intent": "WHY_DIAGNOSIS",
+      "assistant_context": {
+        "financial_stage": "RECUPERACION",
+        "reason_code": "FS_REC_FLUJO_NEG",
+        "evidence": {
+          "flujoLibre": -4200
+        }
+      },
+      "output": "Tu situación financiera está clasificada como recuperación. Esto significa que tenés un flujo de dinero negativo: después de tus gastos e ingresos, te quedan -4200 cada mes, es decir, gastás más de lo que entrá.",
+      "usage": {
+        "input_tokens": 1890,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 64,
+        "service_tier": "standard",
+        "inference_geo": "not_available"
+      },
+      "stop_reason": "end_turn",
+      "latency_ms": 1378,
+      "requested_model": "claude-haiku-4-5-20251001",
+      "returned_model": "claude-haiku-4-5-20251001"
+    }
+  ],
+  "baseline_live_v1": "NOT_RECAPTURED",
+  "semantic_eval": {
+    "F_ns_normal": {
+      "decision": "PASS",
+      "no_howto": true,
+      "no_recommendation": true,
+      "no_hypothetical": true,
+      "explains_visible_step": true,
+      "notes": "Previous how-to ('si la cancelaras') is gone. Paraphrases visible_copy. Residual 'el sistema determinó' is not a FIX 3 fail."
+    },
+    "F_why_normal": {
+      "decision": "PASS",
+      "no_howto": true,
+      "no_recommendation": true,
+      "no_hypothetical": true,
+      "useful_authorized_explanation": true,
+      "notes": "Uses flujoLibre -4200 from evidence. Not flattened. Sign preserved."
+    },
+    "overall": "PASS"
+  }
+}

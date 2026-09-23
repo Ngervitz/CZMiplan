@@ -9,6 +9,8 @@
  * Usage:
  *   node dev/assistant-01/harness.js
  *   node dev/assistant-01/harness.js --live
+ *   node dev/assistant-01/harness.js --live --out-dir dev/assistant-01/baseline-live-v1/
+ *   node dev/assistant-01/harness.js --smoke
  */
 "use strict";
 
@@ -21,11 +23,29 @@ var guards = require("./guards");
 var fixtures = require("./fixtures");
 var evaluate = require("./evaluate");
 var textRef = require("./text-ref-catalog");
+var whyContract = require("./why-evidence-contract");
 
 var ROOT = path.join(__dirname, "..", "..");
 var PROMPT_PATH = path.join(__dirname, "system-prompt-v1.txt");
-var BASELINE_DIR = path.join(__dirname, "baseline-v1");
+var DEFAULT_BASELINE_DIR = path.join(__dirname, "baseline-v1");
+var SMOKE_FIXTURE_ID = "F_why_normal";
 var LIVE = process.argv.indexOf("--live") !== -1;
+var SMOKE = process.argv.indexOf("--smoke") !== -1;
+var QA_ONLY = process.argv.indexOf("--qa") !== -1;
+
+function parseOutDir() {
+  var i = process.argv.indexOf("--out-dir");
+  if (i === -1) return DEFAULT_BASELINE_DIR;
+  var raw = process.argv[i + 1];
+  if (!raw || raw.indexOf("--") === 0) {
+    console.error("Missing path for --out-dir");
+    process.exit(2);
+  }
+  return path.isAbsolute(raw) ? raw : path.resolve(ROOT, raw);
+}
+
+var BASELINE_DIR = parseOutDir();
+var CUSTOM_OUT_DIR = path.resolve(BASELINE_DIR) !== path.resolve(DEFAULT_BASELINE_DIR);
 var VARIANCE_RUNS = 3;
 var VARIANCE_IDS = [
   "H_gravity_no_literal",
@@ -117,8 +137,29 @@ function runPreLlmCase(c) {
         issues.push("chips_count expected " + exp.chips_count + " got " + chips.length);
       }
     }
-    if (ac.selected_action_id && got.allowed && got.selected && got.selected.id !== ac.selected_action_id) {
+    if (ac.selected_action_id && got.selected && got.selected.id !== ac.selected_action_id) {
       issues.push("selected action mismatch");
+    }
+    if (exp.fallback === true) {
+      if (!got.fallback || !got.fallback.copy) {
+        issues.push("expected deterministic fallback copy");
+      }
+    }
+  }
+
+  if (exp.metrics_empty) {
+    var built = guards.buildAssistantContext("MAIN_BLOCKER", snap);
+    var mets = built && built.context && built.context.metrics;
+    if (!built || !built.ok || JSON.stringify(mets) !== "{}") {
+      issues.push("expected MAIN_BLOCKER metrics {} got " + JSON.stringify(mets));
+    }
+    if (built && built.context) {
+      ["flujoLibre", "dti_ratio", "cantMoras", "ratio"].forEach(function (k) {
+        if (Object.prototype.hasOwnProperty.call(built.context, k)) {
+          issues.push("leaked metric field " + k);
+        }
+        if (mets && mets[k] != null) issues.push("metrics still contains " + k);
+      });
     }
   }
 
@@ -194,10 +235,15 @@ function userMessage(intent, ctx) {
   return "intent: " + intent + "\nassistant_context:\n" + JSON.stringify(ctx, null, 2);
 }
 
+function providerErrorType(data) {
+  return data && data.error && data.error.type ? String(data.error.type) : null;
+}
+
 async function callModel(prompt, intent, ctx) {
   var key = getApiKey();
   if (!key) throw new Error("NO_API_KEY");
   var model = getModel();
+  var t0 = Date.now();
   var res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -213,10 +259,12 @@ async function callModel(prompt, intent, ctx) {
       messages: [{ role: "user", content: userMessage(intent, ctx) }],
     }),
   });
-  var data = await res.json();
+  var latency_ms = Date.now() - t0;
+  var data = await res.json().catch(function() { return {}; });
   if (!res.ok) {
     var err = new Error("ANTHROPIC_HTTP_" + res.status);
-    err.body = data;
+    err.http_status = res.status;
+    err.provider_type = providerErrorType(data);
     throw err;
   }
   var text = "";
@@ -224,7 +272,52 @@ async function callModel(prompt, intent, ctx) {
   for (var i = 0; i < blocks.length; i++) {
     if (blocks[i].type === "text") text += blocks[i].text || "";
   }
-  return { text: text, raw: data, model: model };
+  return {
+    text: text,
+    raw: data,
+    model: model,
+    returned_model: data.model || null,
+    usage: data.usage || {},
+    stop_reason: data.stop_reason || null,
+    latency_ms: latency_ms,
+  };
+}
+
+function callFields(call) {
+  return {
+    requested_model: call.model,
+    returned_model: call.returned_model || null,
+    usage: call.usage || {},
+    stop_reason: call.stop_reason || null,
+    latency_ms: call.latency_ms != null ? call.latency_ms : null,
+  };
+}
+
+function deterministicSkip(c) {
+  if (c.force_invalid_call) return null;
+  if (c.intent === "WHY_DIAGNOSIS") {
+    var ctx = c.assistant_context || {};
+    var cls = whyContract.classifyWhyEvidence(ctx.reason_code, ctx.evidence);
+    if (!cls.sufficient) {
+      return {
+        reason: "WHY_DIAGNOSIS_EVIDENCE_INSUFFICIENT",
+        fallback: whyContract.whyFallbackCopy(ctx.financial_stage),
+        sufficiency: cls,
+      };
+    }
+  }
+  if (c.intent === "EXPLAIN_ACTION") {
+    var a = c.assistant_context || {};
+    return {
+      reason: "EXPLAIN_ACTION_DETERMINISTIC_FALLBACK",
+      fallback: whyContract.actionFallbackCopy({
+        id: a.action_id,
+        texto: a.action_label,
+        urgencia: a.urgencia,
+      }),
+    };
+  }
+  return null;
 }
 
 function classifyLlmFail(fixture, evalResult) {
@@ -266,6 +359,21 @@ async function runLiveLlm(prompt, llmCases) {
       });
       continue;
     }
+    var skip = deterministicSkip(c);
+    if (skip) {
+      results.push({
+        id: c.id,
+        status: "PASS",
+        taxonomy: null,
+        path: "DETERMINISTIC_FALLBACK",
+        llm_called: false,
+        skip_reason: skip.reason,
+        output: skip.fallback && skip.fallback.copy,
+        fallback: skip.fallback,
+        sufficiency: skip.sufficiency || null,
+      });
+      continue;
+    }
     try {
       var call = await callModel(prompt, c.intent, c.assistant_context);
       var ev = evaluate.evaluateResponse(c, call.text);
@@ -280,20 +388,22 @@ async function runLiveLlm(prompt, llmCases) {
         status = "FAIL";
         taxonomy = classifyLlmFail(c, ev);
       }
-      results.push({
+      results.push(Object.assign({
         id: c.id,
         status: status,
         taxonomy: taxonomy,
         output: call.text,
         eval: ev,
         model: call.model,
-      });
+      }, callFields(call)));
     } catch (e) {
       results.push({
         id: c.id,
         status: "FAIL",
         taxonomy: "TEST_GAP",
         error: String(e.message || e),
+        http_status: e.http_status || null,
+        provider_type: e.provider_type || null,
         output: null,
       });
     }
@@ -309,11 +419,20 @@ async function runLiveLlm(prompt, llmCases) {
         var vc = await callModel(prompt, fx.intent, fx.assistant_context);
         var ve = evaluate.evaluateResponse(fx, vc.text);
         var ok = ve.overall === "PASS";
-        variance[vid].runs.push({ status: ok ? "PASS" : "FAIL", output: vc.text, eval: ve });
+        variance[vid].runs.push(Object.assign({
+          status: ok ? "PASS" : "FAIL",
+          output: vc.text,
+          eval: ve,
+        }, callFields(vc)));
         if (ok) variance[vid].pass++;
         else variance[vid].fail++;
       } catch (e2) {
-        variance[vid].runs.push({ status: "FAIL", error: String(e2.message || e2) });
+        variance[vid].runs.push({
+          status: "FAIL",
+          error: String(e2.message || e2),
+          http_status: e2.http_status || null,
+          provider_type: e2.provider_type || null,
+        });
         variance[vid].fail++;
       }
     }
@@ -335,7 +454,64 @@ function summarize(pre, builder, llmMeta) {
   };
 }
 
+function printSmoke(fields) {
+  console.log("fixture_id=" + fields.fixture_id);
+  console.log("requested_model=" + fields.requested_model);
+  console.log("returned_model=" + (fields.returned_model || ""));
+  console.log("stop_reason=" + (fields.stop_reason || ""));
+  console.log("latency_ms=" + fields.latency_ms);
+  console.log("usage=" + JSON.stringify(fields.usage || {}));
+  console.log("text=");
+  console.log(fields.text);
+}
+
+async function runSmoke() {
+  var prompt = fs.readFileSync(PROMPT_PATH, "utf8");
+  var fx = fixtures.buildLlmCases().filter(function(c) { return c.id === SMOKE_FIXTURE_ID; })[0];
+  if (!fx) {
+    console.error("SMOKE fixture not found: " + SMOKE_FIXTURE_ID);
+    process.exit(1);
+  }
+  if (!getApiKey()) {
+    console.error("HAIKU SMOKE TEST: FAIL — blocker: [NO_API_KEY]");
+    process.exit(1);
+  }
+  try {
+    var call = await callModel(prompt, fx.intent, fx.assistant_context);
+    printSmoke({
+      fixture_id: fx.id,
+      requested_model: call.model,
+      returned_model: call.returned_model,
+      stop_reason: call.stop_reason,
+      latency_ms: call.latency_ms,
+      usage: call.usage,
+      text: call.text,
+    });
+    console.log("HAIKU SMOKE TEST: PASS");
+  } catch (e) {
+    var bits = [String(e.message || e)];
+    if (e.http_status) bits.push("http_status=" + e.http_status);
+    if (e.provider_type) bits.push("provider_type=" + e.provider_type);
+    console.error("HAIKU SMOKE TEST: FAIL — blocker: [" + bits.join("; ") + "]");
+    process.exit(1);
+  }
+}
+
+function refuseIfExistingBaseline(dir) {
+  var resultsPath = path.join(dir, "results.json");
+  var manifestPath = path.join(dir, "MANIFEST.json");
+  if (fs.existsSync(resultsPath) || fs.existsSync(manifestPath)) {
+    console.error("REFUSING to overwrite existing baseline at " + resultsPath);
+    process.exit(2);
+  }
+}
+
 async function main() {
+  if (SMOKE) {
+    await runSmoke();
+    return;
+  }
+
   var prompt = fs.readFileSync(PROMPT_PATH, "utf8");
   var promptHash = sha256(prompt);
   var all = fixtures.allFixtures();
@@ -382,7 +558,7 @@ async function main() {
       };
 
   var report = {
-    baseline_id: "ASSISTANT_HARNESS_BASELINE_V1",
+    baseline_id: (LIVE && CUSTOM_OUT_DIR) ? "LIVE_MODEL_BASELINE_V1" : "ASSISTANT_HARNESS_BASELINE_V1",
     captured_at: nowIso(),
     git_head: gitHead(),
     system_prompt: {
@@ -428,12 +604,22 @@ async function main() {
     },
   };
 
+  var fails = preResults.concat(builderResults).filter(function(r) { return r.status === "FAIL"; });
+  if (QA_ONLY) {
+    console.log("ASSISTANT_HARNESS_QA");
+    console.log("prompt_sha256=" + promptHash);
+    console.log("PRE_LLM pass=" + report.totals.pre_llm.pass + " fail=" + report.totals.pre_llm.fail);
+    console.log("BUILDER pass=" + report.totals.builder.pass + " fail=" + report.totals.builder.fail);
+    fails.forEach(function(f) {
+      console.log("FAIL " + f.id + " :: " + f.message);
+    });
+    if (fails.length) process.exit(1);
+    return;
+  }
+
+  refuseIfExistingBaseline(BASELINE_DIR);
   if (!fs.existsSync(BASELINE_DIR)) fs.mkdirSync(BASELINE_DIR, { recursive: true });
   var resultsPath = path.join(BASELINE_DIR, "results.json");
-  if (fs.existsSync(resultsPath)) {
-    console.error("REFUSING to overwrite existing baseline at " + resultsPath);
-    process.exit(2);
-  }
   fs.writeFileSync(resultsPath, JSON.stringify(report, null, 2), "utf8");
   fs.writeFileSync(
     path.join(BASELINE_DIR, "MANIFEST.json"),
@@ -448,8 +634,7 @@ async function main() {
   );
   fs.writeFileSync(path.join(BASELINE_DIR, "system-prompt-v1.sha256"), promptHash + "\n", "utf8");
 
-  var fails = preResults.concat(builderResults).filter(function(r) { return r.status === "FAIL"; });
-  console.log("ASSISTANT_HARNESS_BASELINE_V1");
+  console.log(report.baseline_id);
   console.log("prompt_sha256=" + promptHash);
   console.log("git_head=" + report.git_head);
   console.log("PRE_LLM pass=" + report.totals.pre_llm.pass + " fail=" + report.totals.pre_llm.fail);
@@ -464,6 +649,6 @@ async function main() {
 }
 
 main().catch(function(err) {
-  console.error(err);
+  console.error(String(err && err.message ? err.message : err));
   process.exit(1);
 });

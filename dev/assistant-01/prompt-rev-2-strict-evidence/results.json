@@ -1,0 +1,60 @@
+{
+  "capture_id": "PROMPT_REV_2_STRICT_EVIDENCE_G_WHY",
+  "captured_at": "2026-08-12T20:31:13.141Z",
+  "git_head": "a155d60dc23260e8396b8361e2a01c6e635bda3f",
+  "prompt_revision": 2,
+  "previous_prompt_sha256": "6086b4ccaaa7fc416f10009f6c7121dcf92b8097c8b007508c40eccc1e723580",
+  "current_prompt_sha256": "9b9c977b230b84f5bcf10aa90361f3c217484753b4d7e796b7c8567a2a3d38bf",
+  "system_prompt": {
+    "path": "dev/assistant-01/system-prompt-v1.txt",
+    "version": "v1",
+    "prompt_revision": 2,
+    "sha256": "9b9c977b230b84f5bcf10aa90361f3c217484753b4d7e796b7c8567a2a3d38bf",
+    "bytes": 5502,
+    "note": "Posterior to LIVE_MODEL_BASELINE_V1. Does not replace that baseline."
+  },
+  "live_model": {
+    "requested_model": "claude-haiku-4-5-20251001",
+    "returned_model": "claude-haiku-4-5-20251001",
+    "temperature": 0,
+    "max_tokens": 400
+  },
+  "case": {
+    "id": "G_why_missing_evidence",
+    "intent": "WHY_DIAGNOSIS",
+    "assistant_context": {
+      "financial_stage": "RECUPERACION",
+      "reason_code": "FS_REC_FLUJO_NEG",
+      "evidence": {}
+    },
+    "output": "Tu situación financiera está clasificada en recuperación. Esto se debe a que el sistema detectó un flujo de dinero negativo, es decir, que en este período estás gastando más de lo que ingresás. Sin embargo, no tengo los detalles numéricos específicos (montos, períodos, categorías de gasto) para explicarte con precisión dónde está ocurriendo ese desequilibrio. Lo que sí podés hacer es revisar tus ingresos y gastos del período para identificar en qué rubros se concentra la diferencia.",
+    "usage": {
+      "input_tokens": 1568,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation": {
+        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_1h_input_tokens": 0
+      },
+      "output_tokens": 136,
+      "service_tier": "standard",
+      "inference_geo": "not_available"
+    },
+    "stop_reason": "end_turn",
+    "latency_ms": 2567
+  },
+  "oracle_eval": "NOT_USED — semantic STRICT_EVIDENCE_REQUIRED criterion; missing_fallback.ok left as harness gap",
+  "semantic_eval": {
+    "criterion": "STRICT_EVIDENCE_REQUIRED",
+    "decision": "FAIL",
+    "names_stage": true,
+    "acknowledges_missing_detail": true,
+    "materializes_unsupported_cause": true,
+    "unsupported_cause_spans": [
+      "el sistema detectó un flujo de dinero negativo",
+      "en este período estás gastando más de lo que ingresás"
+    ],
+    "notes": "Acknowledges missing numbers after already converting FS_REC_FLUJO_NEG into a household income/expense fact and a time period. Prudent closing does not satisfy the criterion."
+  },
+  "baseline_live_v1": "NOT_RECAPTURED"
+}

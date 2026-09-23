@@ -1,0 +1,14 @@
+{
+  "baseline_id": "LIVE_MODEL_BASELINE_V1",
+  "captured_at": "2026-08-12T17:49:17.292Z",
+  "git_head": "a155d60dc23260e8396b8361e2a01c6e635bda3f",
+  "prompt_sha256": "6086b4ccaaa7fc416f10009f6c7121dcf92b8097c8b007508c40eccc1e723580",
+  "live_model": {
+    "exercised": true,
+    "reason": null,
+    "detail": null,
+    "model": "claude-haiku-4-5-20251001",
+    "temperature": 0,
+    "max_tokens": 400
+  }
+}

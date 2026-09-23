@@ -1,0 +1,52 @@
+{
+  "prompt_file": "dev/assistant-01/system-prompt-v1.txt",
+  "notes": [
+    "Revision 1 is the frozen prompt used by ASSISTANT_HARNESS_BASELINE_V1 and LIVE_MODEL_BASELINE_V1.",
+    "Those baselines are write-once and must not be recaptured against later revisions.",
+    "Revision 2 is posterior to LIVE_MODEL_BASELINE_V1. It does not replace that baseline.",
+    "Revision 3 replaces the empty-evidence WHY_DIAGNOSIS rule (closed A+B response space). It does not replace prior baselines.",
+    "Revision 4 adds transversal no-elaboration rule (FIX 3). It does not replace prior baselines."
+  ],
+  "revisions": [
+    {
+      "prompt_revision": 1,
+      "sha256": "6086b4ccaaa7fc416f10009f6c7121dcf92b8097c8b007508c40eccc1e723580",
+      "bytes": 5072,
+      "used_by": [
+        "ASSISTANT_HARNESS_BASELINE_V1",
+        "LIVE_MODEL_BASELINE_V1"
+      ],
+      "change": "Original System Prompt v1 freeze"
+    },
+    {
+      "prompt_revision": 2,
+      "previous_prompt_sha256": "6086b4ccaaa7fc416f10009f6c7121dcf92b8097c8b007508c40eccc1e723580",
+      "sha256": "9b9c977b230b84f5bcf10aa90361f3c217484753b4d7e796b7c8567a2a3d38bf",
+      "bytes": 5502,
+      "change": "WHY_DIAGNOSIS STRICT_EVIDENCE_REQUIRED",
+      "used_by": [
+        "PROMPT_REV_2_STRICT_EVIDENCE_G_WHY"
+      ]
+    },
+    {
+      "prompt_revision": 3,
+      "previous_prompt_sha256": "9b9c977b230b84f5bcf10aa90361f3c217484753b4d7e796b7c8567a2a3d38bf",
+      "sha256": "8def1b5d76175d6694e4f5df042f8f52b835b8d09814eba30748fa688e7cbafe",
+      "bytes": 5968,
+      "change": "WHY_DIAGNOSIS empty-evidence closed A+B response space",
+      "used_by": [
+        "PROMPT_REV_3_EMPTY_EVIDENCE_CLOSED_G_WHY"
+      ]
+    },
+    {
+      "prompt_revision": 4,
+      "previous_prompt_sha256": "8def1b5d76175d6694e4f5df042f8f52b835b8d09814eba30748fa688e7cbafe",
+      "sha256": "3057b9e1c887f1a7884dd4459572b3fac07a6cda782609e25dd64d9386e798df",
+      "bytes": 6592,
+      "change": "Transversal no-elaboration rule (FIX 3)",
+      "used_by": [
+        "PROMPT_REV_4_NO_ELABORATION"
+      ]
+    }
+  ]
+}

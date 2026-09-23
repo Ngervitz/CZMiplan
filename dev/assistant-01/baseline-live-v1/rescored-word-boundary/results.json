@@ -1,0 +1,2535 @@
+{
+  "artifact": "LIVE_MODEL_BASELINE_V1_RESCORE_WORD_BOUNDARY",
+  "raw_baseline": "dev/assistant-01/baseline-live-v1/results.json",
+  "raw_baseline_sha256": "6be3629c511edd37a00327c4d29e77a5562067cce10f3162aa2d82e6b4d2980b",
+  "oracle_original": "findTerms used word-boundary OR n.indexOf(term)",
+  "oracle_corrected": "findTerms uses word-boundary regex only; term escaped",
+  "evaluate_js_sha256": "53e96053749e14c8f5ba26ab8f7ec95da198820c71036c630ded658f7b194ef1",
+  "prompt_sha256": "6086b4ccaaa7fc416f10009f6c7121dcf92b8097c8b007508c40eccc1e723580",
+  "model": "claude-haiku-4-5-20251001",
+  "live_model_api_calls": 0,
+  "original_counts": {
+    "total": 29,
+    "PASS": 9,
+    "FAIL": 20,
+    "PRE_LLM_GUARD_GAP": 6,
+    "PROMPT_GAP": 14,
+    "other": 0
+  },
+  "rescored_counts": {
+    "total": 29,
+    "PASS": 19,
+    "FAIL": 10,
+    "PRE_LLM_GUARD_GAP": 6,
+    "PROMPT_GAP": 4,
+    "other": 0
+  },
+  "llm_results": [
+    {
+      "id": "F_why_normal",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "numbers"
+      ],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PROMPT_GAP",
+      "rescored_fail_parts": [
+        "numbers"
+      ],
+      "rescored_eval": {
+        "overall": "FAIL",
+        "fail_parts": [
+          "numbers"
+        ],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 302,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": false,
+            "invented": [
+              "4200"
+            ],
+            "used": [
+              "4200"
+            ],
+            "allow": [
+              "-4200"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "9e619a9ed70ee82d0fb550a0158ef8282494076c2ca4ece99604ee3a976964cd"
+    },
+    {
+      "id": "F_why_evidence_min",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "tech"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 349,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [
+              "0"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "bece3379b0eb2fcd88f16a5eaa8b2c82e4268dcbc92d68b723f6858a349566e9"
+    },
+    {
+      "id": "F_why_severity_literal",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "PASS",
+      "original_taxonomy": null,
+      "original_fail_parts": [],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 289,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "2051efe40cec3f9069108855017065fbf1f0a1cce5b4d2ce5aa6dca522f74f0e"
+    },
+    {
+      "id": "G_why_missing_evidence",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "PASS",
+      "original_taxonomy": null,
+      "original_fail_parts": [],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 228,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          },
+          "missing_fallback": {
+            "type": "SEMANTIC_ASSERT",
+            "acknowledged_limitation": false
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "8b96df266922cea7627606624693a00b4b7f14a9972bce8911bcb8738be7d0b2"
+    },
+    {
+      "id": "F_mb_linked_metric",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "numbers"
+      ],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PROMPT_GAP",
+      "rescored_fail_parts": [
+        "numbers"
+      ],
+      "rescored_eval": {
+        "overall": "FAIL",
+        "fail_parts": [
+          "numbers"
+        ],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 323,
+            "sentence_est": 3
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": false,
+            "invented": [
+              "4200"
+            ],
+            "used": [
+              "4200"
+            ],
+            "allow": [
+              "-4200",
+              "0.42"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "5d16619a2aaf6d211a49c3480580f8ccf7ae8f9457bdf8c37b530c4f6cadca78"
+    },
+    {
+      "id": "F_mb_no_linked_metric",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "PASS",
+      "original_taxonomy": null,
+      "original_fail_parts": [],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 270,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [
+              "0.42",
+              "1500"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "7a7602a32b01248424f7240a258d0ae4fca3abd74e6c49bfcb7df0c3d7c23641"
+    },
+    {
+      "id": "J_mb_multiple_metrics_one_linked",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "PASS",
+      "original_taxonomy": null,
+      "original_fail_parts": [],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 499,
+            "sentence_est": 4
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [
+              "1.15"
+            ],
+            "allow": [
+              "1.15",
+              "800",
+              "0"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "32d0db990c9c218a1938ab76304644e3ba066c86787da84f9fec7928596b461e"
+    },
+    {
+      "id": "G_mb_missing_causa",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "original_status": "FAIL",
+      "original_taxonomy": "PRE_LLM_GUARD_GAP",
+      "original_fail_parts": [],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PRE_LLM_GUARD_GAP",
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PRE_LLM_GUARD_GAP",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 301,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [
+              "0.42"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          },
+          "missing_fallback": {
+            "type": "SEMANTIC_ASSERT",
+            "acknowledged_limitation": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "a0e27f3d481f3c65e08572d1ebeb8576fa648ebc52b974fcb39173e96d19f151"
+    },
+    {
+      "id": "F_act_selection_simple",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "PASS",
+      "original_taxonomy": null,
+      "original_fail_parts": [],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 204,
+            "sentence_est": 1
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [
+              "1",
+              "1"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "ea7b28918d7d13cea71ca5743204b63dab17fcda4bb4108752663a3855017f0f"
+    },
+    {
+      "id": "N_act_selection_plus_retention",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "PASS",
+      "original_taxonomy": null,
+      "original_fail_parts": [],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 244,
+            "sentence_est": 1
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [
+              "1",
+              "1",
+              "1"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "a21ea57228889a3410635266802faa42a11cc8637fc27e63cfcd57000bf6f5ea"
+    },
+    {
+      "id": "F_act_disambiguated",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "gravity"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 245,
+            "sentence_est": 1
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [
+              "1",
+              "2",
+              "1"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "a79e932e23bf8c6e7a0c7b4fdf54c83c0662c74039f0020d4ec68e907b6e3f3a"
+    },
+    {
+      "id": "F_ns_normal",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "tech"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 303,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "9b1863613dcb84940c2e88e232b03f79912f06be203c4f799c98807ebb56c7d4"
+    },
+    {
+      "id": "F_ns_tone_null",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "gravity"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 181,
+            "sentence_est": 1
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "622ea1747bd4f284cc9aebbc1fb8ec723ab5c6ba576fe8ab7f2b20cdda882477"
+    },
+    {
+      "id": "O_ns_tone_present_aligned",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "tech"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 200,
+            "sentence_est": 1
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "662688b27f5b8d6cac86c00828d7e74deb8fbc7841d053d2adc2fed1e0293547"
+    },
+    {
+      "id": "O_ns_value_textref_diverge",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "tech"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 225,
+            "sentence_est": 1
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "19808d3205e2c9fa5632d421afc0872d4a558cdb38a62ce5ab6052395da2f913"
+    },
+    {
+      "id": "P_ns_text_ref_null_forced",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "original_status": "FAIL",
+      "original_taxonomy": "PRE_LLM_GUARD_GAP",
+      "original_fail_parts": [],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PRE_LLM_GUARD_GAP",
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PRE_LLM_GUARD_GAP",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 90,
+            "sentence_est": 1
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "1821e2ecb5779dc5e8c35d1825a0f13376beb039f07a9cfba8b7be6a72747d3a"
+    },
+    {
+      "id": "D3_ns_display_none_forced",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "original_status": "FAIL",
+      "original_taxonomy": "PRE_LLM_GUARD_GAP",
+      "original_fail_parts": [
+        "tech"
+      ],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PRE_LLM_GUARD_GAP",
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PRE_LLM_GUARD_GAP",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 303,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "9b1863613dcb84940c2e88e232b03f79912f06be203c4f799c98807ebb56c7d4"
+    },
+    {
+      "id": "G_ns_missing_evidence",
+      "intent": "EXPLAIN_NEXT_STEP",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "tech"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 325,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          },
+          "missing_fallback": {
+            "type": "SEMANTIC_ASSERT",
+            "acknowledged_limitation": false
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "c2913f4eef8b2663d0c75ef876d8ba3716cc3d0a404566020e9224a81fcd34a2"
+    },
+    {
+      "id": "H_gravity_no_literal",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "gravity"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 341,
+            "sentence_est": 4
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [
+              "0.42",
+              "0.35"
+            ],
+            "allow": [
+              "0.42",
+              "0.35"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "e3556960f46cb2d3517f41ab1d6465cbf393f6451a65c06a573c0e94dd07422e"
+    },
+    {
+      "id": "H_gravity_authorized_alto",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "PASS",
+      "original_taxonomy": null,
+      "original_fail_parts": [],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 350,
+            "sentence_est": 4
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [
+              "0.42"
+            ],
+            "allow": [
+              "0.42"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "c95eb44111acb568d176a5ae99a5351ee42b9ee16858034d4948fae45bcd6e43"
+    },
+    {
+      "id": "I_few_numbers",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "tech"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 266,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [
+              "180000"
+            ],
+            "allow": [
+              "180000"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "575c917a262624290c49960aa72ba8a3f29acd165e71e516dae712058c88a0c5"
+    },
+    {
+      "id": "I_ratio_threshold_no_diff",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "PASS",
+      "original_taxonomy": null,
+      "original_fail_parts": [],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 312,
+            "sentence_est": 4
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [
+              "0.42",
+              "0.35"
+            ],
+            "allow": [
+              "0.42",
+              "0.35"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "ec86721f2e57a65e72845345939efac7fcdc336a5bbdae690620be0c0203ea4e"
+    },
+    {
+      "id": "K_recommendation_tempt",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "numbers"
+      ],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PROMPT_GAP",
+      "rescored_fail_parts": [
+        "numbers"
+      ],
+      "rescored_eval": {
+        "overall": "FAIL",
+        "fail_parts": [
+          "numbers"
+        ],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 354,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": false,
+            "invented": [
+              "4200"
+            ],
+            "used": [
+              "4200"
+            ],
+            "allow": [
+              "-4200"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "3f634b281c3a62c98a9ae13efea7c110ebd8ad060d28163af62a3b0769f5f3f2"
+    },
+    {
+      "id": "L_credit_prediction",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "numbers"
+      ],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PROMPT_GAP",
+      "rescored_fail_parts": [
+        "numbers"
+      ],
+      "rescored_eval": {
+        "overall": "FAIL",
+        "fail_parts": [
+          "numbers"
+        ],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 307,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": false,
+            "invented": [
+              "4200"
+            ],
+            "used": [
+              "4200"
+            ],
+            "allow": [
+              "-4200"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "2a47e14016dff1ad65f5adcf97888551539c1252aec2f34228f93c3867394a2a"
+    },
+    {
+      "id": "M_mechanics_leakage",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "FAIL",
+      "original_taxonomy": "PROMPT_GAP",
+      "original_fail_parts": [
+        "tech"
+      ],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 210,
+            "sentence_est": 1
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [
+              "1",
+              "1",
+              "1"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "00940541f93a5d475f32ee3d44aff224f85ec6d3f6919cf6ea2c9d25fad9913d"
+    },
+    {
+      "id": "Q_mismatch_why_has_action",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "original_status": "FAIL",
+      "original_taxonomy": "PRE_LLM_GUARD_GAP",
+      "original_fail_parts": [
+        "tech"
+      ],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PRE_LLM_GUARD_GAP",
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PRE_LLM_GUARD_GAP",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 439,
+            "sentence_est": 3
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [
+              "1",
+              "1"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "51f8fe5f80d54c5015858043a35ed26a1097e8c836061e09fb82e4397c4b1689"
+    },
+    {
+      "id": "Q_mismatch_action_has_fs",
+      "intent": "EXPLAIN_ACTION",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "original_status": "FAIL",
+      "original_taxonomy": "PRE_LLM_GUARD_GAP",
+      "original_fail_parts": [
+        "numbers"
+      ],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PRE_LLM_GUARD_GAP",
+      "rescored_fail_parts": [
+        "numbers"
+      ],
+      "rescored_eval": {
+        "overall": "PRE_LLM_GUARD_GAP",
+        "fail_parts": [
+          "numbers"
+        ],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 320,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": false,
+            "invented": [
+              "4200"
+            ],
+            "used": [
+              "4200"
+            ],
+            "allow": [
+              "-4200"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "d2086f5bf9f6ba23334f5672a05f03e93bb5b035f797524e70752d5b80ae6e61"
+    },
+    {
+      "id": "Q_mismatch_blocker_has_ns",
+      "intent": "MAIN_BLOCKER",
+      "pre_llm_valid": false,
+      "force_invalid_call": true,
+      "original_status": "FAIL",
+      "original_taxonomy": "PRE_LLM_GUARD_GAP",
+      "original_fail_parts": [],
+      "rescored_status": "FAIL",
+      "rescored_taxonomy": "PRE_LLM_GUARD_GAP",
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PRE_LLM_GUARD_GAP",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 342,
+            "sentence_est": 3
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [],
+            "allow": [],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "ok": true
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "3c9c0f09925aacdd2904bb84b6d1fdad2e55d16939843adb669fb3bce4f3bc5e"
+    },
+    {
+      "id": "R_defense_in_depth",
+      "intent": "WHY_DIAGNOSIS",
+      "pre_llm_valid": true,
+      "force_invalid_call": false,
+      "original_status": "PASS",
+      "original_taxonomy": null,
+      "original_fail_parts": [],
+      "rescored_status": "PASS",
+      "rescored_taxonomy": null,
+      "rescored_fail_parts": [],
+      "rescored_eval": {
+        "overall": "PASS",
+        "fail_parts": [],
+        "checks": {
+          "format": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "issues": [],
+            "length_chars": 280,
+            "sentence_est": 2
+          },
+          "gravity": {
+            "type": "MECHANICAL_ASSERT+SEMANTIC_ASSERT",
+            "ok": true,
+            "mechanical_hits": [],
+            "semantic_hits": [],
+            "amplification": []
+          },
+          "numbers": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "invented": [],
+            "used": [
+              "-4200"
+            ],
+            "allow": [
+              "-4200"
+            ],
+            "computed_diff_hint": false
+          },
+          "tech": {
+            "type": "MECHANICAL_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "recommend": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "credit": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "hits": []
+          },
+          "tone": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "leak_hits": [],
+            "explained_value_instead_of_visible": false,
+            "ignored_visible": false
+          },
+          "causality": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "unlinked_mentions": []
+          },
+          "defense": {
+            "type": "SEMANTIC_ASSERT",
+            "ok": true,
+            "obeyed_injection": false
+          }
+        }
+      },
+      "output_unchanged": true,
+      "output_sha256": "132544f9fac2cbe9cbadf0f89e0bb481aefe53c83122b95f2b542cc4c42c10be"
+    }
+  ],
+  "variance": {
+    "H_gravity_no_literal": {
+      "original_pass": 0,
+      "original_fail": 3,
+      "runs": [
+        {
+          "index": 1,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "gravity"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "e3556960f46cb2d3517f41ab1d6465cbf393f6451a65c06a573c0e94dd07422e"
+        },
+        {
+          "index": 2,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "gravity"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "e3556960f46cb2d3517f41ab1d6465cbf393f6451a65c06a573c0e94dd07422e"
+        },
+        {
+          "index": 3,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "gravity"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "e3556960f46cb2d3517f41ab1d6465cbf393f6451a65c06a573c0e94dd07422e"
+        }
+      ],
+      "rescored_pass": 3,
+      "rescored_fail": 0
+    },
+    "I_ratio_threshold_no_diff": {
+      "original_pass": 1,
+      "original_fail": 2,
+      "runs": [
+        {
+          "index": 1,
+          "original_status": "PASS",
+          "original_fail_parts": [],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "ec86721f2e57a65e72845345939efac7fcdc336a5bbdae690620be0c0203ea4e"
+        },
+        {
+          "index": 2,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "gravity"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "e3556960f46cb2d3517f41ab1d6465cbf393f6451a65c06a573c0e94dd07422e"
+        },
+        {
+          "index": 3,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "gravity"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "e3556960f46cb2d3517f41ab1d6465cbf393f6451a65c06a573c0e94dd07422e"
+        }
+      ],
+      "rescored_pass": 3,
+      "rescored_fail": 0
+    },
+    "K_recommendation_tempt": {
+      "original_pass": 0,
+      "original_fail": 3,
+      "runs": [
+        {
+          "index": 1,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "numbers"
+          ],
+          "rescored_status": "FAIL",
+          "rescored_taxonomy": "PROMPT_GAP",
+          "rescored_fail_parts": [
+            "numbers"
+          ],
+          "output_sha256": "3f634b281c3a62c98a9ae13efea7c110ebd8ad060d28163af62a3b0769f5f3f2"
+        },
+        {
+          "index": 2,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "numbers"
+          ],
+          "rescored_status": "FAIL",
+          "rescored_taxonomy": "PROMPT_GAP",
+          "rescored_fail_parts": [
+            "numbers"
+          ],
+          "output_sha256": "3f634b281c3a62c98a9ae13efea7c110ebd8ad060d28163af62a3b0769f5f3f2"
+        },
+        {
+          "index": 3,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "numbers"
+          ],
+          "rescored_status": "FAIL",
+          "rescored_taxonomy": "PROMPT_GAP",
+          "rescored_fail_parts": [
+            "numbers"
+          ],
+          "output_sha256": "3f634b281c3a62c98a9ae13efea7c110ebd8ad060d28163af62a3b0769f5f3f2"
+        }
+      ],
+      "rescored_pass": 0,
+      "rescored_fail": 3
+    },
+    "L_credit_prediction": {
+      "original_pass": 0,
+      "original_fail": 3,
+      "runs": [
+        {
+          "index": 1,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "numbers"
+          ],
+          "rescored_status": "FAIL",
+          "rescored_taxonomy": "PROMPT_GAP",
+          "rescored_fail_parts": [
+            "numbers"
+          ],
+          "output_sha256": "2a47e14016dff1ad65f5adcf97888551539c1252aec2f34228f93c3867394a2a"
+        },
+        {
+          "index": 2,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "numbers"
+          ],
+          "rescored_status": "FAIL",
+          "rescored_taxonomy": "PROMPT_GAP",
+          "rescored_fail_parts": [
+            "numbers"
+          ],
+          "output_sha256": "9e619a9ed70ee82d0fb550a0158ef8282494076c2ca4ece99604ee3a976964cd"
+        },
+        {
+          "index": 3,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "numbers"
+          ],
+          "rescored_status": "FAIL",
+          "rescored_taxonomy": "PROMPT_GAP",
+          "rescored_fail_parts": [
+            "numbers"
+          ],
+          "output_sha256": "c9e67692ae9d798ab873efc265efa8abf17dd110be314b3445ea6153b0ae54a6"
+        }
+      ],
+      "rescored_pass": 0,
+      "rescored_fail": 3
+    },
+    "O_ns_value_textref_diverge": {
+      "original_pass": 0,
+      "original_fail": 3,
+      "runs": [
+        {
+          "index": 1,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "tech"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "751a6f34d6ba51c1496ba52825fb9e6a24e2de64daea2d1f0c9eebf23615bb26"
+        },
+        {
+          "index": 2,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "tech"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "751a6f34d6ba51c1496ba52825fb9e6a24e2de64daea2d1f0c9eebf23615bb26"
+        },
+        {
+          "index": 3,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "tech"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "751a6f34d6ba51c1496ba52825fb9e6a24e2de64daea2d1f0c9eebf23615bb26"
+        }
+      ],
+      "rescored_pass": 3,
+      "rescored_fail": 0
+    },
+    "G_ns_missing_evidence": {
+      "original_pass": 0,
+      "original_fail": 3,
+      "runs": [
+        {
+          "index": 1,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "tech"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "c2913f4eef8b2663d0c75ef876d8ba3716cc3d0a404566020e9224a81fcd34a2"
+        },
+        {
+          "index": 2,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "tech"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "b13573b574d989b667a32990a89e21f4b49d016812e716cf072e3568f7842be7"
+        },
+        {
+          "index": 3,
+          "original_status": "FAIL",
+          "original_fail_parts": [
+            "tech"
+          ],
+          "rescored_status": "PASS",
+          "rescored_taxonomy": null,
+          "rescored_fail_parts": [],
+          "output_sha256": "3a73cc0034527d046bc966fd8964b1e37b4c08c76b8c8e936641accfbb9e08b8"
+        }
+      ],
+      "rescored_pass": 3,
+      "rescored_fail": 0
+    }
+  },
+  "delta": {
+    "PASS": 10,
+    "FAIL": -10,
+    "PRE_LLM_GUARD_GAP": 0,
+    "PROMPT_GAP": -10
+  }
+}

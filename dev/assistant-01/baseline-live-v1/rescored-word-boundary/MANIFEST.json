@@ -1,0 +1,27 @@
+{
+  "artifact": "LIVE_MODEL_BASELINE_V1_RESCORE_WORD_BOUNDARY",
+  "raw_baseline_sha256": "6be3629c511edd37a00327c4d29e77a5562067cce10f3162aa2d82e6b4d2980b",
+  "evaluate_js_sha256": "53e96053749e14c8f5ba26ab8f7ec95da198820c71036c630ded658f7b194ef1",
+  "original_counts": {
+    "total": 29,
+    "PASS": 9,
+    "FAIL": 20,
+    "PRE_LLM_GUARD_GAP": 6,
+    "PROMPT_GAP": 14,
+    "other": 0
+  },
+  "rescored_counts": {
+    "total": 29,
+    "PASS": 19,
+    "FAIL": 10,
+    "PRE_LLM_GUARD_GAP": 6,
+    "PROMPT_GAP": 4,
+    "other": 0
+  },
+  "delta": {
+    "PASS": 10,
+    "FAIL": -10,
+    "PRE_LLM_GUARD_GAP": 0,
+    "PROMPT_GAP": -10
+  }
+}

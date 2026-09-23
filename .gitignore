@@ -3,3 +3,5 @@ js/config.local.js
 config.local.js
 
 config.js
+
+.env
