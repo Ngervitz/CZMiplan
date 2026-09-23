@@ -2,7 +2,7 @@
   "name": "czmiplan",
   "private": true,
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "scripts": {
     "server": "node server/index.js",
@@ -20,7 +20,8 @@
     "@supabase/supabase-js": "^2.117.1",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
-    "express": "^4.22.3"
+    "express": "^4.22.3",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "playwright": "^1.60.0"

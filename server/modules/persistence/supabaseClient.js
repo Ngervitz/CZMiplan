@@ -4,6 +4,7 @@
 "use strict";
 
 var createClient = require("@supabase/supabase-js").createClient;
+var WebSocket = require("ws");
 
 /**
  * @param {{ supabaseUrl: string, supabaseAnonKey: string }} config
@@ -15,10 +16,14 @@ function createSupabaseClient(config) {
     err.code = "SUPABASE_CONFIG_MISSING";
     throw err;
   }
+  // Railway/Node may lack global WebSocket; supabase-js realtime needs a transport.
   return createClient(config.supabaseUrl, config.supabaseAnonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
+    },
+    realtime: {
+      transport: WebSocket,
     },
   });
 }
