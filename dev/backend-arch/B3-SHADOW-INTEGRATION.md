@@ -172,16 +172,12 @@ B4 is **not** authorized by this document alone.
 
 ## 13. Railway / real traffic
 
-B3 code is ready. **No Railway deploy performed.**
+B3 code is ready. Railway backend is live (`B3-DEPLOY-01`).
 
-To start real shadow traffic:
+**Production shadow activation:** see `B3-SHADOW-PROD-01.md`  
+(`CZ_SHADOW_MODE` + `CZ_SHADOW_PROD_HOSTS` + Railway URL; client remains UX authority).
 
-1. Deploy Express to Railway with ENV (`SUPABASE_*`, `MIPLAN_BACKEND_SECRET`, `CORS_ALLOWED_ORIGINS` including Vercel origin).
-2. Set FE `CZ_SHADOW_MODE=true` + `CZ_BACKEND_API_URL=https://<railway-host>` (or equivalent deploy inject).
-3. Confirm CORS + HTTPS.
-4. Monitor `[CZ_SHADOW]` / stats.
-
-Until then: local shadow via query params / `config.local.js`.
+Until kill-switch off: local/ops also via query params / `config.local.js`.
 
 ---
 

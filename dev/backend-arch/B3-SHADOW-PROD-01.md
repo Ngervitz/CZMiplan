@@ -1,8 +1,9 @@
 # B3-SHADOW-PROD-01 — Controlled production shadow activation
 
 **Date:** 2026-09-23  
-**Status:** IN_PROGRESS (pending Vercel deploy + smoke)  
-**Depends on:** B3, B3-DEPLOY-01
+**Status:** **COMPLETE**  
+**Depends on:** B3, B3-DEPLOY-01  
+**Production cutover / B4:** **NO**
 
 ---
 
@@ -10,14 +11,17 @@
 
 | Knob | Role |
 |------|------|
-| `CZ_SHADOW_MODE` | Kill switch (prod auto-shadow). `false` + redeploy disables. |
-| `CZ_BACKEND_API_URL` | Public Express origin (not a secret) |
-| `CZ_SHADOW_PROD_HOSTS` | Auto-enable only on these hostnames |
-| `?cz_shadow=1` / `?cz_api=` | Retained for local/ops testing |
+| `CZ_SHADOW_MODE` | Kill switch. `true` = prod auto-shadow allowed; `false` + redeploy disables. |
+| `CZ_BACKEND_API_URL` | Public Express origin (not a secret): Railway HTTPS |
+| `CZ_SHADOW_PROD_HOSTS` | Auto-enable only on listed hostnames |
+| `?cz_shadow=1` / `?cz_api=` | Retained for local/ops testing (no manual params required in prod) |
 
-**Prod auto rule:** `CZ_SHADOW_MODE && hostname ∈ CZ_SHADOW_PROD_HOSTS && CZ_BACKEND_API_URL`.
+**Prod auto rule:**  
+`CZ_SHADOW_MODE === true` **and** `hostname ∈ CZ_SHADOW_PROD_HOSTS` **and** non-empty `CZ_BACKEND_API_URL`.
 
-**UX authority:** client `calcularMotor` / `st.diag` only. Shadow never renders MATCH/MISMATCH/ERROR.
+Localhost + `config.local.js` still allowed when flag is on (dev).
+
+**UX authority:** client `calcularMotor` / `st.diag` only. Shadow never surfaces MATCH / MISMATCH / SHADOW_ERROR / diagnosis_id to the user.
 
 ---
 
@@ -25,68 +29,125 @@
 
 | Item | Value |
 |------|-------|
-| Frontend | `https://cz-miplan2.vercel.app` |
+| Frontend production | `https://cz-miplan2.vercel.app` |
 | Backend | `https://backend-production-17f9.up.railway.app` |
-| Supabase | `hvrrywlddxpywuvqclyq` |
+| Supabase | CZMiplan / `hvrrywlddxpywuvqclyq` |
+| Commit (activation) | `30c7fd3b4992096bf609b90b952b25dade0d9b5b` |
+| Commit (compare fix) | `82bbb89fef2c228c1ad373af97aa5f6b02a525f1` |
+| Vercel | auto-deploy from `main` — verified live `config.js` + `shadowDiagnosis.js` |
 
 ---
 
-## Observability (limitation)
+## Request contract (unchanged)
+
+POST `/v1/diagnoses` with EngineInput only + `X-MiPlan-Anonymous-Id`.  
+**Not sent as authority:** `engine_result`, `completeness`, `engine_version`, `now_ms`, `diagnosis_id`.
+
+---
+
+## Deduplication
+
+Session memory: fingerprint of EngineInput JSON + `_inFlight` + 15s cooldown after error.  
+Smoke: second identical call → **no second POST** (`PASS`).
+
+Append-only persistence unchanged.
+
+---
+
+## Observability
 
 | Channel | What |
 |---------|------|
-| Browser console | `[CZ_SHADOW]` JSON: status, diagnosis_id, diff_paths, counts |
-| `CZShadowDiagnosis.getStats()` | in-memory per session |
-| Supabase `diagnoses` | append-only rows (server truth); **no** MATCH/MISMATCH column |
+| Browser console | `[CZ_SHADOW]` JSON: status, diagnosis_id, diff_paths, counts (no PII dumps) |
+| `CZShadowDiagnosis.getStats()` | in-memory per tab/session |
+| Supabase `diagnoses` | append-only server rows; **no** MATCH/MISMATCH column |
 
-**PARTIAL:** no aggregated MATCH rate dashboard. Evaluate B4 via console sampling + Supabase row volume + manual triage of mismatches.
+**OBSERVABILITY_READY: PARTIAL** — sufficient to accumulate evidence manually; no aggregate dashboard. Do not invent new persistence in this task.
 
-### B4 gate (from B3-SHADOW-INTEGRATION.md — not invented here)
+### B4 gate (from `B3-SHADOW-INTEGRATION.md`, unchanged)
 
-| Metric | Suggested |
-|--------|-----------|
+| Metric | Suggested (human decision) |
+|--------|----------------------------|
 | Shadow attempts | ≥ 50–100 real sessions |
-| MATCH rate (excl. `diasRec`) | ≥ 99% (or 100% after triage) |
+| MATCH rate (excl. `diasRec`) | ≥ 99% after triage |
 | Unexplained MISMATCH | 0 open |
 | SHADOW_ERROR rate | low / infra healthy |
 | Security | migrate off RPC+shared-secret (B2-SECURITY-REVIEW-01) |
-| Product | human go/no-go |
+| Product | explicit go/no-go |
 
-**Numbers are suggestions in B3 doc — human decision required; B4 not authorized by this task.**
+B3 doc did **not** freeze hard numbers; suggestions above require human confirmation before B4.
+
+---
+
+## Smoke (controlled, no `?cz_shadow`)
+
+| Field | Result |
+|-------|--------|
+| Shadow enabled by default on prod host | YES |
+| Shadow POST | 200 |
+| `diagnosis_id` | `be716a04-0c2b-4fd5-9632-105ff0d41928` |
+| Parity | **MATCH** |
+| Supabase row | present (nombre marker `QA B3-SHADOW-PROD-01`) |
+| Dedupe | PASS |
+| Failure (dead API) | UX client diag intact; `SHADOW_ERROR` logged only |
+| User-visible technical errors | none |
+
+Compare fix applied during task: client snapshot now includes `completeness_recomputed.derived_checks` (aligned with engine) to avoid false MISMATCH.
 
 ---
 
 ## Rollback / kill switch
 
 1. Set `CZ_SHADOW_MODE = false` in `js/config.js`
-2. Commit + push `main` → Vercel redeploy
-3. Confirm `config.js` on production shows `false`
+2. Commit + push `main` (Vercel redeploys)
+3. Confirm production `js/config.js` shows `false`
 
-Query `?cz_shadow=1` remains available for ops tests after kill.
-
----
-
-## Smoke / deploy fields (filled after verification)
-
-| Field | Value |
-|-------|-------|
-| Commit | TBD |
-| Vercel deployment | TBD |
-| Smoke diagnosis_id | TBD |
-| Smoke parity | TBD |
-| Dedupe | TBD |
+Ops may still use `?cz_shadow=1` after kill for isolated tests.
 
 ---
 
 ## Security
 
-- No `MIPLAN_BACKEND_SECRET` / Supabase keys in FE
-- Browser → Railway only (not Supabase RPC)
-- CORS remain restricted
-- No other Railway/Supabase projects touched
+| Check | Result |
+|-------|--------|
+| `MIPLAN_BACKEND_SECRET` in FE | NONE |
+| Supabase credentials in FE | NONE |
+| Browser → Railway only | YES |
+| CORS `cz-miplan2.vercel.app` | PASS |
+| Other Railway/Supabase projects | untouched |
 
 ---
 
-## Closure (draft)
+## Pendientes
 
-See final report after smoke.
+1. Accumulate real-shadow evidence (counts / MATCH rate) before B4.
+2. Harden B2 RPC → standard server credential.
+3. Optional: persist shadow outcomes server-side if console sampling is insufficient (separate task).
+
+---
+
+## Closure
+
+```
+B3_SHADOW_PROD_STATUS: COMPLETE
+PRODUCTION_FRONTEND: https://cz-miplan2.vercel.app
+BACKEND_URL: https://backend-production-17f9.up.railway.app
+SHADOW_ENABLED_BY_DEFAULT: YES
+CLIENT_REMAINS_UX_AUTHORITY: YES
+SERVER_RESULT_USED_FOR_UX: NO
+KILL_SWITCH: PASS
+SHADOW_REQUEST_REMOTE: PASS
+SUPABASE_PERSISTENCE: PASS
+SMOKE_DIAGNOSIS_ID: be716a04-0c2b-4fd5-9632-105ff0d41928
+SMOKE_PARITY: MATCH
+DUPLICATE_PROTECTION: PASS
+FAILURE_NON_BLOCKING: PASS
+CORS_PRODUCTION: PASS
+SECRET_EXPOSURE: NONE_FOUND
+PARITY_CORPUS: 18/18 PASS
+FRONTEND_REGRESSION: PASS
+OBSERVABILITY_READY: PARTIAL
+PRODUCTION_CUTOVER: NO
+READY_TO_ACCUMULATE_SHADOW_EVIDENCE: YES
+READY_FOR_B4: NO
+```
