@@ -230,6 +230,18 @@
     });
 
     var fin = diag.fin || {};
+    var nameOk =
+      typeof hasValidDeclaredName === "function" ? !!hasValidDeclaredName(st) : false;
+    var emailOk =
+      typeof hasValidDeclaredEmail === "function" ? !!hasValidDeclaredEmail(st) : false;
+    var laboralOk =
+      typeof hasValidDeclaredLaboral === "function" ? !!hasValidDeclaredLaboral(st) : false;
+    var incomeOk =
+      typeof hasCompletedIncomeInputs === "function" ? !!hasCompletedIncomeInputs(st) : false;
+    var expTotal =
+      typeof getTotalMonthlyExpensesSafe === "function"
+        ? getTotalMonthlyExpensesSafe(st)
+        : 0;
     var completeness = {
       financial_income_complete: !!st.financial_income_complete,
       financial_profile_complete: !!st.financial_profile_complete,
@@ -244,6 +256,14 @@
               st.financial_debts_complete &&
               st.financial_expenses_complete
             ),
+      // Align with engine/support/completeness.js derived_checks (parity shape)
+      derived_checks: {
+        nameOk: !!nameOk,
+        emailOk: !!emailOk,
+        laboralOk: !!laboralOk,
+        incomeOk: !!incomeOk,
+        expTotal: expTotal,
+      },
     };
 
     return {
