@@ -10,11 +10,13 @@
     "server:smoke": "node server/bin/smoke.js",
     "server:b2-test": "node server/bin/b2-persist-test.js",
     "server:b3-test": "node server/bin/b3-shadow-test.js",
+    "server:b3-metrics-test": "node server/bin/b3-shadow-metrics-test.js",
     "engine:smoke": "node engine/bin/smoke.js",
     "engine:parity": "node engine/bin/check-parity.js",
     "b1:validate": "node server/bin/smoke.js && node engine/bin/check-parity.js",
     "b2:validate": "node server/bin/smoke.js && node server/bin/b2-persist-test.js && node engine/bin/check-parity.js",
-    "b3:validate": "node server/bin/b3-shadow-test.js && node server/bin/smoke.js && node engine/bin/check-parity.js"
+    "b3:validate": "node server/bin/b3-shadow-test.js && node server/bin/smoke.js && node engine/bin/check-parity.js",
+    "b3:metrics-validate": "node server/bin/b3-shadow-metrics-test.js && node server/bin/b3-shadow-test.js && node engine/bin/check-parity.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.1",

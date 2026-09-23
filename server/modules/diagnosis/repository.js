@@ -71,9 +71,51 @@ function createDiagnosisRepository(deps) {
     return data || null;
   }
 
+  /**
+   * Upsert shadow comparison telemetry for an existing diagnosis.
+   * First write wins (unique diagnosis_id). Never mutates diagnoses.* authority fields.
+   */
+  async function upsertShadowResult(row) {
+    var { data, error } = await client.rpc("miplan_upsert_shadow_result", {
+      p_secret: backendSecret,
+      p_diagnosis_id: row.diagnosis_id,
+      p_shadow_status: row.shadow_status,
+      p_diff_fields: row.diff_fields != null ? row.diff_fields : [],
+      p_is_technical: !!row.is_technical,
+    });
+
+    if (error) {
+      var msg = String((error && error.message) || "");
+      var dbErr = new Error("DB_SHADOW_UPSERT_FAILED");
+      dbErr.status = 500;
+      dbErr.code = "DB_SHADOW_UPSERT_FAILED";
+      if (/DIAGNOSIS_NOT_FOUND/i.test(msg) || /P0002/.test(msg)) {
+        dbErr.status = 404;
+        dbErr.code = "DIAGNOSIS_NOT_FOUND";
+      } else if (/INVALID_SHADOW_STATUS/i.test(msg)) {
+        dbErr.status = 400;
+        dbErr.code = "INVALID_SHADOW_STATUS";
+      } else if (/INVALID_DIFF_FIELDS|DIFF_FIELDS_TOO_LARGE/i.test(msg)) {
+        dbErr.status = 400;
+        dbErr.code = "INVALID_DIFF_FIELDS";
+      } else if (/INVALID_DIAGNOSIS_ID/i.test(msg)) {
+        dbErr.status = 400;
+        dbErr.code = "INVALID_DIAGNOSIS_ID";
+      } else if (/MIPLAN_UNAUTHORIZED|42501/i.test(msg)) {
+        dbErr.status = 500;
+        dbErr.code = "DB_SHADOW_UPSERT_FAILED";
+      }
+      dbErr.cause = error;
+      throw dbErr;
+    }
+
+    return data || null;
+  }
+
   return {
     insertDiagnosis: insertDiagnosis,
     getDiagnosisById: getDiagnosisById,
+    upsertShadowResult: upsertShadowResult,
   };
 }
 

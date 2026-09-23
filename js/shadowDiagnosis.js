@@ -454,6 +454,65 @@
         extra || {}
       )
     );
+    // Central metrics telemetry (best-effort; never blocks UX).
+    try {
+      reportShadowTelemetry(status, extra || {});
+    } catch (eTel) {}
+  }
+
+  function isTechnicalShadow(st, extra) {
+    try {
+      if (new URLSearchParams(window.location.search).get("cz_shadow_tech") === "1") {
+        return true;
+      }
+    } catch (e) {}
+    if (_readFlag("CZ_SHADOW_TECHNICAL", typeof CZ_SHADOW_TECHNICAL !== "undefined" ? CZ_SHADOW_TECHNICAL : false)) {
+      return true;
+    }
+    var name =
+      (extra && extra.declared_nombre) ||
+      (st && st.declared_nombre) ||
+      (typeof PRE !== "undefined" && PRE && PRE.nombre) ||
+      "";
+    var email =
+      (extra && extra.declared_email) ||
+      (st && st.declared_email) ||
+      (typeof PRE !== "undefined" && PRE && PRE.email) ||
+      "";
+    name = String(name || "");
+    email = String(email || "").toLowerCase();
+    if (/^QA\b/i.test(name.trim()) || /shadow.?prod|shadow.?metrics/i.test(name)) return true;
+    if (/@example\.test$/i.test(email) || /@example\.com$/i.test(email)) return true;
+    return false;
+  }
+
+  /**
+   * POST /v1/diagnoses/:id/shadow-result — telemetry only.
+   * Requires diagnosis_id (SHADOW_ERROR without id is not centralized).
+   */
+  function reportShadowTelemetry(status, extra) {
+    var diagnosisId = extra && extra.diagnosis_id ? String(extra.diagnosis_id) : "";
+    if (!diagnosisId) return;
+    if (status !== "MATCH" && status !== "MISMATCH" && status !== "SHADOW_ERROR") return;
+    var api = getApiBaseUrl();
+    if (!api) return;
+    var st = window.CZState || null;
+    var payload = {
+      status: status,
+      diff_fields: Array.isArray(extra.diff_paths) ? extra.diff_paths.slice(0, 40) : [],
+      is_technical: isTechnicalShadow(st, extra),
+    };
+    var url = api + "/v1/diagnoses/" + encodeURIComponent(diagnosisId) + "/shadow-result";
+    try {
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      }).catch(function () {});
+    } catch (e) {}
   }
 
   /**

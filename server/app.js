@@ -56,6 +56,12 @@ function createApp(config, overrides) {
           err.code = "SUPABASE_CONFIG_MISSING";
           return Promise.reject(err);
         },
+        recordShadowResult: function () {
+          var err = new Error("SUPABASE_CONFIG_MISSING");
+          err.status = 503;
+          err.code = "SUPABASE_CONFIG_MISSING";
+          return Promise.reject(err);
+        },
       };
     } else {
       var client = createSupabaseClient(config);

@@ -39,6 +39,32 @@ function createDiagnosesRouter(deps) {
       .catch(next);
   });
 
+  // Telemetry only — does not mutate diagnosis authority fields.
+  router.post("/v1/diagnoses/:diagnosisId/shadow-result", function (req, res, next) {
+    Promise.resolve()
+      .then(function () {
+        if (typeof diagnosisService.recordShadowResult !== "function") {
+          var unsupported = new Error("SHADOW_TELEMETRY_UNAVAILABLE");
+          unsupported.status = 503;
+          unsupported.code = "SHADOW_TELEMETRY_UNAVAILABLE";
+          throw unsupported;
+        }
+        return diagnosisService.recordShadowResult({
+          diagnosisId: req.params.diagnosisId,
+          body: req.body,
+        });
+      })
+      .then(function (result) {
+        res.status(200).json({
+          diagnosis_id: result.diagnosis_id,
+          shadow_status: result.shadow_status,
+          inserted: result.inserted,
+          compared_at: result.compared_at,
+        });
+      })
+      .catch(next);
+  });
+
   return router;
 }
 

@@ -99,7 +99,84 @@ function createDiagnosisService(deps) {
     };
   }
 
-  return { createDiagnosis: createDiagnosis, extractEngineInput: extractEngineInput };
+  /**
+   * Persist client-reported shadow comparison telemetry (not business authority).
+   * @param {{ diagnosisId: string, body: object }} args
+   */
+  async function recordShadowResult(args) {
+    var diagnosisId = String(args.diagnosisId || "").trim();
+    var uuidRe =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRe.test(diagnosisId)) {
+      var badId = new Error("INVALID_DIAGNOSIS_ID");
+      badId.status = 400;
+      badId.code = "INVALID_DIAGNOSIS_ID";
+      throw badId;
+    }
+
+    var body = args.body && typeof args.body === "object" && !Array.isArray(args.body)
+      ? args.body
+      : null;
+    if (!body) {
+      var badBody = new Error("SHADOW_RESULT_REQUIRED");
+      badBody.status = 400;
+      badBody.code = "SHADOW_RESULT_REQUIRED";
+      throw badBody;
+    }
+
+    var status = String(body.status || body.shadow_status || "").trim().toUpperCase();
+    if (status !== "MATCH" && status !== "MISMATCH" && status !== "SHADOW_ERROR") {
+      var badStatus = new Error("INVALID_SHADOW_STATUS");
+      badStatus.status = 400;
+      badStatus.code = "INVALID_SHADOW_STATUS";
+      throw badStatus;
+    }
+
+    var rawDiff = body.diff_fields != null ? body.diff_fields : body.diff_paths;
+    if (rawDiff == null) rawDiff = [];
+    if (!Array.isArray(rawDiff)) {
+      var badDiff = new Error("INVALID_DIFF_FIELDS");
+      badDiff.status = 400;
+      badDiff.code = "INVALID_DIFF_FIELDS";
+      throw badDiff;
+    }
+    if (rawDiff.length > 40) {
+      var tooMany = new Error("INVALID_DIFF_FIELDS");
+      tooMany.status = 400;
+      tooMany.code = "INVALID_DIFF_FIELDS";
+      throw tooMany;
+    }
+    var diffFields = [];
+    for (var i = 0; i < rawDiff.length; i++) {
+      var item = rawDiff[i];
+      var path = typeof item === "string" ? item : item && item.path != null ? String(item.path) : null;
+      if (!path) continue;
+      path = path.slice(0, 200);
+      diffFields.push(path);
+    }
+
+    var isTechnical = !!(body.is_technical === true || body.is_technical === "true");
+
+    var saved = await repository.upsertShadowResult({
+      diagnosis_id: diagnosisId,
+      shadow_status: status,
+      diff_fields: diffFields,
+      is_technical: isTechnical,
+    });
+
+    return {
+      diagnosis_id: saved && saved.diagnosis_id ? String(saved.diagnosis_id) : diagnosisId,
+      shadow_status: saved && saved.shadow_status ? String(saved.shadow_status) : status,
+      inserted: !!(saved && saved.inserted),
+      compared_at: saved && saved.compared_at ? saved.compared_at : null,
+    };
+  }
+
+  return {
+    createDiagnosis: createDiagnosis,
+    recordShadowResult: recordShadowResult,
+    extractEngineInput: extractEngineInput,
+  };
 }
 
 module.exports = {
