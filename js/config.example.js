@@ -11,6 +11,10 @@
 // Producción Vercel: CZ_CLAUDE_API_KEY en Environment Variables (no en el repo).
 // (Opcional) CZ_PLUS_USE_MOCK = true; — solo afecta getPlusReportInput() sin useTestInput
 // Luego cargá config.local.js después de config.js en un entorno local.
+//
+// B3 shadow (optional):
+//   CZ_SHADOW_MODE = true;
+//   CZ_BACKEND_API_URL = "http://localhost:3000";
 // =============================================================================
 
 // Ver js/config.js para la lista completa de constantes deploy-safe.

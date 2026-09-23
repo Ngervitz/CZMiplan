@@ -470,6 +470,13 @@ var CZ_PLUS_PAYMENT_LIVE = false;
 var CZ_PLUS_BCU_CLEARING_LIVE = false;
 var CZ_HANDY_ENDPOINT = "";
 
+// B3 — Shadow integration (client remains UX authority; backend compare only)
+// Enable via js/config.local.js (gitignored) or query ?cz_shadow=1&cz_api=http://localhost:3000
+// Never put MIPLAN_BACKEND_SECRET / Supabase keys here.
+var CZ_SHADOW_MODE = false;
+var CZ_BACKEND_API_URL = ""; // e.g. "http://localhost:3000" or future Railway HTTPS origin
+var CZ_SHADOW_TIMEOUT_MS = 8000;
+
 // Mi Plan Plus — precio único (UYU). Usar esta constante; no hardcodear 1290 en UI/tracking.
 const CZ_PLUS_PRICE_UYU = 1290;
 

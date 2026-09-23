@@ -1,0 +1,11 @@
+{
+  "corpus_id": "MOTOR_PARITY_00",
+  "captured_at": "2026-09-23T18:22:24.244Z",
+  "git_head": "b6da44bf7767dd1febd545b5a4bb2abce37963bb",
+  "fixed_now_ms": 1786536000000,
+  "case_count": 18,
+  "error_count": 0,
+  "corpus_sha256": "f9dc966940b99f9f123f8d8715eca16307c309832e2a48da311bfcaab197e860",
+  "results_file": "oracle-results.json",
+  "write_once_note": "Re-run capture-oracle.js only when intentionally refreshing oracle after approved engine changes."
+}

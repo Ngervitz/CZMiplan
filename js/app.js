@@ -231,6 +231,10 @@ function recalcDiagYGuardar() {
   }
   window.guardarLocal();
   _maybeCelebratePositiveFlow(st, prevFlujo);
+  if (typeof window.CZShadowDiagnosis !== "undefined" &&
+      typeof window.CZShadowDiagnosis.maybeShadowDiagnosis === "function") {
+    window.CZShadowDiagnosis.maybeShadowDiagnosis(st, "recalc");
+  }
 }
 
 function assignMotorDiagnosis(st) {
@@ -1339,6 +1343,11 @@ function next() {
     st._toastPending = true;   // Sprint 10 — dashboard confirmation toast (first arrival only)
 
     window.CredizonaUI.renderAll();
+
+    if (typeof window.CZShadowDiagnosis !== "undefined" &&
+        typeof window.CZShadowDiagnosis.maybeShadowDiagnosis === "function") {
+      window.CZShadowDiagnosis.maybeShadowDiagnosis(st, "dashboard_generated");
+    }
 
     if (isFirstDiagnosis) {
       _safeCelebration({

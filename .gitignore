@@ -2,6 +2,11 @@
 js/config.local.js
 config.local.js
 
-config.js
+# Root-only optional config (do NOT ignore js/config.js or server/config.js)
+/config.js
 
 .env
+server/.env
+
+# Dependencies (install via npm; Railway/Vercel install on deploy)
+node_modules/
