@@ -46,6 +46,32 @@
     return String(raw).replace(/\/+$/, "");
   }
 
+  function getProdHosts() {
+    var hosts = _readFlag(
+      "CZ_SHADOW_PROD_HOSTS",
+      typeof CZ_SHADOW_PROD_HOSTS !== "undefined" ? CZ_SHADOW_PROD_HOSTS : []
+    );
+    return Array.isArray(hosts) ? hosts : [];
+  }
+
+  function isAllowlistedHost() {
+    try {
+      var h = String(window.location.hostname || "");
+      if (getProdHosts().indexOf(h) !== -1) return true;
+      // Local/dev when flag+URL set via config.local.js (no query required)
+      if (h === "localhost" || h === "127.0.0.1") return true;
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Enabled when:
+   * - ?cz_shadow=1 (+ API via ?cz_api or CZ_BACKEND_API_URL), OR
+   * - CZ_SHADOW_MODE kill-switch ON and host is prod allowlist (or localhost for config.local)
+   * Kill switch: CZ_SHADOW_MODE=false disables auto-shadow (query still works for ops tests).
+   */
   function isShadowEnabled() {
     var q = false;
     try {
@@ -55,7 +81,9 @@
       "CZ_SHADOW_MODE",
       typeof CZ_SHADOW_MODE !== "undefined" ? CZ_SHADOW_MODE : false
     );
-    return !!(q || flag) && !!getApiBaseUrl();
+    if (!getApiBaseUrl()) return false;
+    if (q) return true;
+    return !!(flag && isAllowlistedHost());
   }
 
   function getTimeoutMs() {

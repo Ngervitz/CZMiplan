@@ -12,9 +12,10 @@
 // (Opcional) CZ_PLUS_USE_MOCK = true; — solo afecta getPlusReportInput() sin useTestInput
 // Luego cargá config.local.js después de config.js en un entorno local.
 //
-// B3 shadow (optional):
+// B3 shadow (optional local override):
 //   CZ_SHADOW_MODE = true;
 //   CZ_BACKEND_API_URL = "http://localhost:3000";
+// Prod: see config.js (CZ_SHADOW_MODE + CZ_SHADOW_PROD_HOSTS + Railway URL).
 // =============================================================================
 
 // Ver js/config.js para la lista completa de constantes deploy-safe.

@@ -1,10 +1,13 @@
 // Example local overrides — copy to js/config.local.js (gitignored).
-// Enable B3 shadow against a local Express backend:
+// Point local shadow at a local Express backend (overrides prod Railway URL):
 //
 //   CZ_SHADOW_MODE = true;
 //   CZ_BACKEND_API_URL = "http://localhost:3000";
 //
 // Or use query params without this file:
 //   ?cz_shadow=1&cz_api=http://localhost:3000
+//
+// Production auto-shadow uses CZ_SHADOW_MODE + CZ_SHADOW_PROD_HOSTS in config.js.
+// Kill switch: CZ_SHADOW_MODE = false (then redeploy).
 //
 // Never put MIPLAN_BACKEND_SECRET, Supabase keys, or Claude secrets here.

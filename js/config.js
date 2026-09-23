@@ -471,10 +471,12 @@ var CZ_PLUS_BCU_CLEARING_LIVE = false;
 var CZ_HANDY_ENDPOINT = "";
 
 // B3 — Shadow integration (client remains UX authority; backend compare only)
-// Enable via js/config.local.js (gitignored) or query ?cz_shadow=1&cz_api=http://localhost:3000
+// Kill switch: set CZ_SHADOW_MODE = false and redeploy to disable prod auto-shadow.
+// Auto-enable only on CZ_SHADOW_PROD_HOSTS. Dev: ?cz_shadow=1&cz_api=... or config.local.js.
 // Never put MIPLAN_BACKEND_SECRET / Supabase keys here.
-var CZ_SHADOW_MODE = false;
-var CZ_BACKEND_API_URL = ""; // e.g. "http://localhost:3000" or future Railway HTTPS origin
+var CZ_SHADOW_MODE = true;
+var CZ_BACKEND_API_URL = "https://backend-production-17f9.up.railway.app";
+var CZ_SHADOW_PROD_HOSTS = ["cz-miplan2.vercel.app"];
 var CZ_SHADOW_TIMEOUT_MS = 8000;
 
 // Mi Plan Plus — precio único (UYU). Usar esta constante; no hardcodear 1290 en UI/tracking.

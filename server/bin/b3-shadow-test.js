@@ -10,6 +10,7 @@
 "use strict";
 
 var path = require("path");
+var fs = require("fs");
 var http = require("http");
 var crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
@@ -19,6 +20,7 @@ var results = {
   MATCH_DETECTION: "FAIL",
   MISMATCH_DETECTION: "FAIL",
   DEDUPE_FINGERPRINT: "FAIL",
+  FAILURE_NON_BLOCKING_HOOKS: "FAIL",
   LIVE_SHADOW_OPTIONAL: "SKIP",
   SECRET_SCAN: "FAIL",
 };
@@ -157,8 +159,15 @@ var fp2 = JSON.stringify({ ingreso: 1, deudas: [] });
 var fp3 = JSON.stringify({ ingreso: 2, deudas: [] });
 if (fp1 === fp2 && fp1 !== fp3) results.DEDUPE_FINGERPRINT = "PASS";
 
+// --- FAILURE NON-BLOCKING: app hooks must not await shadow ---
+var appJs = fs.readFileSync(path.join(__dirname, "..", "..", "js", "app.js"), "utf8");
+var shadowCalls = appJs.match(/CZShadowDiagnosis\.maybeShadowDiagnosis\([^)]*\)/g) || [];
+var awaitsShadow = /await\s+[^\n;]*maybeShadowDiagnosis/.test(appJs);
+if (shadowCalls.length >= 2 && !awaitsShadow) {
+  results.FAILURE_NON_BLOCKING_HOOKS = "PASS";
+}
+
 // --- SECRET SCAN (tracked FE files) ---
-var fs = require("fs");
 var feFiles = [
   path.join(__dirname, "..", "..", "js", "shadowDiagnosis.js"),
   path.join(__dirname, "..", "..", "js", "config.js"),
@@ -170,6 +179,7 @@ feFiles.forEach(function (f) {
   if (/MIPLAN_BACKEND_SECRET\s*=\s*['\"][^'\"]+['\"]/.test(txt)) secretHits.push(f);
   if (/SUPABASE_SERVICE_ROLE/.test(txt) && /eyJ/.test(txt)) secretHits.push(f);
   if (/service_role/.test(txt) && /eyJhbGciOi/.test(txt)) secretHits.push(f);
+  if (/supabase\.co\/rest/i.test(txt) && /eyJhbGciOi/.test(txt)) secretHits.push(f);
 });
 if (secretHits.length === 0) results.SECRET_SCAN = "PASS";
 
