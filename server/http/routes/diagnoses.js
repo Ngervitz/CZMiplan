@@ -30,11 +30,15 @@ function createDiagnosesRouter(deps) {
         });
       })
       .then(function (result) {
-        res.status(200).json({
+        var payload = {
           diagnosis_id: result.diagnosis_id,
           engine_version: result.engine_version,
           result: result.result,
-        });
+        };
+        if (result.journey_id) {
+          payload.journey_id = result.journey_id;
+        }
+        res.status(200).json(payload);
       })
       .catch(next);
   });

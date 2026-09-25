@@ -38,6 +38,10 @@ function loadConfig(env) {
   var supabaseAnonKey = String(env.SUPABASE_ANON_KEY || "").trim();
   var backendSecret = String(env.MIPLAN_BACKEND_SECRET || "").trim();
   var defaultTenantId = String(env.DEFAULT_TENANT_ID || "miplan-default").trim();
+  var janusHandoffBaseUrl = String(env.JANUS_HANDOFF_BASE_URL || "").trim();
+  var miplanHandoffRedeemSecret = String(
+    env.MIPLAN_HANDOFF_REDEEM_SECRET || ""
+  ).trim();
 
   return {
     appName: "miplan-backend",
@@ -51,6 +55,9 @@ function loadConfig(env) {
     backendSecret: backendSecret,
     defaultTenantId: defaultTenantId,
     persistenceConfigured: !!(supabaseUrl && supabaseAnonKey && backendSecret),
+    janusHandoffBaseUrl: janusHandoffBaseUrl,
+    miplanHandoffRedeemSecret: miplanHandoffRedeemSecret,
+    handoffConfigured: !!(janusHandoffBaseUrl && miplanHandoffRedeemSecret),
   };
 }
 

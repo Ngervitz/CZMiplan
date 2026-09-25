@@ -561,7 +561,20 @@
         }, timeoutMs);
       }
 
-      var body = JSON.stringify(input);
+      var payload = Object.assign({}, input);
+      try {
+        var jid =
+          (window.CZHandoffEntry &&
+            typeof window.CZHandoffEntry.getCurrentJourneyId === "function" &&
+            window.CZHandoffEntry.getCurrentJourneyId()) ||
+          (window.CZIdentity && window.CZIdentity.journey_id) ||
+          (window.CZState && window.CZState._journeyId) ||
+          "";
+        if (jid) payload.journey_id = String(jid);
+      } catch (_j) {
+        /* ignore */
+      }
+      var body = JSON.stringify(payload);
       fetch(url, {
         method: "POST",
         headers: {

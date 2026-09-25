@@ -26,7 +26,7 @@ function createDiagnosisRepository(deps) {
    * Append-only insert. Returns { diagnosis_id }.
    */
   async function insertDiagnosis(row) {
-    var { data, error } = await client.rpc("miplan_persist_diagnosis", {
+    var params = {
       p_secret: backendSecret,
       p_anonymous_id: row.anonymous_id,
       p_tenant_id: row.tenant_id || tenantId,
@@ -35,12 +35,26 @@ function createDiagnosisRepository(deps) {
       p_input_snapshot: row.input_snapshot,
       p_engine_result: row.engine_result,
       p_completeness: row.completeness,
-    });
+    };
+    // Optional until migration applied; omit when null so 8-arg overload still works.
+    if (row.journey_id) {
+      params.p_journey_id = row.journey_id;
+    }
+
+    var { data, error } = await client.rpc("miplan_persist_diagnosis", params);
 
     if (error) {
+      var msg = String((error && error.message) || "");
       var dbErr = new Error("DB_PERSIST_FAILED");
       dbErr.status = 500;
       dbErr.code = "DB_PERSIST_FAILED";
+      if (/JOURNEY_OWNERSHIP_MISMATCH/i.test(msg)) {
+        dbErr.status = 403;
+        dbErr.code = "JOURNEY_OWNERSHIP_MISMATCH";
+      } else if (/JOURNEY_NOT_FOUND|P0002/i.test(msg)) {
+        dbErr.status = 404;
+        dbErr.code = "JOURNEY_NOT_FOUND";
+      }
       dbErr.cause = error;
       throw dbErr;
     }

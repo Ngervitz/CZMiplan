@@ -2049,6 +2049,15 @@ window.clearLowExpensesConfirmed = clearLowExpensesConfirmed;
 async function init() {
   trackMiplanSessionStartedOnce();
 
+  // A3 opaque handoff — redeem via Mi Plan BE before other entry hydration.
+  if (window.CZHandoffEntry && typeof window.CZHandoffEntry.maybeRedeemHandoffOnEntry === "function") {
+    try {
+      await window.CZHandoffEntry.maybeRedeemHandoffOnEntry();
+    } catch (_handoffErr) {
+      /* non-blocking */
+    }
+  }
+
   var crmContactId = CZIdentity.crm_contact_id;
   var crmData = null;
 

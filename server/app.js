@@ -7,11 +7,15 @@ var express = require("express");
 var cors = require("cors");
 var createHealthRouter = require("./http/routes/health").createHealthRouter;
 var createDiagnosesRouter = require("./http/routes/diagnoses").createDiagnosesRouter;
+var createHandoffRouter = require("./http/routes/handoff").createHandoffRouter;
 var notFoundHandler = require("./http/middleware/notFound").notFoundHandler;
 var errorHandler = require("./http/middleware/errorHandler").errorHandler;
 var createSupabaseClient = require("./modules/persistence/supabaseClient").createSupabaseClient;
 var createDiagnosisRepository = require("./modules/diagnosis/repository").createDiagnosisRepository;
 var createDiagnosisService = require("./modules/diagnosis/service").createDiagnosisService;
+var createJourneyRepository = require("./modules/journey/repository").createJourneyRepository;
+var createMemoryJourneyRepository = require("./modules/journey/repository").createMemoryJourneyRepository;
+var createJourneyService = require("./modules/journey/service").createJourneyService;
 
 /**
  * @param {ReturnType<typeof import('./config').loadConfig>} config
@@ -46,6 +50,29 @@ function createApp(config, overrides) {
   app.use(express.json({ limit: "256kb" }));
 
   var diagnosisService = overrides.diagnosisService;
+  var journeyService = overrides.journeyService;
+  var sharedClient = null;
+
+  if (!journeyService) {
+    if (config.persistenceConfigured) {
+      sharedClient = createSupabaseClient(config);
+      journeyService = createJourneyService({
+        repository: createJourneyRepository({
+          client: sharedClient,
+          backendSecret: config.backendSecret,
+          tenantId: config.defaultTenantId,
+        }),
+        tenantId: config.defaultTenantId,
+      });
+    } else if (config.nodeEnv !== "production") {
+      // Local/unit tests without Supabase: in-memory durable-within-process store.
+      journeyService = createJourneyService({
+        repository: createMemoryJourneyRepository(),
+        tenantId: config.defaultTenantId,
+      });
+    }
+  }
+
   if (!diagnosisService) {
     if (!config.persistenceConfigured) {
       // Lazy fail on request rather than crash boot — health still works.
@@ -64,7 +91,7 @@ function createApp(config, overrides) {
         },
       };
     } else {
-      var client = createSupabaseClient(config);
+      var client = sharedClient || createSupabaseClient(config);
       var repository = createDiagnosisRepository({
         client: client,
         backendSecret: config.backendSecret,
@@ -73,12 +100,19 @@ function createApp(config, overrides) {
       diagnosisService = createDiagnosisService({
         repository: repository,
         tenantId: config.defaultTenantId,
+        journeyService: journeyService,
       });
     }
   }
 
   app.use(createHealthRouter(config));
   app.use(createDiagnosesRouter({ diagnosisService: diagnosisService }));
+  app.use(
+    createHandoffRouter({
+      config: config,
+      journeyService: journeyService,
+    })
+  );
 
   app.use(notFoundHandler);
   app.use(errorHandler);

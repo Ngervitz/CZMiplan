@@ -28,20 +28,51 @@ function extractEngineInput(body) {
   delete input.client_completeness_flags;
   // D5: ignore client clock authority
   delete input.now_ms;
+  // Journey identity is not engine input (MIPLAN-JOURNEY-01)
+  delete input.journey_id;
 
   return input;
 }
+
+var JOURNEY_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * @param {object} deps
  * @param {ReturnType<typeof import('./repository').createDiagnosisRepository>} deps.repository
  * @param {string} deps.tenantId
+ * @param {{ assertOwned?: Function }} [deps.journeyService]
  * @param {typeof runEngine} [deps.runEngineFn]
  */
 function createDiagnosisService(deps) {
   var repository = deps.repository;
   var tenantId = deps.tenantId;
+  var journeyService = deps.journeyService || null;
   var engineFn = deps.runEngineFn || runEngine;
+
+  /**
+   * Optional journey_id on body — must belong to anonymous_id. Never authorizes alone.
+   */
+  async function resolveOptionalJourneyId(anonymousId, body) {
+    if (!body || typeof body !== "object" || body.journey_id == null || body.journey_id === "") {
+      return null;
+    }
+    var jid = String(body.journey_id).trim();
+    if (!JOURNEY_ID_RE.test(jid)) {
+      var badJ = new Error("INVALID_JOURNEY_ID");
+      badJ.status = 400;
+      badJ.code = "INVALID_JOURNEY_ID";
+      throw badJ;
+    }
+    if (!journeyService || typeof journeyService.assertOwned !== "function") {
+      var unavail = new Error("JOURNEY_SERVICE_UNAVAILABLE");
+      unavail.status = 503;
+      unavail.code = "JOURNEY_SERVICE_UNAVAILABLE";
+      throw unavail;
+    }
+    await journeyService.assertOwned(jid, anonymousId);
+    return jid;
+  }
 
   /**
    * @param {{ anonymousId: string, body: object }} args
@@ -54,6 +85,8 @@ function createDiagnosisService(deps) {
       bad.code = "ENGINE_INPUT_REQUIRED";
       throw bad;
     }
+
+    var journeyId = await resolveOptionalJourneyId(args.anonymousId, args.body);
 
     var nowMs = Date.now();
     var out;
@@ -89,6 +122,7 @@ function createDiagnosisService(deps) {
       input_snapshot: inputSnapshot,
       engine_result: out.engine_result,
       completeness: completeness,
+      journey_id: journeyId,
     });
 
     return {
@@ -96,6 +130,7 @@ function createDiagnosisService(deps) {
       engine_version: out.engine_version,
       result: out.engine_result,
       now_ms: out.now_ms,
+      journey_id: journeyId,
     };
   }
 
