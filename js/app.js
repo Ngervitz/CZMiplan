@@ -1580,7 +1580,7 @@ function _hasCompleteSurveyParams() {
     && PRE.respuestas
     && ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"].every(function(k) {
       var v = PRE.respuestas[k];
-      return v !== null && v !== undefined && v !== "";
+      return v === "A" || v === "B" || v === "C" || v === "D";
     });
 }
 
@@ -1819,7 +1819,8 @@ function hasCompletedIncomeInputs(st) {
       || st.income_source === "url_param"
       || st.income_source === "crm_restore"
       || st.income_source === "localStorage_restore"
-      || st.income_source === "backend";
+      || st.income_source === "backend"
+      || st.income_source === "handoff";
   }
 
   if (typeof hasUrlIngresoParam === "function" && hasUrlIngresoParam()) {
@@ -2093,49 +2094,110 @@ async function init() {
   st._crmHydrated = !!(crmData && crmData.diag);
 
   if (hasSurveyParams) {
-    st._diagSource = "fresh_url";
-    st.diag = null;
-    st.snap = null;
-    st.deudas = [];
-    st.gastos = {};
-    st.custom_expenses = [];
-    st.saldoIni = 0;
-    st.gastos_missing_confirmed = false;
-    st.low_expenses_confirmed = false;
-    st.low_expenses_confirmed_at = null;
-    st.low_expenses_confirmed_snapshot = null;
-    st.financial_income_complete = false;
-    st.financial_profile_complete = false;
-    st.income_source = null;
-    st.declared_ingreso = null;
-    st.declared_nombre = null;
-    st.declared_laboral = null;
-    st.financial_debts_complete = false;
-    st.financial_expenses_complete = false;
-    st.no_debts_declared = false;
-    st._showGastosWarning = false;
-    applyUrlIngresoSource(st);
-    applyUrlProfileSources(st);
-    if (!hasCompletedIncomeInputs(st) && typeof PRE !== "undefined") {
-      PRE.ingreso = 0;
-    }
-    if (!hasUrlNombreParam()) PRE.nombre = "";
-    if (!hasUrlEmailParam()) PRE.email = "";
-    if (!hasUrlLaboralParam()) PRE.laboral = "";
-    st.step = resolveNextRequiredFinancialStep(st);
-    st.tab = "plan";
-    st.miplan_started = true;
+    var fromHandoff = !!st._handoffPrefill;
 
-    if (typeof calcularMotor === "function") {
-      var _prelimDiag = calcularMotor();
-      if (typeof attachFinancialStageToDiag === "function") {
-        attachFinancialStageToDiag(_prelimDiag, st);
+    if (fromHandoff) {
+      // A3 canonical hydrate — preserve handoff PRE/declared_*; do not treat as URL wipe.
+      st._diagSource = st._diagSource || "janus_handoff";
+      st.diag = null;
+      st.snap = null;
+      st.deudas = [];
+      st.gastos = {};
+      st.custom_expenses = [];
+      st.saldoIni = 0;
+      st.gastos_missing_confirmed = false;
+      st.low_expenses_confirmed = false;
+      st.low_expenses_confirmed_at = null;
+      st.low_expenses_confirmed_snapshot = null;
+      st.financial_debts_complete = false;
+      st.financial_expenses_complete = false;
+      st.no_debts_declared = false;
+      st._showGastosWarning = false;
+      // Re-stamp declared_* from PRE if handoff already filled PRE
+      if (typeof PRE !== "undefined") {
+        if (PRE.ingreso != null && Number(PRE.ingreso) > 0) {
+          st.declared_ingreso = Number(PRE.ingreso);
+          st.income_source = st.income_source || "handoff";
+          st.financial_income_complete = true;
+        }
+        if (PRE.nombre) st.declared_nombre = PRE.nombre;
+        if (PRE.email) st.user_email = PRE.email;
+        if (PRE.laboral) st.declared_laboral = PRE.laboral;
+        if (
+          st.declared_nombre
+          && st.user_email
+          && st.declared_laboral
+          && st.financial_income_complete
+        ) {
+          st.financial_profile_complete = true;
+        }
       }
-      st._preliminary_diag = _prelimDiag;
-    }
+      if (typeof refreshCanonicalEntryFlags === "function") {
+        refreshCanonicalEntryFlags();
+      }
+      st.step = resolveNextRequiredFinancialStep(st);
+      st.tab = "plan";
+      st.miplan_started = true;
 
-    st.temporal.survey_completed_at = now;
-    setRecoveryState("survey_completed");
+      if (typeof calcularMotor === "function") {
+        var _prelimDiagH = calcularMotor();
+        if (typeof attachFinancialStageToDiag === "function") {
+          attachFinancialStageToDiag(_prelimDiagH, st);
+        }
+        st._preliminary_diag = _prelimDiagH;
+      }
+
+      st.temporal.survey_completed_at = now;
+      setRecoveryState("survey_completed");
+    } else {
+      st._diagSource = "fresh_url";
+      st.diag = null;
+      st.snap = null;
+      st.deudas = [];
+      st.gastos = {};
+      st.custom_expenses = [];
+      st.saldoIni = 0;
+      st.gastos_missing_confirmed = false;
+      st.low_expenses_confirmed = false;
+      st.low_expenses_confirmed_at = null;
+      st.low_expenses_confirmed_snapshot = null;
+      st.financial_income_complete = false;
+      st.financial_profile_complete = false;
+      st.income_source = null;
+      st.declared_ingreso = null;
+      st.declared_nombre = null;
+      st.declared_laboral = null;
+      st.financial_debts_complete = false;
+      st.financial_expenses_complete = false;
+      st.no_debts_declared = false;
+      st._showGastosWarning = false;
+      applyUrlIngresoSource(st);
+      applyUrlProfileSources(st);
+      if (!hasCompletedIncomeInputs(st) && typeof PRE !== "undefined") {
+        PRE.ingreso = 0;
+      }
+      if (!hasUrlNombreParam()) PRE.nombre = "";
+      if (!hasUrlEmailParam()) PRE.email = "";
+      if (!hasUrlLaboralParam()) PRE.laboral = "";
+      if (typeof hasUrlCedulaParam === "function" && !hasUrlCedulaParam()) PRE.cedula = "";
+      if (typeof isDemoPreloadedCedula === "function" && isDemoPreloadedCedula(PRE.cedula)) {
+        PRE.cedula = "";
+      }
+      st.step = resolveNextRequiredFinancialStep(st);
+      st.tab = "plan";
+      st.miplan_started = true;
+
+      if (typeof calcularMotor === "function") {
+        var _prelimDiag = calcularMotor();
+        if (typeof attachFinancialStageToDiag === "function") {
+          attachFinancialStageToDiag(_prelimDiag, st);
+        }
+        st._preliminary_diag = _prelimDiag;
+      }
+
+      st.temporal.survey_completed_at = now;
+      setRecoveryState("survey_completed");
+    }
 
   // Restore saved state (including new infrastructure fields)
   } else if (dataToUse) {
@@ -2641,6 +2703,10 @@ function completeSeoIaOnboarding() {
     if (typeof hasUrlNombreParam === "function" && !hasUrlNombreParam()) PRE.nombre = "";
     if (typeof hasUrlEmailParam === "function" && !hasUrlEmailParam()) PRE.email = "";
     if (typeof hasUrlLaboralParam === "function" && !hasUrlLaboralParam()) PRE.laboral = "";
+    if (typeof hasUrlCedulaParam === "function" && !hasUrlCedulaParam()) PRE.cedula = "";
+    if (typeof isDemoPreloadedCedula === "function" && isDemoPreloadedCedula(PRE.cedula)) {
+      PRE.cedula = "";
+    }
   }
   applyUrlProfileSources(st);
 
@@ -3299,12 +3365,15 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
-      // Bridge screen — redirect to survey
+      // Bridge screen — redirect to survey (preserve UTM/SEO attribution params only)
       if (e.target.id === "btn-bridge-survey") {
         setRecoveryState("survey_started");
         trackEvent(CZ_EVENT_NAMES.SURVEY_STARTED, { source: "bridge_screen" });
         window.guardarLocal();
-        window.location.href = SURVEY_URL;
+        window.location.href =
+          typeof buildSeoSurveyRedirectUrl === "function"
+            ? buildSeoSurveyRedirectUrl()
+            : SURVEY_URL;
         return;
       }
 
@@ -3312,7 +3381,10 @@ document.addEventListener("DOMContentLoaded", function() {
         setRecoveryState("survey_started");
         trackEvent(CZ_EVENT_NAMES.SURVEY_STARTED, { source: "dashboard_refinement_cta" });
         window.guardarLocal();
-        window.location.href = SURVEY_URL;
+        window.location.href =
+          typeof buildSeoSurveyRedirectUrl === "function"
+            ? buildSeoSurveyRedirectUrl()
+            : SURVEY_URL;
         return;
       }
 

@@ -52,7 +52,10 @@ function sanitizeSurvey(raw) {
   for (var i = 0; i < keys.length; i++) {
     var k = keys[i];
     var v = clampStr(respuestasIn[k], 8);
-    if (v) respuestas[k] = v;
+    if (!v) continue;
+    v = v.toUpperCase();
+    if (v !== "A" && v !== "B" && v !== "C" && v !== "D") continue;
+    respuestas[k] = v;
   }
   if (!Object.keys(respuestas).length) return null;
   var out = {

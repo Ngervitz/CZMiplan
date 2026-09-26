@@ -2,6 +2,7 @@
  * js/handoffEntry.js — A3 Credizona → Mi Plan opaque handoff entry.
  * Browser never talks to JANUS; never sends LRW for context.
  * After redeem: persists journey_id locally; strips code from URL.
+ * Entry authorization ≠ legal consent (never fabricates cz_tc/cz_disc).
  */
 (function (global) {
   "use strict";
@@ -24,6 +25,22 @@
       /* ignore */
     }
     return "";
+  }
+
+  /**
+   * Entry authorization only (not legal consent).
+   * True when structural /e/{code} is present OR recoverable A3 session bootstrap.
+   */
+  function isEntryAuthorized() {
+    if (readHandoffCodeFromLocation()) return true;
+    try {
+      var ctx = sessionStorage.getItem(STORAGE_CTX);
+      var jid = sessionStorage.getItem(STORAGE_JOURNEY);
+      if (ctx && jid) return true;
+    } catch (_e) {
+      /* ignore */
+    }
+    return false;
   }
 
   function stripHandoffFromUrl() {
@@ -104,9 +121,17 @@
     return "";
   }
 
+  /** Canonical survey letter A–D; invalid → null. */
+  function normalizeSurveyLetter(raw) {
+    if (raw == null || raw === "") return null;
+    var v = String(raw).trim().toUpperCase();
+    if (v !== "A" && v !== "B" && v !== "C" && v !== "D") return null;
+    return v;
+  }
+
   /**
-   * Map JANUS allowlisted context into PRE / lightweight state fields.
-   * Does not invent monto_solicitado / motivo_rechazo.
+   * Map JANUS allowlisted context into PRE / CZState canonical fields.
+   * Does not invent monto_solicitado / motivo_rechazo / legal consent.
    */
   function applyHandoffContextToPrefill(context) {
     if (!context || typeof context !== "object") return false;
@@ -116,40 +141,78 @@
     var financial = context.financial_prefill || {};
     var survey = context.survey || {};
     var respuestas = survey.respuestas || {};
+    var st =
+      typeof window !== "undefined" && window.CZState && typeof window.CZState === "object"
+        ? window.CZState
+        : null;
 
-    if (person.nombre) PRE.nombre = String(person.nombre);
-    if (person.email) PRE.email = String(person.email);
+    if (person.nombre) {
+      PRE.nombre = String(person.nombre);
+      if (st) st.declared_nombre = PRE.nombre;
+    }
+    if (person.email) {
+      PRE.email = String(person.email);
+      if (st) st.user_email = PRE.email;
+    }
     if (person.celular) PRE.telefono = String(person.celular);
-    if (person.fecha_nacimiento) PRE.fecha_nacimiento = String(person.fecha_nacimiento);
+    if (person.fecha_nacimiento) {
+      PRE.fecha_nacimiento = String(person.fecha_nacimiento);
+    }
 
     if (financial.ingreso != null && Number(financial.ingreso) > 0) {
       PRE.ingreso = Number(financial.ingreso);
+      if (st) {
+        st.declared_ingreso = PRE.ingreso;
+        st.income_source = "handoff";
+        st.financial_income_complete = true;
+      }
     }
     if (financial.laboral && typeof PROFILE_LABORAL_VALUES !== "undefined") {
       if (PROFILE_LABORAL_VALUES.indexOf(financial.laboral) >= 0) {
         PRE.laboral = financial.laboral;
+        if (st) st.declared_laboral = PRE.laboral;
       }
+    }
+    if (financial.laboral_source_raw) {
+      PRE.laboral_source_raw = String(financial.laboral_source_raw);
     }
 
     var keys = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"];
     var hasSurvey = false;
+    var complete = true;
     PRE.respuestas = PRE.respuestas || {};
     keys.forEach(function (k) {
-      if (respuestas[k]) {
-        PRE.respuestas[k] = String(respuestas[k]);
+      var letter = normalizeSurveyLetter(respuestas[k]);
+      if (letter) {
+        PRE.respuestas[k] = letter;
         hasSurvey = true;
+      } else {
+        complete = false;
       }
     });
+    if (!hasSurvey) complete = false;
 
-    if (typeof window.CZState === "object" && window.CZState) {
-      window.CZState._handoffPrefill = true;
-      window.CZState._entryFunnel =
+    if (st) {
+      st._handoffPrefill = true;
+      st._entryFunnel =
         (context.context && context.context.funnel) || "credizona_rejected";
       if (hasSurvey) {
-        window.CZState._diagSource = "janus_handoff";
+        st._diagSource = "janus_handoff";
       }
       var jid = getCurrentJourneyId();
-      if (jid) window.CZState._journeyId = jid;
+      if (jid) st._journeyId = jid;
+      if (
+        st.declared_nombre &&
+        st.user_email &&
+        st.declared_laboral &&
+        st.financial_income_complete
+      ) {
+        st.financial_profile_complete = true;
+      }
+    }
+
+    if (typeof refreshCanonicalEntryFlags === "function") {
+      refreshCanonicalEntryFlags();
     }
 
     return true;
@@ -175,7 +238,6 @@
   function maybeRedeemHandoffOnEntry() {
     var code = readHandoffCodeFromLocation();
     if (!code) {
-      // Refresh continuity: no code in URL — restore from session if present.
       return Promise.resolve(restoreCachedBootstrap());
     }
 
@@ -249,8 +311,10 @@
 
   global.CZHandoffEntry = {
     readHandoffCodeFromLocation: readHandoffCodeFromLocation,
+    isEntryAuthorized: isEntryAuthorized,
     maybeRedeemHandoffOnEntry: maybeRedeemHandoffOnEntry,
     applyHandoffContextToPrefill: applyHandoffContextToPrefill,
+    normalizeSurveyLetter: normalizeSurveyLetter,
     stripHandoffFromUrl: stripHandoffFromUrl,
     getCurrentJourneyId: getCurrentJourneyId,
     persistJourneyId: persistJourneyId,

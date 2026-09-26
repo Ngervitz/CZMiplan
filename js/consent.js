@@ -197,6 +197,12 @@ function initConsent() {
     || _p.has("ingreso")
     || _p.has("czuid");
 
+  // A3 opaque handoff: structural /e/{code} (or recoverable session bootstrap)
+  // authorizes ENTRY only — NOT legal consent. Do not fabricate cz_tc/cz_disc.
+  var isA3EntryAuthorized = window.CZHandoffEntry
+    && typeof window.CZHandoffEntry.isEntryAuthorized === "function"
+    && window.CZHandoffEntry.isEntryAuthorized();
+
   // Priority 1: URL params from Credizona rejection + survey funnel
   var urlConsent = readConsentFromURL();
   if (urlConsent) {
@@ -226,11 +232,9 @@ function initConsent() {
     return true;
   }
 
-  // Priority 3: no valid consent — redirect to Credizona home.
-  // Mi Plan operates within Credizona's recovery flow and requires
-  // prior contextual information from the rejection funnel.
-  // Redirect is suppressed when QA / data params are present (see guard above).
-  if (skipExternalRedirect || isSeoIaEntry) {
+  // Priority 3: no funnel/local consent — redirect to Credizona home,
+  // except QA/data params, SEO IA, or A3 entry authorization (redeem still required).
+  if (skipExternalRedirect || isSeoIaEntry || isA3EntryAuthorized) {
     return true;
   }
   if (typeof trackEvent === "function") {

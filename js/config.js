@@ -126,6 +126,11 @@ function hasUrlLaboralParam() {
   return l != null && String(l).trim() !== "";
 }
 
+function hasUrlCedulaParam() {
+  var c = new URLSearchParams(window.location.search).get("cedula");
+  return c != null && String(c).trim() !== "";
+}
+
 function isDemoPreloadedName(name) {
   return String(name || "").trim() === "Martin Rodriguez"
     && typeof hasUrlNombreParam === "function"
@@ -138,36 +143,92 @@ function isDemoPreloadedEmail(email) {
     && !hasUrlEmailParam();
 }
 
+function isDemoPreloadedCedula(cedula) {
+  return String(cedula || "").trim() === "3.456.789-0"
+    && typeof hasUrlCedulaParam === "function"
+    && !hasUrlCedulaParam();
+}
+
+/**
+ * ENTRY-01 — virgin / direct users must not inherit demo PII.
+ * Prefill only from real URL params (or empty).
+ * cedula/telefono/monto stay client-side PRE only — not EngineInput.
+ */
 function getPreLoaded() {
   const p = new URLSearchParams(window.location.search);
   const resp = {};
-  for (let i = 1; i <= 10; i++) resp["p" + i] = p.get("p" + i) || null;
+  for (let i = 1; i <= 10; i++) {
+    var raw = p.get("p" + i);
+    if (raw == null || String(raw).trim() === "") {
+      resp["p" + i] = null;
+      continue;
+    }
+    var up = String(raw).trim().toUpperCase();
+    resp["p" + i] = (up === "A" || up === "B" || up === "C" || up === "D") ? up : null;
+  }
   var emailParam = p.get("email");
   var emailFromUrl = sanitizeUrlEmail(emailParam);
+  var nombreRaw = p.get("nombre");
+  var laboralRaw = p.get("laboral");
+  var cedulaRaw = p.get("cedula");
+  var telefonoRaw = p.get("telefono");
+  var montoN = parseFloat(p.get("monto"));
   return {
-    nombre:   p.get("nombre")   || "Martin Rodriguez",
-    cedula:   p.get("cedula")   || "3.456.789-0",
-    email:    emailFromUrl != null
-      ? emailFromUrl
-      : (emailParam ? "" : "martin@email.com"),
-    telefono: p.get("telefono") || "",
+    nombre:   (nombreRaw != null && String(nombreRaw).trim() !== "") ? String(nombreRaw).trim() : "",
+    cedula:   (cedulaRaw != null && String(cedulaRaw).trim() !== "") ? String(cedulaRaw).trim() : "",
+    email:    emailFromUrl != null ? emailFromUrl : "",
+    telefono: (telefonoRaw != null && String(telefonoRaw).trim() !== "") ? String(telefonoRaw).trim() : "",
     ingreso:  parseUrlIngresoValue(),
-    laboral:  p.get("laboral")  || "relacion_dependencia",
-    monto:    parseFloat(p.get("monto"))   || 0,
+    laboral:  (laboralRaw != null && String(laboralRaw).trim() !== "") ? String(laboralRaw).trim() : "",
+    monto:    (!isNaN(montoN) && montoN > 0) ? montoN : 0,
     respuestas: resp,
   };
 }
 
 const PRE = getPreLoaded();
 
-const TIENE_ENCUESTA = Object.values(PRE.respuestas).some(v => v !== null);
+// Mutable: URL snapshot at load; refreshed after A3/SEO canonical hydrate.
+var TIENE_ENCUESTA = Object.values(PRE.respuestas).some(v => v !== null);
 
-const SEGMENTO = (() => {
-  const tieneIngreso = !!new URLSearchParams(window.location.search).get("ingreso");
+var SEGMENTO = (function () {
+  var tieneIngreso = !!new URLSearchParams(window.location.search).get("ingreso");
   if (tieneIngreso && TIENE_ENCUESTA) return 1;
   if (tieneIngreso && !TIENE_ENCUESTA) return 2;
   return 3;
 })();
+
+/**
+ * Recompute TIENE_ENCUESTA + SEGMENTO from canonical PRE (URL or A3 hydrate).
+ * Does not invent legal consent. Safe to call after handoff apply.
+ */
+function refreshCanonicalEntryFlags() {
+  if (typeof PRE === "undefined" || !PRE) return;
+  var completeLetters = false;
+  if (PRE.respuestas) {
+    completeLetters = true;
+    for (var i = 1; i <= 10; i++) {
+      var v = PRE.respuestas["p" + i];
+      if (v !== "A" && v !== "B" && v !== "C" && v !== "D") {
+        completeLetters = false;
+        break;
+      }
+    }
+  }
+  var anyUrlSurvey = Object.values(PRE.respuestas || {}).some(function (x) {
+    return x !== null && x !== undefined && x !== "";
+  });
+  // Keep legacy: URL-carried survey still marks TIENE_ENCUESTA; A3 needs full A–D.
+  TIENE_ENCUESTA = completeLetters || anyUrlSurvey;
+
+  var tieneIngreso = false;
+  if (PRE.ingreso != null && Number(PRE.ingreso) > 0) tieneIngreso = true;
+  if (typeof hasUrlIngresoParam === "function" && hasUrlIngresoParam()) {
+    tieneIngreso = true;
+  }
+  if (tieneIngreso && TIENE_ENCUESTA) SEGMENTO = 1;
+  else if (tieneIngreso) SEGMENTO = 2;
+  else SEGMENTO = 3;
+}
 
 // =============================================================================
 // SEO IA — virgin entry detection (no legal consent side effects)
@@ -209,6 +270,141 @@ function _entryCtxHasUtm(params) {
   return false;
 }
 
+/** ENTRY-01 — truncate attribution / external refs (no unbounded query garbage). */
+function _entryClampStr(raw, maxLen) {
+  if (raw == null) return null;
+  var s = String(raw).trim();
+  if (s === "") return null;
+  var max = maxLen != null ? maxLen : 64;
+  if (s.length > max) s = s.slice(0, max);
+  return s;
+}
+
+/**
+ * ENTRY-01 attribution policy V1: CURRENT_ENTRY
+ * Persist the attribution present on this page load with the diagnosis.
+ * (No cross-session first-touch platform.)
+ */
+var CZ_ATTRIBUTION_POLICY = "CURRENT_ENTRY";
+
+var ENTRY_ALLOWED_SOURCES = Object.freeze({
+  seo_ia: true,
+});
+
+/**
+ * ENTRY-01 — single normalization point.
+ * raw URL / search → canonical entry context (entry source ≠ acquisition ≠ field provenance).
+ *
+ * Pure when called with an explicit search string (tests).
+ * When search omitted, reads window.location.search (same as resolveEntryContext).
+ *
+ * Does NOT accept acquisition=seo_ia (docs-only / DESIGNED_ONLY).
+ * Does NOT put cedula/telefono/monto/financial JSON into the canonical object.
+ */
+function normalizeEntryContext(search) {
+  var params;
+  if (search != null && search !== "") {
+    var s = String(search);
+    if (s.charAt(0) === "?") s = s.slice(1);
+    params = new URLSearchParams(s);
+  } else {
+    params = new URLSearchParams(
+      typeof window !== "undefined" && window.location
+        ? window.location.search
+        : ""
+    );
+  }
+
+  var reasons = [];
+  var hasLaboral = _entryCtxStrongLaboralParam(params) || (function () {
+    var raw = params.get("laboral");
+    return raw != null && String(raw).trim() !== "";
+  })();
+  var hasIngreso = _entryCtxStrongIngresoParam(params) || (function () {
+    var raw = params.get("ingreso");
+    return raw != null && String(raw).trim() !== "";
+  })();
+  var hasEncuesta = false;
+  for (var pi = 1; pi <= 10; pi++) {
+    var pv = params.get("p" + pi);
+    if (pv != null && String(pv).trim() !== "") {
+      hasEncuesta = true;
+      break;
+    }
+  }
+  var seoIa = params.get("source") === "seo_ia";
+  var hasUtm = _entryCtxHasUtm(params);
+
+  if (hasLaboral) reasons.push("has_url_laboral");
+  if (hasIngreso) reasons.push("has_url_ingreso");
+  if (hasEncuesta) reasons.push("has_encuesta");
+  if (hasUtm) reasons.push("has_utm");
+  if (seoIa) reasons.push("has_seo_ia_flag");
+
+  var cdvStrong =
+    _entryCtxStrongLaboralParam(params)
+    && _entryCtxStrongIngresoParam(params)
+    && hasEncuesta;
+
+  var entryContext;
+  var evidenceStrength;
+  if (cdvStrong) {
+    entryContext = "cdv_rejected";
+    evidenceStrength = "strong";
+  } else if (seoIa) {
+    entryContext = "seo_organic";
+    evidenceStrength = "strong";
+  } else {
+    entryContext = "organic";
+    evidenceStrength = (hasUtm || reasons.length > 0) ? "moderate" : "weak";
+  }
+
+  var trafficSource;
+  if (hasUtm) trafficSource = "paid";
+  else if (seoIa) trafficSource = "seo";
+  else trafficSource = "direct";
+
+  var rawSource = _entryClampStr(params.get("source"), 32);
+  var acquisitionSource =
+    rawSource && ENTRY_ALLOWED_SOURCES[rawSource] ? rawSource : null;
+
+  var acquisition = {
+    source: acquisitionSource,
+    intent: _entryClampStr(params.get("intent"), 64),
+    question: _entryClampStr(params.get("question"), 64),
+    utm_source: _entryClampStr(params.get("utm_source"), 64),
+    utm_medium: _entryClampStr(params.get("utm_medium"), 64),
+    utm_campaign: _entryClampStr(params.get("utm_campaign"), 64),
+    utm_content: _entryClampStr(params.get("utm_content"), 64),
+    utm_term: _entryClampStr(params.get("utm_term"), 64),
+  };
+
+  // CRM pointer only — not identity; capped; never CI/email
+  var externalReference = _entryClampStr(params.get("czuid"), 64);
+
+  var capturedAt = new Date().toISOString();
+
+  return {
+    // Legacy FIX-01A fields (copy gating)
+    entryContext: entryContext,
+    trafficSource: trafficSource,
+    hasRejectionContext: entryContext === "cdv_rejected",
+    evidenceStrength: evidenceStrength,
+    reasons: reasons,
+    // Canonical ENTRY-01 aliases
+    entry_source: entryContext,
+    traffic_source: trafficSource,
+    has_rejection_context: entryContext === "cdv_rejected",
+    evidence_strength: evidenceStrength,
+    // Acquisition attribution (≠ entry source ≠ field provenance)
+    acquisition: acquisition,
+    attribution_policy: CZ_ATTRIBUTION_POLICY,
+    external_reference: externalReference,
+    captured_at: capturedAt,
+    schema_version: 1,
+  };
+}
+
 /*
  * ARCHITECTURE RULE — Entry Context Layer
  *
@@ -227,57 +423,25 @@ function _entryCtxHasUtm(params) {
  * dispatch GTM/CRM events, call network services, or alter
  * any existing app state. It only profiles the incoming
  * session context.
+ *
+ * ENTRY-01: resolveEntryContext delegates to normalizeEntryContext
+ * and returns the FIX-01A subset (plus acquisition for persistence).
  */
 function resolveEntryContext() {
-  // Read-only dependencies (FIX-01A): hasUrlLaboralParam, hasUrlIngresoParam,
-  // TIENE_ENCUESTA, isSeoIaEntry, PRE, SEGMENTO, URLSearchParams — not modified here.
-  var params = new URLSearchParams(window.location.search);
-  var reasons = [];
-
-  if (hasUrlLaboralParam()) reasons.push("has_url_laboral");
-  if (hasUrlIngresoParam()) reasons.push("has_url_ingreso");
-  if (TIENE_ENCUESTA) reasons.push("has_encuesta");
-  if (_entryCtxHasUtm(params)) reasons.push("has_utm");
-  if (isSeoIaEntry()) reasons.push("has_seo_ia_flag");
-
-  var cdvStrong =
-    _entryCtxStrongLaboralParam(params)
-    && _entryCtxStrongIngresoParam(params)
-    && TIENE_ENCUESTA;
-
-  var entryContext;
-  var evidenceStrength;
-
-  if (cdvStrong) {
-    entryContext = "cdv_rejected";
-    evidenceStrength = "strong";
-  } else if (isSeoIaEntry()) {
-    entryContext = "seo_organic";
-    evidenceStrength = "strong";
-  } else {
-    entryContext = "organic";
-    if (_entryCtxHasUtm(params) || reasons.length > 0) {
-      evidenceStrength = "moderate";
-    } else {
-      evidenceStrength = "weak";
-    }
-  }
-
-  var trafficSource;
-  if (_entryCtxHasUtm(params)) {
-    trafficSource = "paid";
-  } else if (isSeoIaEntry()) {
-    trafficSource = "seo";
-  } else {
-    trafficSource = "direct";
-  }
-
+  var full = normalizeEntryContext();
   return {
-    entryContext: entryContext,
-    trafficSource: trafficSource,
-    hasRejectionContext: entryContext === "cdv_rejected",
-    evidenceStrength: evidenceStrength,
-    reasons: reasons,
+    entryContext: full.entryContext,
+    trafficSource: full.trafficSource,
+    hasRejectionContext: full.hasRejectionContext,
+    evidenceStrength: full.evidenceStrength,
+    reasons: full.reasons,
+    acquisition: full.acquisition,
+    attribution_policy: full.attribution_policy,
+    external_reference: full.external_reference,
+    captured_at: full.captured_at,
+    schema_version: full.schema_version,
+    entry_source: full.entry_source,
+    traffic_source: full.traffic_source,
   };
 }
 
@@ -320,8 +484,8 @@ function buildSeoSurveyRedirectUrl() {
   var i;
   for (i = 0; i < SEO_IA_PRESERVED_PARAMS.length; i++) {
     var key = SEO_IA_PRESERVED_PARAMS[i];
-    var val = p.get(key);
-    if (val != null && val !== "") out.set(key, val);
+    var val = _entryClampStr(p.get(key), 64);
+    if (val != null) out.set(key, val);
   }
   var qs = out.toString();
   if (!qs) return SURVEY_URL;
@@ -330,15 +494,16 @@ function buildSeoSurveyRedirectUrl() {
 
 function getSeoIaAcquisitionPayload() {
   var p = new URLSearchParams(window.location.search);
+  var rawSource = _entryClampStr(p.get("source"), 32);
   return {
-    source:       p.get("source")       || null,
-    intent:       p.get("intent")       || null,
-    question:     p.get("question")     || null,
-    utm_source:   p.get("utm_source")   || null,
-    utm_medium:   p.get("utm_medium")   || null,
-    utm_campaign: p.get("utm_campaign") || null,
-    utm_content:  p.get("utm_content")  || null,
-    utm_term:     p.get("utm_term")     || null,
+    source:       (rawSource && ENTRY_ALLOWED_SOURCES[rawSource]) ? rawSource : null,
+    intent:       _entryClampStr(p.get("intent"), 64),
+    question:     _entryClampStr(p.get("question"), 64),
+    utm_source:   _entryClampStr(p.get("utm_source"), 64),
+    utm_medium:   _entryClampStr(p.get("utm_medium"), 64),
+    utm_campaign: _entryClampStr(p.get("utm_campaign"), 64),
+    utm_content:  _entryClampStr(p.get("utm_content"), 64),
+    utm_term:     _entryClampStr(p.get("utm_term"), 64),
   };
 }
 

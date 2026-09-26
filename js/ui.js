@@ -310,7 +310,12 @@ function _profileFieldInput(type, id, attrs) {
 
 function renderIngreso() {
   var st = _st();
-  var incomeVal = st.declared_ingreso != null ? st.declared_ingreso : "";
+  var incomeVal = "";
+  if (st.declared_ingreso != null && parseFloat(st.declared_ingreso) > 0) {
+    incomeVal = st.declared_ingreso;
+  } else if (typeof PRE !== "undefined" && PRE.ingreso != null && parseFloat(PRE.ingreso) > 0) {
+    incomeVal = PRE.ingreso;
+  }
   var nameVal = _profilePrefillName(st);
   var emailVal = _profilePrefillEmail(st);
   var laboralSel = st.declared_laboral || (typeof PRE !== "undefined" ? PRE.laboral : "") || "";
