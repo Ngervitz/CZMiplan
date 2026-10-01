@@ -3,7 +3,8 @@
  *
  * Real JANUS builder (mie-backend src/lib/miplanHandoffTokens.buildAllowlistedContext) → Mi Plan
  * sanitizeHandoffContext → durable journey (memory repo, same route/service as production) →
- * isolated V2 signal extraction. V1 output is compared with the HEAD sanitizer.
+ * isolated V2 signal extraction. V1 output is compared with the pre-V2 baseline sanitizer
+ * (BASELINE_COMMIT, pinned by blob id so the comparison never depends on HEAD).
  * No network, no DB. JANUS repo path: JANUS_REPO_DIR or ../../Mie Backend/mie-backend.
  *
  * node server/bin/survey-v2-boundary-test.js
@@ -71,10 +72,19 @@ function miplan(janusCtx) {
   return sanitize.sanitizeHandoffContext(JSON.parse(JSON.stringify(janusCtx)));
 }
 
-// ---------- HEAD sanitizer (V1 before) ----------
-function loadHeadSanitizer() {
-  var src = childProcess.execSync("git show HEAD:server/modules/journey/sanitizeContext.js",
-    { cwd: ROOT, encoding: "utf8" });
+// ---------- Baseline sanitizer (V1 before) ----------
+// Last pre-V2 sanitizer: blob introduced in 8122f2a, unchanged through 105d18c (last production
+// deploy before the V2 release), replaced in a975a1e.
+var BASELINE_COMMIT = "105d18c";
+var BASELINE_SANITIZER_BLOB = "419933243f83fa02e87c7ccda77c4e4150fbcc8c";
+function loadBaselineSanitizer() {
+  var spec = BASELINE_COMMIT + ":server/modules/journey/sanitizeContext.js";
+  var blob = childProcess.execSync("git rev-parse " + spec, { cwd: ROOT, encoding: "utf8" }).trim();
+  if (blob !== BASELINE_SANITIZER_BLOB) {
+    console.error("BASELINE_SANITIZER_MISMATCH: " + spec + " = " + blob);
+    process.exit(1);
+  }
+  var src = childProcess.execSync("git cat-file blob " + BASELINE_SANITIZER_BLOB, { cwd: ROOT, encoding: "utf8" });
   var mod = { exports: {} };
   vm.runInNewContext(src, { module: mod, exports: mod.exports, require: require });
   // vm objects belong to another realm; compare plain JSON.
@@ -82,7 +92,7 @@ function loadHeadSanitizer() {
     return JSON.parse(JSON.stringify(mod.exports.sanitizeHandoffContext(raw)));
   };
 }
-var headSanitize = loadHeadSanitizer();
+var baselineSanitize = loadBaselineSanitizer();
 
 async function main() {
   check("JANUS production flag default is OFF (env unset)", janusEnv.miplanHandoffSurveyV2Enabled === false);
@@ -183,23 +193,24 @@ async function main() {
   check("help_receptivity values == Panorama signal-catalog HELP_RECEPTIVITY",
     eq(Object.assign({}, surveyV2.HELP_RECEPTIVITY), Object.assign({}, panorama.HELP_RECEPTIVITY)));
 
-  // V2-05: V1 before = after (HEAD sanitizer) except the explicit source_survey_version.
+  // V2-05: V1 before (baseline sanitizer) = after, except the explicit source_survey_version.
   var v1Janus = janus(row(1, "B"), false);
   var v1Now = miplan(v1Janus);
-  var v1Head = headSanitize(JSON.parse(JSON.stringify(v1Janus)));
+  var v1Base = baselineSanitize(JSON.parse(JSON.stringify(v1Janus)));
   var v1NowNoVersion = JSON.parse(JSON.stringify(v1Now));
   delete v1NowNoVersion.survey.source_survey_version;
-  check("V2-05 V1 via JANUS: same sanitized context as HEAD + survey.source_survey_version = 1",
-    v1Now.survey.source_survey_version === 1 && eq(v1NowNoVersion, v1Head), { now: v1Now, head: v1Head });
+  check("V2-05 V1 via JANUS: same sanitized context as baseline " + BASELINE_COMMIT + " + survey.source_survey_version = 1",
+    v1Now.survey.source_survey_version === 1 && eq(v1NowNoVersion, v1Base), { now: v1Now, baseline: v1Base });
   var v1Partial = { source_survey_version: 1, respuestas: Object.assign({}, full10, { p4: "x", p9: null }) };
   var partialNow = mp(v1Partial).survey;
-  var partialHead = headSanitize({ context: { funnel: "credizona_rejected" }, survey: v1Partial }).survey;
+  var partialBase = baselineSanitize({ context: { funnel: "credizona_rejected" }, survey: v1Partial }).survey;
   delete partialNow.source_survey_version;
-  check("V2-05 V1 per-answer filter unchanged (same answers kept as HEAD)", eq(partialNow, partialHead), { now: partialNow, head: partialHead });
+  check("V2-05 V1 per-answer filter unchanged (same answers kept as baseline " + BASELINE_COMMIT + ")",
+    eq(partialNow, partialBase), { now: partialNow, baseline: partialBase });
 
   // V2-12: legacy calcularEncuesta (V1, 0..30, 24/15) untouched.
-  check("V2-12 js/survey.js (calcularEncuesta) has no diff vs HEAD",
-    childProcess.spawnSync("git", ["diff", "--quiet", "HEAD", "--", "js/survey.js"], { cwd: ROOT }).status === 0);
+  check("V2-12 js/survey.js (calcularEncuesta) has no diff vs baseline " + BASELINE_COMMIT,
+    childProcess.spawnSync("git", ["diff", "--quiet", BASELINE_COMMIT, "--", "js/survey.js"], { cwd: ROOT }).status === 0);
   var surveyCtx = { TIENE_ENCUESTA: true, console: console };
   vm.runInNewContext(fs.readFileSync(path.join(ROOT, "js", "survey.js"), "utf8"), surveyCtx);
   var allAv1 = surveyCtx.calcularEncuesta({ p1: "A", p2: "A", p3: "A", p4: "A", p5: "A", p6: "A", p7: "A", p8: "A", p9: "A", p10: "A" });
