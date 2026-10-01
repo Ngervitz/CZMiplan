@@ -126,10 +126,46 @@ function createDiagnosisRepository(deps) {
     return data || null;
   }
 
+  /**
+   * V2 strategy evaluation for an owned diagnosis: one per (journey, identity, classifier_version),
+   * created by the first diagnosis and reused (linked) by later ones. The reply carries the stored row.
+   */
+  async function recordFinancialStrategyEvaluation(row) {
+    var { data, error } = await client.rpc("miplan_record_financial_strategy_evaluation", {
+      p_secret: backendSecret,
+      p_diagnosis_id: row.diagnosis_id,
+      p_journey_id: row.journey_id,
+      p_anonymous_id: row.anonymous_id,
+      p_identity_version: row.identity_version,
+      p_identity: row.identity,
+      p_survey_version: row.survey_version,
+      p_classifier_version: row.classifier_version,
+      p_contract: row.contract,
+      p_threshold_version: row.threshold_version,
+      p_classification_status: row.classification_status,
+      p_strategy: row.strategy,
+      p_result: row.result,
+    });
+
+    if (error) {
+      var msg = String((error && error.message) || "");
+      var dbErr = new Error("DB_STRATEGY_EVALUATION_FAILED");
+      dbErr.status = 500;
+      dbErr.code = "DB_STRATEGY_EVALUATION_FAILED";
+      var known = /SURVEY_VERSION_NOT_V2|STRATEGY_EVALUATION_MISMATCH|STRATEGY_EVALUATION_RACE|DIAGNOSIS_ALREADY_LINKED|DIAGNOSIS_OWNERSHIP_MISMATCH|JOURNEY_OWNERSHIP_MISMATCH/.exec(msg);
+      if (known) dbErr.code = known[0];
+      dbErr.cause = error;
+      throw dbErr;
+    }
+
+    return data || null;
+  }
+
   return {
     insertDiagnosis: insertDiagnosis,
     getDiagnosisById: getDiagnosisById,
     upsertShadowResult: upsertShadowResult,
+    recordFinancialStrategyEvaluation: recordFinancialStrategyEvaluation,
   };
 }
 

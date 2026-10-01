@@ -92,10 +92,36 @@ function createJourneyRepository(deps) {
     return !!data;
   }
 
+  /**
+   * Survey version delivered in the journey bootstrap (1, 2 or null). Ownership enforced by RPC.
+   */
+  async function getJourneySurveyVersion(journeyId, anonymousId) {
+    var { data, error } = await client.rpc("miplan_get_journey_survey_version", {
+      p_secret: backendSecret,
+      p_journey_id: journeyId,
+      p_anonymous_id: anonymousId,
+    });
+
+    if (error) {
+      var dbErr = new Error("DB_JOURNEY_SURVEY_VERSION_FAILED");
+      dbErr.status = 500;
+      dbErr.code = "DB_JOURNEY_SURVEY_VERSION_FAILED";
+      dbErr.cause = error;
+      throw dbErr;
+    }
+
+    return normalizeSurveyVersion(data);
+  }
+
   return {
     resolveHandoffJourney: resolveHandoffJourney,
     assertJourneyOwned: assertJourneyOwned,
+    getJourneySurveyVersion: getJourneySurveyVersion,
   };
+}
+
+function normalizeSurveyVersion(v) {
+  return v === 1 || v === 2 ? v : null;
 }
 
 /**
@@ -205,9 +231,17 @@ function createMemoryJourneyRepository() {
     return true;
   }
 
+  async function getJourneySurveyVersion(journeyId, anonymousId) {
+    await assertJourneyOwned(journeyId, anonymousId);
+    var ctx = byId.get(String(journeyId)).bootstrap_context;
+    var survey = ctx && ctx.survey;
+    return normalizeSurveyVersion(survey ? survey.source_survey_version : null);
+  }
+
   return {
     resolveHandoffJourney: resolveHandoffJourney,
     assertJourneyOwned: assertJourneyOwned,
+    getJourneySurveyVersion: getJourneySurveyVersion,
     _test: { byKey: byKey, byId: byId },
   };
 }

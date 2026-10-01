@@ -5,6 +5,217 @@
 "use strict";
 
 var runEngine = require("../../../engine").runEngine;
+var classifyFinancialShadow =
+  require("../../../engine/classifier/financial-classifier").classifyFinancialShadow;
+var deriveFinancialInputIdentity = require("./financialIdentity").deriveFinancialInputIdentity;
+var buildActionContext = require("./actionContext").buildActionContext;
+
+var SURVEY_VERSION_V2 = 2;
+
+var V2_STRATEGY_WRITE_UNCONFIRMED = "V2_STRATEGY_WRITE_UNCONFIRMED";
+
+function projectFactRef(item) {
+  var out = { fact: item.fact, subject: item.subject };
+  if (item.subject === "debt") out.debt_index = item.debt_index;
+  return out;
+}
+
+/**
+ * V2-STRATEGY-RUNTIME-WIRING-IMPLEMENT-01 — stable public projection of a persisted V2 classification.
+ * Explicit allowlist: canonical_facts (amounts), per-fact provenance, compatible set, thresholds
+ * and diagnostics stay server-side.
+ */
+function projectV2FinancialStrategy(r, surveyVersion, identity) {
+  return {
+    survey_version: surveyVersion,
+    classification_status: r.classification_status,
+    strategy: r.strategy,
+    reasons: r.entry_reasons.slice(),
+    verification: {
+      required: r.verification_required === true,
+      reasons: r.verification_reasons.map(function (v) {
+        return Object.assign({ code: v.code }, projectFactRef(v));
+      }),
+      missing_facts: r.missing_required_facts.map(projectFactRef),
+    },
+    provenance: {
+      classifier_version: r.classifier_version,
+      contract: r.contract,
+    },
+    financial_input_identity: { version: identity.version, value: identity.value },
+  };
+}
+
+/**
+ * The RPC returns the evaluation this diagnosis is linked to (new or reused); exposure requires
+ * it to be for this diagnosis, this identity, this classifier_version and this classification.
+ */
+function isConfirmedEvaluation(saved, diagnosisId, identity, r) {
+  var stored = saved && saved.result;
+  return !!saved && typeof saved === "object" &&
+    typeof saved.evaluation_id === "string" && saved.evaluation_id !== "" &&
+    String(saved.diagnosis_id) === String(diagnosisId) &&
+    typeof saved.linked === "boolean" &&
+    saved.financial_input_identity_version === identity.version &&
+    saved.financial_input_identity === identity.value &&
+    saved.classifier_version === r.classifier_version &&
+    saved.classification_status === r.classification_status &&
+    saved.strategy === r.strategy &&
+    !!stored && typeof stored === "object" && !Array.isArray(stored) &&
+    stored.classifier_version === r.classifier_version &&
+    stored.classification_status === r.classification_status &&
+    stored.strategy === r.strategy;
+}
+
+var ENTRY_CONTEXT_ALLOWED = {
+  entryContext: true,
+  trafficSource: true,
+  hasRejectionContext: true,
+  evidenceStrength: true,
+  reasons: true,
+  entry_source: true,
+  traffic_source: true,
+  has_rejection_context: true,
+  evidence_strength: true,
+  acquisition: true,
+  attribution_policy: true,
+  external_reference: true,
+  captured_at: true,
+  schema_version: true,
+  field_provenance: true,
+};
+
+var ACQUISITION_ALLOWED = {
+  source: true,
+  intent: true,
+  question: true,
+  utm_source: true,
+  utm_medium: true,
+  utm_campaign: true,
+  utm_content: true,
+  utm_term: true,
+};
+
+var PROVENANCE_SOURCES = {
+  user_entered: true,
+  url_prefill: true,
+  handoff: true,
+  seo_survey: true,
+  external_import: true,
+  engine_input: true,
+};
+
+function clampStr(raw, maxLen) {
+  if (raw == null) return null;
+  var s = String(raw).trim();
+  if (s === "") return null;
+  if (s.length > maxLen) s = s.slice(0, maxLen);
+  return s;
+}
+
+function sanitizeAcquisition(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  var out = {};
+  var keys = Object.keys(ACQUISITION_ALLOWED);
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (!Object.prototype.hasOwnProperty.call(raw, k)) continue;
+    var v = clampStr(raw[k], 64);
+    if (v != null) out[k] = v;
+  }
+  // Only allow known acquisition.source values (seo_ia). Docs acquisition=seo_ia param stays DESIGNED_ONLY.
+  if (out.source && out.source !== "seo_ia") {
+    delete out.source;
+  }
+  return out;
+}
+
+function sanitizeFieldProvenance(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  var out = {};
+  var fields = Object.keys(raw);
+  for (var i = 0; i < fields.length && i < 32; i++) {
+    var field = String(fields[i]).slice(0, 64);
+    var meta = raw[fields[i]];
+    if (!meta || typeof meta !== "object" || Array.isArray(meta)) continue;
+    var src = clampStr(meta.source, 32);
+    if (!src || !PROVENANCE_SOURCES[src]) continue;
+    var entry = { source: src, user_modified: !!meta.user_modified };
+    if (meta.detail != null) {
+      var d = clampStr(meta.detail, 64);
+      if (d) entry.detail = d;
+    }
+    out[field] = entry;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * ENTRY-01 — allowlist + truncate entry_context. Never trust arbitrary client JSON.
+ * Does not change financial scoring inputs.
+ */
+function sanitizeEntryContext(raw) {
+  if (raw == null) return "DEFAULT";
+  if (typeof raw === "string") {
+    var s = clampStr(raw, 64);
+    return s || "DEFAULT";
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) return "DEFAULT";
+
+  var out = {};
+  var keys = Object.keys(raw);
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (!ENTRY_CONTEXT_ALLOWED[k]) continue;
+    var v = raw[k];
+    if (k === "reasons") {
+      if (!Array.isArray(v)) continue;
+      out.reasons = v
+        .slice(0, 20)
+        .map(function (r) {
+          return clampStr(r, 64);
+        })
+        .filter(Boolean);
+      continue;
+    }
+    if (k === "acquisition") {
+      var acq = sanitizeAcquisition(v);
+      if (acq) out.acquisition = acq;
+      continue;
+    }
+    if (k === "field_provenance") {
+      var fp = sanitizeFieldProvenance(v);
+      if (fp) out.field_provenance = fp;
+      continue;
+    }
+    if (k === "hasRejectionContext" || k === "has_rejection_context") {
+      out[k] = !!v;
+      continue;
+    }
+    if (k === "schema_version") {
+      var n = parseInt(v, 10);
+      if (Number.isFinite(n)) out.schema_version = n;
+      continue;
+    }
+    if (typeof v === "boolean") {
+      out[k] = v;
+      continue;
+    }
+    if (typeof v === "string" || typeof v === "number") {
+      var cs = clampStr(v, 64);
+      if (cs != null) out[k] = cs;
+    }
+  }
+
+  if (!out.entryContext && out.entry_source) out.entryContext = out.entry_source;
+  if (!out.trafficSource && out.traffic_source) out.trafficSource = out.traffic_source;
+  if (out.hasRejectionContext == null && out.has_rejection_context != null) {
+    out.hasRejectionContext = out.has_rejection_context;
+  }
+  if (!out.attribution_policy) out.attribution_policy = "CURRENT_ENTRY";
+
+  return Object.keys(out).length ? out : "DEFAULT";
+}
 
 /**
  * Build engine input from request body (strip client authorities).
@@ -28,8 +239,33 @@ function extractEngineInput(body) {
   delete input.client_completeness_flags;
   // D5: ignore client clock authority
   delete input.now_ms;
+  // ENTRY-01 — contact/identification must not become engine financial input
+  delete input.cedula;
+  delete input.telefono;
+  delete input.monto;
+  delete input.phone;
+  delete input.ci;
   // Journey identity is not engine input (MIPLAN-JOURNEY-01)
   delete input.journey_id;
+
+  // Merge top-level acquisition into entry_context then keep sanitized copy
+  var entry = input.entry_context;
+  if (
+    input.acquisition &&
+    typeof input.acquisition === "object" &&
+    !Array.isArray(input.acquisition)
+  ) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      entry = {};
+    } else {
+      entry = Object.assign({}, entry);
+    }
+    if (!entry.acquisition) entry.acquisition = input.acquisition;
+    input.entry_context = entry;
+  }
+  delete input.acquisition;
+
+  input.entry_context = sanitizeEntryContext(input.entry_context);
 
   return input;
 }
@@ -41,14 +277,65 @@ var JOURNEY_ID_RE =
  * @param {object} deps
  * @param {ReturnType<typeof import('./repository').createDiagnosisRepository>} deps.repository
  * @param {string} deps.tenantId
- * @param {{ assertOwned?: Function }} [deps.journeyService]
+ * @param {{ assertOwned?: Function, surveyVersionOf?: Function }} [deps.journeyService]
  * @param {typeof runEngine} [deps.runEngineFn]
+ * @param {typeof classifyFinancialShadow} [deps.classifyFn]
  */
 function createDiagnosisService(deps) {
   var repository = deps.repository;
   var tenantId = deps.tenantId;
   var journeyService = deps.journeyService || null;
   var engineFn = deps.runEngineFn || runEngine;
+  var classifyFn = deps.classifyFn || classifyFinancialShadow;
+
+  /**
+   * V2-NEW-STRATEGY-INTEGRATION-01 — compute-only: V2 journeys get the new financial
+   * strategy persisted apart from the legacy result. Survey version comes from the
+   * server-side journey bootstrap, never from the client. V1/unversioned journeys are
+   * not classified. Never alters or fails the legacy diagnosis.
+   * The legacy diagnosis is never deduplicated; only the V2 result is: one evaluation per
+   * (journey, financial_input_identity, classifier_version), linked from every diagnosis using it.
+   * Returns the public projection and the action_context of the stored evaluation when
+   * confirmed; otherwise null.
+   */
+  async function recordV2Strategy(args) {
+    if (!args.journeyId || !journeyService || typeof journeyService.surveyVersionOf !== "function") {
+      return null;
+    }
+    if (typeof repository.recordFinancialStrategyEvaluation !== "function") return null;
+    try {
+      var version = await journeyService.surveyVersionOf(args.journeyId, args.anonymousId);
+      if (version !== SURVEY_VERSION_V2) return null;
+      var identity = deriveFinancialInputIdentity(args.engineInput);
+      if (!identity) return null;
+      var r = classifyFn(args.engineInput);
+      var saved = await repository.recordFinancialStrategyEvaluation({
+        diagnosis_id: args.diagnosisId,
+        journey_id: args.journeyId,
+        anonymous_id: args.anonymousId,
+        identity_version: identity.version,
+        identity: identity.value,
+        survey_version: SURVEY_VERSION_V2,
+        classifier_version: r.classifier_version,
+        contract: r.contract,
+        threshold_version: r.threshold_version,
+        classification_status: r.classification_status,
+        strategy: r.strategy,
+        result: r,
+      });
+      if (!isConfirmedEvaluation(saved, args.diagnosisId, identity, r)) {
+        console.warn("[v2-strategy] not recorded: " + V2_STRATEGY_WRITE_UNCONFIRMED);
+        return null;
+      }
+      return {
+        strategy: projectV2FinancialStrategy(saved.result, version, identity),
+        actionContext: buildActionContext(saved.result),
+      };
+    } catch (e) {
+      console.warn("[v2-strategy] not recorded: " + String((e && e.code) || (e && e.name) || "ERROR"));
+      return null;
+    }
+  }
 
   /**
    * Optional journey_id on body — must belong to anonymous_id. Never authorizes alone.
@@ -87,6 +374,7 @@ function createDiagnosisService(deps) {
     }
 
     var journeyId = await resolveOptionalJourneyId(args.anonymousId, args.body);
+    var classifierInput = journeyId ? JSON.parse(JSON.stringify(engineInput)) : null;
 
     var nowMs = Date.now();
     var out;
@@ -125,13 +413,25 @@ function createDiagnosisService(deps) {
       journey_id: journeyId,
     });
 
-    return {
+    var v2Strategy = await recordV2Strategy({
+      diagnosisId: inserted.diagnosis_id,
+      journeyId: journeyId,
+      anonymousId: args.anonymousId,
+      engineInput: classifierInput,
+    });
+
+    var created = {
       diagnosis_id: inserted.diagnosis_id,
       engine_version: out.engine_version,
       result: out.engine_result,
       now_ms: out.now_ms,
       journey_id: journeyId,
     };
+    if (v2Strategy) {
+      created.v2_financial_strategy = v2Strategy.strategy;
+      created.v2_action_context = v2Strategy.actionContext;
+    }
+    return created;
   }
 
   /**
@@ -217,4 +517,6 @@ function createDiagnosisService(deps) {
 module.exports = {
   createDiagnosisService: createDiagnosisService,
   extractEngineInput: extractEngineInput,
+  sanitizeEntryContext: sanitizeEntryContext,
+  projectV2FinancialStrategy: projectV2FinancialStrategy,
 };

@@ -5,6 +5,8 @@
  */
 "use strict";
 
+var surveyV2 = require("./surveyV2Signals");
+
 function clampStr(raw, maxLen) {
   if (raw == null) return null;
   var s = String(raw).trim();
@@ -43,8 +45,8 @@ function sanitizeFinancial(raw) {
   return Object.keys(out).length ? out : null;
 }
 
-function sanitizeSurvey(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+// V1 keeps the pre-versioning allowlist (per-answer A–D filter) unchanged.
+function sanitizeSurveyV1(raw) {
   var respuestasIn = raw.respuestas;
   if (!respuestasIn || typeof respuestasIn !== "object") return null;
   var keys = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"];
@@ -60,11 +62,78 @@ function sanitizeSurvey(raw) {
   if (!Object.keys(respuestas).length) return null;
   var out = {
     selection_rule: clampStr(raw.selection_rule, 64) || "lifetime_ci",
+    source_survey_version: 1,
     respuestas: respuestas,
   };
   var completed = clampStr(raw.completed_at, 64);
   if (completed) out.completed_at = completed;
   return out;
+}
+
+// V2: P7 travels only as loan_purpose; strict, no partial survey.
+function sanitizeSurveyV2(raw) {
+  var valid = surveyV2.validateSurveyV2(raw);
+  if (!valid.ok) return { survey: null, reason: valid.reason };
+  var respuestas = {};
+  surveyV2.ORDINAL_KEYS.forEach(function (k) {
+    respuestas[k] = raw.respuestas[k];
+  });
+  var out = {
+    selection_rule: clampStr(raw.selection_rule, 64) || "lifetime_ci",
+    source_survey_version: surveyV2.SURVEY_V2,
+    respuestas: respuestas,
+    loan_purpose: raw.loan_purpose,
+    provenance: { source_survey_version: surveyV2.SURVEY_V2 },
+  };
+  var src = raw.provenance ? clampStr(raw.provenance.source_system, 64) : null;
+  if (src) out.provenance.source_system = src;
+  var completed = clampStr(raw.completed_at, 64);
+  if (completed) out.completed_at = completed;
+  return { survey: out, reason: null };
+}
+
+/**
+ * Survey block selected only by the explicit source_survey_version (never by the answers).
+ * Missing, unknown or invalid → no survey plus a PII-free reason; never a V1 fallback.
+ */
+function sanitizeSurvey(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { survey: null, rejected: null };
+  }
+  var version = raw.source_survey_version;
+  if (version === 1) {
+    var v1 = sanitizeSurveyV1(raw);
+    return v1
+      ? { survey: v1, rejected: null }
+      : { survey: null, rejected: { reason: "survey_v1_invalid", source_survey_version: 1 } };
+  }
+  if (version === surveyV2.SURVEY_V2) {
+    var v2 = sanitizeSurveyV2(raw);
+    return v2.survey
+      ? { survey: v2.survey, rejected: null }
+      : { survey: null, rejected: { reason: v2.reason, source_survey_version: surveyV2.SURVEY_V2 } };
+  }
+  return {
+    survey: null,
+    rejected: {
+      reason: version == null ? "survey_version_missing" : "survey_version_unknown",
+      source_survey_version: null,
+    },
+  };
+}
+
+// JANUS explicit withheld outcome (e.g. survey_v2_handoff_disabled). PII-free.
+function sanitizeSurveyHandoff(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (raw.status !== "withheld") return null;
+  var reason = clampStr(raw.reason, 64);
+  if (!reason || !/^[a-z0-9_]+$/.test(reason)) return null;
+  var v = raw.source_survey_version;
+  return {
+    status: "withheld",
+    reason: reason,
+    source_survey_version: v === 1 || v === 2 ? v : null,
+  };
 }
 
 /**
@@ -106,7 +175,10 @@ function sanitizeHandoffContext(raw) {
   var financial = sanitizeFinancial(raw.financial_prefill);
   if (financial) out.financial_prefill = financial;
   var survey = sanitizeSurvey(raw.survey);
-  if (survey) out.survey = survey;
+  if (survey.survey) out.survey = survey.survey;
+  if (survey.rejected) out.survey_rejected = survey.rejected;
+  var surveyHandoff = sanitizeSurveyHandoff(raw.survey_handoff);
+  if (surveyHandoff) out.survey_handoff = surveyHandoff;
 
   return out;
 }

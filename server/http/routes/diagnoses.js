@@ -38,6 +38,10 @@ function createDiagnosesRouter(deps) {
         if (result.journey_id) {
           payload.journey_id = result.journey_id;
         }
+        if (result.v2_financial_strategy) {
+          payload.v2_financial_strategy = result.v2_financial_strategy;
+          payload.v2_action_context = result.v2_action_context === undefined ? null : result.v2_action_context;
+        }
         res.status(200).json(payload);
       })
       .catch(next);

@@ -100,10 +100,16 @@ function createJourneyService(deps) {
     return repository.assertJourneyOwned(journeyId, anonymousId);
   }
 
+  async function surveyVersionOf(journeyId, anonymousId) {
+    if (typeof repository.getJourneySurveyVersion !== "function") return null;
+    return repository.getJourneySurveyVersion(journeyId, anonymousId);
+  }
+
   return {
     lookupByHandoffCode: lookupByHandoffCode,
     createFromHandoffRedeem: createFromHandoffRedeem,
     assertOwned: assertOwned,
+    surveyVersionOf: surveyVersionOf,
     bootstrapKeyFromHandoffCode: bootstrapKeyFromHandoffCode,
   };
 }
