@@ -8,6 +8,7 @@ var cors = require("cors");
 var createHealthRouter = require("./http/routes/health").createHealthRouter;
 var createDiagnosesRouter = require("./http/routes/diagnoses").createDiagnosesRouter;
 var createHandoffRouter = require("./http/routes/handoff").createHandoffRouter;
+var createUserChoicesRouter = require("./http/routes/userChoices").createUserChoicesRouter;
 var notFoundHandler = require("./http/middleware/notFound").notFoundHandler;
 var errorHandler = require("./http/middleware/errorHandler").errorHandler;
 var createSupabaseClient = require("./modules/persistence/supabaseClient").createSupabaseClient;
@@ -16,6 +17,8 @@ var createDiagnosisService = require("./modules/diagnosis/service").createDiagno
 var createJourneyRepository = require("./modules/journey/repository").createJourneyRepository;
 var createMemoryJourneyRepository = require("./modules/journey/repository").createMemoryJourneyRepository;
 var createJourneyService = require("./modules/journey/service").createJourneyService;
+var createUserChoiceRepository = require("./modules/userChoice/repository").createUserChoiceRepository;
+var createUserChoiceService = require("./modules/userChoice/service").createUserChoiceService;
 
 /**
  * @param {ReturnType<typeof import('./config').loadConfig>} config
@@ -105,8 +108,29 @@ function createApp(config, overrides) {
     }
   }
 
+  var userChoiceService = overrides.userChoiceService;
+  if (!userChoiceService) {
+    if (!config.persistenceConfigured) {
+      var unavailable = function () {
+        var err = new Error("USER_CHOICE_UNAVAILABLE");
+        err.status = 503;
+        err.code = "USER_CHOICE_UNAVAILABLE";
+        return Promise.reject(err);
+      };
+      userChoiceService = { getState: unavailable, recordChoice: unavailable, recordOptIn: unavailable };
+    } else {
+      userChoiceService = createUserChoiceService({
+        repository: createUserChoiceRepository({
+          client: sharedClient || createSupabaseClient(config),
+          backendSecret: config.backendSecret,
+        }),
+      });
+    }
+  }
+
   app.use(createHealthRouter(config));
   app.use(createDiagnosesRouter({ diagnosisService: diagnosisService }));
+  app.use(createUserChoicesRouter({ userChoiceService: userChoiceService }));
   app.use(
     createHandoffRouter({
       config: config,
