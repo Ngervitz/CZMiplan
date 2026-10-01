@@ -8,6 +8,7 @@ var path = require("path");
 var http = require("http");
 var crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+var requireLiveWriteAllowedOrExit = require("../testing/liveWriteGuard").requireLiveWriteAllowedOrExit;
 
 var loadConfig = require("../config").loadConfig;
 var createApp = require("../app").createApp;
@@ -109,6 +110,7 @@ var sampleInput = {
 };
 
 async function main() {
+  requireLiveWriteAllowedOrExit("b3-shadow-metrics-test");
   var config = loadConfig(process.env);
   if (!config.persistenceConfigured) {
     console.error("B3_METRICS_ENV_MISSING");

@@ -7,6 +7,7 @@ var path = require("path");
 var http = require("http");
 var crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+var requireLiveWriteAllowedOrExit = require("../testing/liveWriteGuard").requireLiveWriteAllowedOrExit;
 
 var loadConfig = require("../config").loadConfig;
 var createApp = require("../app").createApp;
@@ -117,6 +118,7 @@ async function main() {
   }
 
   var config = loadConfig(process.env);
+  if (config.persistenceConfigured) requireLiveWriteAllowedOrExit("smoke");
   var app = createApp(config);
   var server = http.createServer(app);
 

@@ -14,6 +14,7 @@ var fs = require("fs");
 var http = require("http");
 var crypto = require("crypto");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+var assertLiveWriteAllowed = require("../testing/liveWriteGuard").assertLiveWriteAllowed;
 
 var results = {
   PAYLOAD_STRIPS_AUTHORITIES: "FAIL",
@@ -190,6 +191,14 @@ async function maybeLive() {
   var config = loadConfig(process.env);
   if (!config.persistenceConfigured) {
     results.LIVE_SHADOW_OPTIONAL = "SKIP";
+    return;
+  }
+  try {
+    assertLiveWriteAllowed({ harness: "b3-shadow-test" });
+  } catch (e) {
+    console.error(e.message);
+    results.LIVE_SHADOW_OPTIONAL = "FAIL";
+    results.LIVE_WRITE_GUARD = "BLOCKED";
     return;
   }
 
