@@ -59,7 +59,9 @@
     };
 
     var baseBody = { report_type: "plus", context: {} };
-    var prodEnv = { VERCEL: "1", VERCEL_ENV: "production", NODE_ENV: "production" };
+    // Production is fail-closed before the secret gate (dev/plus-prod-hardening-qa.js); the
+    // shared-secret gate is exercised on a Vercel preview deployment.
+    var previewEnv = { VERCEL: "1", VERCEL_ENV: "preview", NODE_ENV: "production" };
 
     function withEnv(env, fn) {
       var saved = {};
@@ -76,15 +78,15 @@
       });
     }
 
-    await withEnv(Object.assign({}, prodEnv, { CZ_PLUS_PROXY_SECRET: null, CZ_CLAUDE_API_KEY: null }), async function() {
+    await withEnv(Object.assign({}, previewEnv, { CZ_PLUS_PROXY_SECRET: null, CZ_CLAUDE_API_KEY: null }), async function() {
       delete process.env.CZ_PLUS_PROXY_SECRET;
       var rA = mockRes();
       await handler({ method: "POST", headers: {}, body: baseBody }, rA);
-      ok("A missing secret production", calls[calls.length - 1].status === 500
+      ok("A missing secret preview", calls[calls.length - 1].status === 500
         && calls[calls.length - 1].body.error === "missing_proxy_secret");
     });
 
-    await withEnv(Object.assign({}, prodEnv, { CZ_PLUS_PROXY_SECRET: "beta-secret", CZ_CLAUDE_API_KEY: "k" }), async function() {
+    await withEnv(Object.assign({}, previewEnv, { CZ_PLUS_PROXY_SECRET: "beta-secret", CZ_CLAUDE_API_KEY: "k" }), async function() {
       var rB = mockRes();
       await handler({
         method: "POST",
@@ -109,7 +111,8 @@
         && calls[calls.length - 1].body.ok === true);
     });
 
-    await withEnv({ VERCEL: null, VERCEL_ENV: null, NODE_ENV: "development", CZ_PLUS_PROXY_SECRET: null, CZ_CLAUDE_API_KEY: "k" }, async function() {
+    await withEnv({ VERCEL: null, VERCEL_ENV: null, NODE_ENV: "development", CZ_PLUS_PROXY_SECRET: null, CZ_CLAUDE_API_KEY: "k",
+      CZ_PLUS_GENERATE_LOCAL: "1" }, async function() {
       delete process.env.VERCEL;
       delete process.env.CZ_PLUS_PROXY_SECRET;
       var rE = mockRes();

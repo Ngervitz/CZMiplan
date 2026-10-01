@@ -33,21 +33,16 @@
   ok("api uses env key", apiSrc.indexOf("process.env.CZ_CLAUDE_API_KEY") >= 0);
   ok("api no key logging", apiSrc.indexOf("console.log") < 0 && apiSrc.indexOf("console.error") < 0);
 
-  var skHits = [];
-  function scan(dir) {
-    fs.readdirSync(dir).forEach(function(name) {
-      if (name === "node_modules" || name === ".git" || name === "dev") return;
-      var p = path.join(dir, name);
-      var st = fs.statSync(p);
-      if (st.isDirectory()) scan(p);
-      else if (/\.(js|json|html|env|md)$/.test(name)) {
-        var txt = fs.readFileSync(p, "utf8");
-        if (txt.indexOf("sk-ant") >= 0) skHits.push(path.relative(root, p));
-      }
+  // Deployable files only (git-tracked + untracked-not-ignored); gitignored local env files never deploy.
+  var skHits = require("child_process").execSync("git ls-files -co --exclude-standard", { cwd: root, encoding: "utf8" })
+    .split(/\r?\n/)
+    .filter(function(f) {
+      return f && f.indexOf("node_modules/") !== 0 && f.indexOf("dev/") !== 0 && /\.(js|json|html|env|md)$/.test(f);
+    })
+    .filter(function(f) {
+      try { return fs.readFileSync(path.join(root, f), "utf8").indexOf("sk-ant") >= 0; } catch (e) { return false; }
     });
-  }
-  scan(root);
-  ok("E sk-ant only example", skHits.length === 1 && skHits[0] === "js\\config.example.js" || skHits[0] === "js/config.example.js");
+  ok("E sk-ant only example", skHits.length === 1 && skHits[0] === "js/config.example.js");
 
   (async function() {
     var { pathToFileURL } = require("url");
@@ -71,8 +66,9 @@
 
     var oldKey = process.env.CZ_CLAUDE_API_KEY;
     delete process.env.CZ_CLAUDE_API_KEY;
+    process.env.CZ_PLUS_GENERATE_LOCAL = "1";
     var r500 = mockRes();
-    await handler({ method: "POST", body: { model: "x" } }, r500);
+    await handler({ method: "POST", headers: {}, body: { report_type: "plus", context: {} } }, r500);
     ok("C missing key returns missing_api_key",
       calls[1] && calls[1].status === 500 && calls[1].body.error === "missing_api_key");
     if (oldKey) process.env.CZ_CLAUDE_API_KEY = oldKey;

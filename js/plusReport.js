@@ -163,18 +163,15 @@ function getMockPlusInput() {
         explanation: "Los registros consultados muestran más exposición y un acreedor no declarado.",
       },
     },
+    // Synthetic only: never read PRE / CZState here (this input feeds the test report).
     usuario: {
-      nombre: PRE.nombre,
-      cedula: PRE.cedula,
-      email: PRE.email,
-      telefono: PRE.telefono,
-      ingreso_declarado: PRE.ingreso,
-      situacion_laboral: PRE.laboral,
-      segmento: SEGMENTO,
+      ingreso_declarado: 37000,
+      situacion_laboral: "dependiente",
+      segmento: 1,
     },
     encuesta_riesgo: {
-      completada: TIENE_ENCUESTA,
-      respuestas: PRE.respuestas,
+      completada: true,
+      respuestas: { p1: "B", p2: "C", p3: "B", p4: "C", p5: "B", p6: "C", p7: "B", p8: "C", p9: "B", p10: "C" },
     },
     diagnostico_miplan_declarado: {
       plan_id: 4,

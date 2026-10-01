@@ -61,6 +61,7 @@
 
     process.env.CZ_CLAUDE_API_KEY = "test-key";
     process.env.CZ_CLAUDE_MODEL = "claude-sonnet-4-5";
+    process.env.CZ_PLUS_GENERATE_LOCAL = "1";
 
     var r405 = mockRes();
     await handler({ method: "GET" }, r405);
@@ -128,7 +129,7 @@
     var skOut = require("child_process").execSync('git grep "sk-ant" -- "*.js" "*.json" "*.html"', {
       cwd: root,
       encoding: "utf8",
-    }).trim();
+    }).trim().split(/\r?\n/).filter(function(l) { return l.indexOf("dev/") !== 0; }).join("\n");
     ok("F git grep sk-ant only example", skOut === 'js/config.example.js://   CZ_CLAUDE_API_KEY = "sk-ant-...";');
 
     console.log("");

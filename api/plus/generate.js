@@ -12,11 +12,43 @@ import { CZ_PLUS_SYSTEM_PROMPT } from "./systemPrompt.js";
 
 var MAX_PAYLOAD_BYTES = 50 * 1024;
 
+function isOutsideVercel() {
+  return !process.env.VERCEL && process.env.VERCEL_ENV == null;
+}
+
 function isLocalOrDev() {
-  if (!process.env.VERCEL) return true;
-  if (process.env.VERCEL_ENV === "development") return true;
-  if (process.env.NODE_ENV === "development") return true;
+  return isOutsideVercel() || process.env.VERCEL_ENV === "development";
+}
+
+// No authenticated, entitled consumer exists yet. Only explicitly authorised environments may
+// generate: Vercel preview, Vercel development (vercel dev), or a run outside Vercel that opts in
+// with CZ_PLUS_GENERATE_LOCAL=1. Everything else (production, missing or unrecognised VERCEL_ENV,
+// a deployment whose system variables are not exposed) is refused before the body is read or the
+// provider is called.
+function isGenerationAllowedEnv() {
+  var vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv === "preview" || vercelEnv === "development") return true;
+  if (isOutsideVercel()) return process.env.CZ_PLUS_GENERATE_LOCAL === "1";
   return false;
+}
+
+var DIRECT_IDENTIFIER_KEYS = {
+  nombre: true, nombre_completo: true, apellido: true,
+  cedula: true, ci: true, documento: true,
+  email: true, telefono: true, celular: true, phone: true,
+  anonymous_id: true, session_id: true, crm_contact_id: true, czuid: true,
+  journey_id: true, diagnosis_id: true,
+};
+
+function stripDirectIdentifiers(value) {
+  if (Array.isArray(value)) return value.map(stripDirectIdentifiers);
+  if (!value || typeof value !== "object") return value;
+  var out = {};
+  Object.keys(value).forEach(function(k) {
+    if (DIRECT_IDENTIFIER_KEYS[k.toLowerCase()]) return;
+    out[k] = stripDirectIdentifiers(value[k]);
+  });
+  return out;
 }
 
 function getClientProxySecret(req) {
@@ -88,7 +120,7 @@ function buildAnthropicPayload(context) {
         + "ni porcentajes de coincidencia del perfil.\n"
         + "Usá reconciliation_engine del input (solo lectura) para alinear tono y hechos.\n"
         + "Datos de entrada:\n"
-        + JSON.stringify(context, null, 2),
+        + JSON.stringify(stripDirectIdentifiers(context), null, 2),
     }],
   };
 }
@@ -109,6 +141,10 @@ export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ ok: false, error: "method_not_allowed" });
+  }
+
+  if (!isGenerationAllowedEnv()) {
+    return res.status(403).json({ ok: false, error: "plus_generate_disabled" });
   }
 
   var secretBlock = enforceProxySecret(req, res);

@@ -971,36 +971,6 @@ function setPlusStatus(status, opts) {
   window.guardarLocal();
 }
 
-function completarCompraPlus() {
-  var st = window.CZState;
-  var now = new Date().toISOString();
-  st.plus_purchased = true;
-  st.plus_purchased_at = now;
-  setPlusStatus("PLUS_PROCESSING");
-  if (st.temporal) st.temporal.payment_completed_at = now;
-
-  if (typeof trackCRMEvent === "function") {
-    var ids = _plusTrackingIds();
-    trackCRMEvent(CZ_EVENT_NAMES.PLUS_PURCHASED, {
-      czuid:            ids.czuid,
-      plus_purchased_at: now,
-      plan_id:          ids.plan_id,
-      score_reset:      st.diag ? st.diag.scoreReset : null,
-    });
-  }
-
-  if (typeof trackEvent === "function") {
-    trackEvent(CZ_EVENT_NAMES.PLUS_PURCHASED, {
-      value:    (typeof CZ_PLUS_PRICE_UYU !== "undefined" ? CZ_PLUS_PRICE_UYU : 0),
-      currency: "UYU",
-    });
-  }
-
-  if (st.tab === "plus" && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
-    window.CredizonaUI.renderTab();
-  }
-}
-
 function iniciarPagoHandy() {
   var endpoint = (typeof CZ_HANDY_ENDPOINT !== "undefined" && CZ_HANDY_ENDPOINT)
     ? String(CZ_HANDY_ENDPOINT).trim()
@@ -1031,11 +1001,13 @@ function resetPlusPurchaseError() {
   }
 }
 
+// The return URL is user-typeable and is never proof of payment. There is no server-side payment
+// authority yet, so it only raises a transient (non-persisted) "pending confirmation" notice.
 function handlePlusPaymentReturn() {
   try {
     var p = new URLSearchParams(window.location.search);
     if (p.get("plus_payment") !== "success") return;
-    completarCompraPlus();
+    window.CZState._plusPaymentPendingConfirmation = true;
     p.delete("plus_payment");
     var qs = p.toString();
     var clean = window.location.pathname + (qs ? "?" + qs : "") + window.location.hash;
@@ -1068,7 +1040,11 @@ function onPlusCtaClick() {
   }
 
   if (!iniciarPagoHandy()) {
-    completarCompraPlus();
+    var errMsg = document.getElementById("plus-cta-inline-msg");
+    if (errMsg) {
+      errMsg.textContent = "No pudimos iniciar el pago. Intentá de nuevo más tarde.";
+      errMsg.style.display = "block";
+    }
   }
 }
 
@@ -3909,7 +3885,8 @@ document.addEventListener("DOMContentLoaded", function() {
         var proxyEnabled = typeof CZ_PLUS_PROXY_ENABLED !== "undefined" && !!CZ_PLUS_PROXY_ENABLED;
         var allowBrowser = typeof CZ_CLAUDE_ALLOW_BROWSER_KEY !== "undefined" && !!CZ_CLAUDE_ALLOW_BROWSER_KEY;
         var hasKey = typeof CZ_CLAUDE_API_KEY !== "undefined" && String(CZ_CLAUDE_API_KEY).trim() !== "";
-        if (paymentLive || (!proxyEnabled && (!allowBrowser || !hasKey))) return;
+        var testUiEnabled = typeof CZ_PLUS_TEST_UI_ENABLED !== "undefined" && CZ_PLUS_TEST_UI_ENABLED === true;
+        if (!testUiEnabled || paymentLive || (!proxyEnabled && (!allowBrowser || !hasKey))) return;
 
         st._plusInformeTestError = false;
         if (typeof setPlusStatus === "function") {

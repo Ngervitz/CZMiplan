@@ -5299,7 +5299,8 @@ function _plusClaudeTestConfig() {
   var proxyEnabled = typeof CZ_PLUS_PROXY_ENABLED !== "undefined" && !!CZ_PLUS_PROXY_ENABLED;
   var allowBrowser = typeof CZ_CLAUDE_ALLOW_BROWSER_KEY !== "undefined" && !!CZ_CLAUDE_ALLOW_BROWSER_KEY;
   var hasKey = typeof CZ_CLAUDE_API_KEY !== "undefined" && String(CZ_CLAUDE_API_KEY).trim() !== "";
-  var canGenerate = !paymentLive && (proxyEnabled || (allowBrowser && hasKey));
+  var testUiEnabled = typeof CZ_PLUS_TEST_UI_ENABLED !== "undefined" && CZ_PLUS_TEST_UI_ENABLED === true;
+  var canGenerate = testUiEnabled && !paymentLive && (proxyEnabled || (allowBrowser && hasKey));
   return {
     paymentLive: paymentLive,
     proxyEnabled: proxyEnabled,
@@ -5586,6 +5587,19 @@ function renderPlusError() {
   );
 }
 
+function renderPlusPaymentPending() {
+  return _plusScreenWrap(
+    _plusCard(
+      '<div class="plus-status-icon" aria-hidden="true">⏳</div>'
+      + '<h2 class="plus-status-title">Pago pendiente de confirmación</h2>'
+      + '<p class="plus-status-body">Todavía no pudimos confirmar tu pago. '
+      + "Tu informe Plus se habilita solo cuando el pago esté confirmado.</p>"
+      + '<p class="plus-support-line">Si ya pagaste, escribinos a '
+      + '<a href="mailto:credizonauy@gmail.com" class="plus-support-link">credizonauy@gmail.com</a></p>'
+    )
+  );
+}
+
 function renderTabPlus() {
   var st = _st();
   if (typeof window !== "undefined"
@@ -5599,6 +5613,7 @@ function renderTabPlus() {
   if (status === "PLUS_READY" && st.plus_informe) return renderPlusInforme(st.plus_informe);
   if (status === "PLUS_READY") return renderPlusReady();
   if (status === "PLUS_ERROR") return renderPlusError();
+  if (st._plusPaymentPendingConfirmation === true && !st.plus_purchased) return renderPlusPaymentPending();
 
   if (!st.plus_purchased || status == null) {
     return renderPlusPresentation();

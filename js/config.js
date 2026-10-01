@@ -653,7 +653,10 @@ var CZ_CLAUDE_MODEL = "claude-sonnet-4-5";
 var CZ_PLUS_USE_MOCK = false;
 var CZ_CLAUDE_ALLOW_BROWSER_KEY = false;
 var CZ_PLUS_PROXY_ENABLED = true;
-var CZ_PLUS_PROXY_CLIENT_SECRET = "123456789987654321";
+var CZ_PLUS_PROXY_CLIENT_SECRET = "";
+// Internal "Generar informe de prueba con IA" entry point. Keep false in this file; enable only
+// via js/config.local.js. /api/plus/generate refuses production regardless of this flag.
+var CZ_PLUS_TEST_UI_ENABLED = false;
 
 // Sprint MiDeuda — partner placeholder (CRM + future redirect)
 var MIDEUDA_INTEGRATION_ENABLED = false;

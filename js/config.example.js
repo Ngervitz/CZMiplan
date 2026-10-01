@@ -23,3 +23,7 @@
 // Beta friction only — NOT real authentication. Set matching value in Vercel
 // env CZ_PLUS_PROXY_SECRET; never commit the real secret.
 var CZ_PLUS_PROXY_CLIENT_SECRET = "";
+
+// Internal Plus test report button (synthetic input). Local/preview only; the
+// endpoint refuses Vercel production regardless.
+//   CZ_PLUS_TEST_UI_ENABLED = true;
