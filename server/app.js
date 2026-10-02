@@ -124,6 +124,7 @@ function createApp(config, overrides) {
           client: sharedClient || createSupabaseClient(config),
           backendSecret: config.backendSecret,
         }),
+        interactionEnabled: config.v2InteractionEnabled,
       });
     }
   }

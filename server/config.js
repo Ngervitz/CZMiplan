@@ -42,6 +42,8 @@ function loadConfig(env) {
   var miplanHandoffRedeemSecret = String(
     env.MIPLAN_HANDOFF_REDEEM_SECRET || ""
   ).trim();
+  // V2-CTA-INTERACTION-01 — creation of the CTA interaction choice types. Off unless exactly "true".
+  var v2InteractionEnabled = String(env.MIPLAN_V2_INTERACTION_ENABLED || "").trim() === "true";
 
   return {
     appName: "miplan-backend",
@@ -58,6 +60,7 @@ function loadConfig(env) {
     janusHandoffBaseUrl: janusHandoffBaseUrl,
     miplanHandoffRedeemSecret: miplanHandoffRedeemSecret,
     handoffConfigured: !!(janusHandoffBaseUrl && miplanHandoffRedeemSecret),
+    v2InteractionEnabled: v2InteractionEnabled,
   };
 }
 

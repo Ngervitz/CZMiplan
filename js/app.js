@@ -558,6 +558,11 @@ function commitDeudaQuickMontoFromInput(inputEl) {
       }
       st.temporal.last_debt_update_at = new Date().toISOString();
       window.guardarLocal();
+      if (typeof window.CZShadowDiagnosis !== "undefined" &&
+          typeof window.CZShadowDiagnosis.isV2StrategyStateEnabled === "function" &&
+          window.CZShadowDiagnosis.isV2StrategyStateEnabled()) {
+        window.CZShadowDiagnosis.maybeShadowDiagnosis(st, "quick_edit");
+      }
     } else if (prev !== undefined && prev !== null) {
       d.monto = prev;
     }
@@ -1121,6 +1126,8 @@ window.guardarLocal = function(extra) {
       vertical_profiling_opened:        !!st.vertical_profiling_opened,
       vertical_profiling_completion:    st.vertical_profiling_completion != null ? st.vertical_profiling_completion : 0,
       vertical_profiling_completed:     !!st.vertical_profiling_completed,
+      // P-05 — journey that owns this state; same-journey state outranks the handoff bootstrap
+      handoff_journey_id:      st._journeyId || null,
       fecha:                   new Date().toISOString(),
     }, extra)));
   } catch (e) {}
@@ -2047,16 +2054,29 @@ async function init() {
   // Step 2 — localStorage (always checked; authoritative when CRM returns null)
   var sesion = cargarLocal();
   var hasSurveyParams = _hasCompleteSurveyParams();
+  // A valid V2 handoff survey is completed (same entry as a complete survey) but has no
+  // legacy answers: PRE.respuestas stays empty and the legacy engine runs without survey.
+  var surveyCompletedEntry = hasSurveyParams || !!window.CZState._handoffSurveyV2Completed;
+  // P-05 — same-journey persisted state outranks the handoff bootstrap (diag not required:
+  // the journey may still be mid-flow).
+  var handoffJourneyRestore = !!(
+    window.CZState._handoffJourneyRestore
+    && window.CZState._journeyId
+    && sesion
+    && sesion.handoff_journey_id === window.CZState._journeyId
+  );
 
-  // Resolve priority: complete survey URL > CRM > localStorage > bridge
+  // Resolve priority: same-journey local state > complete survey URL > CRM > localStorage > bridge
   // Rule: a null CRM response NEVER overwrites valid localStorage state
   var dataToUse = null;
 
-  if (!hasSurveyParams && crmData && crmData.diag) {
+  if (handoffJourneyRestore) {
+    dataToUse = sesion;
+  } else if (!surveyCompletedEntry && crmData && crmData.diag) {
     dataToUse = crmData;
     trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_APPLIED, { source: "crm_link" });
 
-  } else if (!hasSurveyParams && sesion && sesion.diag) {
+  } else if (!surveyCompletedEntry && sesion && sesion.diag) {
     dataToUse = sesion;
     if (crmContactId) {
       trackEvent(CZ_EVENT_NAMES.CRM_HYDRATION_FALLBACK_TO_LOCAL, { source: "crm_link" });
@@ -2067,9 +2087,9 @@ async function init() {
   var now = new Date().toISOString();
 
   st._localStoragePresent = !!(sesion && sesion.diag);
-  st._crmHydrated = !!(crmData && crmData.diag);
+  st._crmHydrated = !handoffJourneyRestore && !!(crmData && crmData.diag);
 
-  if (hasSurveyParams) {
+  if (surveyCompletedEntry && !handoffJourneyRestore) {
     var fromHandoff = !!st._handoffPrefill;
 
     if (fromHandoff) {
@@ -2236,7 +2256,8 @@ async function init() {
         st.financial_income_complete = true;
       }
     }
-    applyUrlIngresoSource(st);
+    // Same-journey persisted state already went through its bootstrap.
+    if (!handoffJourneyRestore) applyUrlIngresoSource(st);
     applyUrlProfileSources(st);
     syncPreProfileFromState(st);
     st.financial_debts_complete = dataToUse.financial_debts_complete != null
@@ -2300,6 +2321,18 @@ async function init() {
     }
     syncGastosMissingConfirmedAfterExpensesDeclared(st);
     invalidateLowExpensesConfirmedIfStale(st);
+    // Mid-flow journey (dashboard never generated): keep the step the user was on.
+    if (handoffJourneyRestore && !st.temporal.dashboard_generated_at
+        && typeof dataToUse.step === "number" && dataToUse.step < st.step) {
+      st.step = dataToUse.step;
+    }
+    if (handoffJourneyRestore && !st.diag && typeof calcularMotor === "function") {
+      var _prelimDiagR = calcularMotor();
+      if (typeof attachFinancialStageToDiag === "function") {
+        attachFinancialStageToDiag(_prelimDiagR, st);
+      }
+      st._preliminary_diag = _prelimDiagR;
+    }
   } else {
     st._diagSource = "url_pending";
   }
@@ -2326,7 +2359,7 @@ async function init() {
 
   // Set initial recovery state if not yet established
   if (!st.user_recovery_state) {
-    if (hasSurveyParams) {
+    if (surveyCompletedEntry) {
       // set in fresh URL path above
     } else if (dataToUse) {
       setRecoveryState("dashboard_generated");
@@ -2354,6 +2387,11 @@ async function init() {
 
   trackEvent(CZ_EVENT_NAMES.RESET_STARTED, { source: "init" });
   window.guardarLocal();
+
+  if (typeof window.CZShadowDiagnosis !== "undefined" &&
+      typeof window.CZShadowDiagnosis.restoreV2Strategy === "function") {
+    window.CZShadowDiagnosis.restoreV2Strategy(st);
+  }
 }
 
 // =============================================================================

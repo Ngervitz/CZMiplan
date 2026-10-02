@@ -10,6 +10,32 @@
   var STORAGE_CTX = "cz_handoff_context_v1";
   var STORAGE_CODE_HASH = "cz_handoff_code_hash_v1";
   var STORAGE_JOURNEY = "cz_journey_id_v1";
+  var SURVEY_V2_ANSWER_KEYS = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p10"];
+  var SURVEY_V2_LOAN_PURPOSES = [
+    "purchase_or_home_improvement",
+    "unexpected_one_off_expense",
+    "debt_management",
+    "recurring_expense_shortfall",
+    "work_or_business_investment",
+    "other",
+  ];
+
+  // Same contract as server/modules/journey/surveyV2Signals.js#validateSurveyV2.
+  function isValidSurveyV2(survey) {
+    if (!survey || typeof survey !== "object" || Array.isArray(survey)) return false;
+    if (survey.source_survey_version !== 2) return false;
+    var r = survey.respuestas;
+    if (!r || typeof r !== "object" || Array.isArray(r) || r.p7 != null) return false;
+    for (var i = 0; i < SURVEY_V2_ANSWER_KEYS.length; i++) {
+      var v = r[SURVEY_V2_ANSWER_KEYS[i]];
+      if (v !== "A" && v !== "B" && v !== "C" && v !== "D") return false;
+    }
+    if (SURVEY_V2_LOAN_PURPOSES.indexOf(survey.loan_purpose) < 0) return false;
+    var prov = survey.provenance;
+    if (prov == null) return true;
+    if (typeof prov !== "object" || Array.isArray(prov)) return false;
+    return prov.source_survey_version == null || prov.source_survey_version === 2;
+  }
 
   function readHandoffCodeFromLocation() {
     try {
@@ -102,6 +128,13 @@
     } catch (_e2) {
       /* ignore */
     }
+    try {
+      if (global.CZShadowDiagnosis && typeof global.CZShadowDiagnosis.dropStaleV2Strategy === "function") {
+        global.CZShadowDiagnosis.dropStaleV2Strategy();
+      }
+    } catch (_e3) {
+      /* ignore */
+    }
   }
 
   function getCurrentJourneyId() {
@@ -130,8 +163,27 @@
   }
 
   /**
+   * P-05 — the handoff is the journey's initial bootstrap, not a permanent authority.
+   * True when localStorage already holds state persisted for this same journey.
+   */
+  function hasPersistedStateForJourney(journeyId) {
+    if (!journeyId || typeof STORAGE_KEY === "undefined") return false;
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      var saved = JSON.parse(raw);
+      return !!(saved && saved.handoff_journey_id && String(saved.handoff_journey_id) === String(journeyId));
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  /**
    * Map JANUS allowlisted context into PRE / CZState canonical fields.
    * Does not invent monto_solicitado / motivo_rechazo / legal consent.
+   * When this journey already has persisted state, declared fields (nombre, email,
+   * ingreso, laboral) are left to init()'s local restore; only survey, handoff-only
+   * PRE fields and journey metadata are applied.
    */
   function applyHandoffContextToPrefill(context) {
     if (!context || typeof context !== "object") return false;
@@ -140,17 +192,22 @@
     var person = context.person || {};
     var financial = context.financial_prefill || {};
     var survey = context.survey || {};
-    var respuestas = survey.respuestas || {};
+    // Survey V2 (P7 = loan_purpose) and unknown versions never feed the legacy survey engine.
+    var legacySurvey =
+      survey.source_survey_version == null || survey.source_survey_version === 1;
+    var respuestas = legacySurvey ? survey.respuestas || {} : {};
     var st =
       typeof window !== "undefined" && window.CZState && typeof window.CZState === "object"
         ? window.CZState
         : null;
+    var jid = getCurrentJourneyId();
+    var journeyRestore = hasPersistedStateForJourney(jid);
 
-    if (person.nombre) {
+    if (person.nombre && !journeyRestore) {
       PRE.nombre = String(person.nombre);
       if (st) st.declared_nombre = PRE.nombre;
     }
-    if (person.email) {
+    if (person.email && !journeyRestore) {
       PRE.email = String(person.email);
       if (st) st.user_email = PRE.email;
     }
@@ -159,7 +216,7 @@
       PRE.fecha_nacimiento = String(person.fecha_nacimiento);
     }
 
-    if (financial.ingreso != null && Number(financial.ingreso) > 0) {
+    if (!journeyRestore && financial.ingreso != null && Number(financial.ingreso) > 0) {
       PRE.ingreso = Number(financial.ingreso);
       if (st) {
         st.declared_ingreso = PRE.ingreso;
@@ -167,7 +224,7 @@
         st.financial_income_complete = true;
       }
     }
-    if (financial.laboral && typeof PROFILE_LABORAL_VALUES !== "undefined") {
+    if (!journeyRestore && financial.laboral && typeof PROFILE_LABORAL_VALUES !== "undefined") {
       if (PROFILE_LABORAL_VALUES.indexOf(financial.laboral) >= 0) {
         PRE.laboral = financial.laboral;
         if (st) st.declared_laboral = PRE.laboral;
@@ -194,14 +251,17 @@
 
     if (st) {
       st._handoffPrefill = true;
+      // Completed survey without legacy answers: skips the survey screens, never feeds PRE.respuestas.
+      st._handoffSurveyV2Completed = isValidSurveyV2(survey);
       st._entryFunnel =
         (context.context && context.context.funnel) || "credizona_rejected";
       if (hasSurvey) {
         st._diagSource = "janus_handoff";
       }
-      var jid = getCurrentJourneyId();
       if (jid) st._journeyId = jid;
+      st._handoffJourneyRestore = journeyRestore;
       if (
+        !journeyRestore &&
         st.declared_nombre &&
         st.user_email &&
         st.declared_laboral &&
@@ -314,9 +374,11 @@
     isEntryAuthorized: isEntryAuthorized,
     maybeRedeemHandoffOnEntry: maybeRedeemHandoffOnEntry,
     applyHandoffContextToPrefill: applyHandoffContextToPrefill,
+    isValidSurveyV2: isValidSurveyV2,
     normalizeSurveyLetter: normalizeSurveyLetter,
     stripHandoffFromUrl: stripHandoffFromUrl,
     getCurrentJourneyId: getCurrentJourneyId,
     persistJourneyId: persistJourneyId,
+    hasPersistedStateForJourney: hasPersistedStateForJourney,
   };
 })(typeof window !== "undefined" ? window : globalThis);

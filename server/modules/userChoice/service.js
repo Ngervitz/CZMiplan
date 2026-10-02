@@ -2,25 +2,36 @@
  * server/modules/userChoice/service.js — V2 user choices (user_choice_v1) and the debt management
  * opt-in (debt_management_opt_in_v1) on an owned V2 strategy evaluation.
  *
- * The client sends only what the user chose (type, debt_index, amount, destination, state). Strategy,
- * monthly_surplus, debt state and ownership are never read from the request: the RPCs re-derive them
- * from the stored evaluation. This layer only rejects malformed shapes early.
+ * The client sends only what the user chose (type, debt_index, expense_ref, amount, destination,
+ * state). Strategy, monthly_surplus, debt state, expense amounts and ownership are never read from the
+ * request: the RPCs re-derive them from the stored evaluation and its origin diagnosis snapshot. This
+ * layer only rejects malformed shapes early.
  */
 "use strict";
 
-var buildActionContext = require("../diagnosis/actionContext").buildActionContext;
+var actionContextModule = require("../diagnosis/actionContext");
+var buildActionContext = actionContextModule.buildActionContext;
+var financialAction = require("../financialAction/derive");
 
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 var AMOUNT_RE = /^-?\d{1,12}(\.\d{1,2})?$/;
 var VERSION_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+var EXPENSE_REF_RE = new RegExp("^(" + actionContextModule.EXPENSE_CATALOG.join("|") + "|custom:[1-9][0-9]{0,3})$");
 var CHOICE_FIELDS = {
   lower_payment_intent: ["debt_index", "state"],
   surplus_to_debt: ["debt_index", "amount"],
   surplus_reserve: ["destination", "amount"],
+  expense_reduction_intent: ["expense_ref", "state", "amount"],
+  creditor_contact_step: ["debt_index", "state"],
 };
-var PAYLOAD_FIELDS = ["debt_index", "amount", "destination", "state"];
+// CTA interaction types (migration 20261001180000): created only when the backend enables them
+// (MIPLAN_V2_INTERACTION_ENABLED); reads are not gated.
+var INTERACTION_CHOICE_TYPES = ["expense_reduction_intent", "creditor_contact_step"];
+var PAYLOAD_FIELDS = ["debt_index", "amount", "destination", "state", "expense_ref"];
 var RESERVE_DESTINATIONS = ["emergency_fund", "planned_goal"];
 var LOWER_PAYMENT_STATES = ["marked", "unmarked"];
+var EXPENSE_STATES = ["marked", "unmarked"];
+var CONTACT_STATES = ["planned", "contacted", "none"];
 // Strategies whose actions include trying to lower a debt's monthly payment. Must equal the list in
 // miplan_private.v2_choice_authority (lower_payment_debts); parity-tested in v2-user-choice-db-test.
 var LOWER_PAYMENT_STRATEGIES = ["CONTENCION", "REDUCCION_CARGA"];
@@ -73,6 +84,13 @@ function projectChoice(row) {
   if (row.choice_type === "lower_payment_intent") {
     return { choice_type: row.choice_type, debt_index: row.debt_index, state: row.lower_payment_state, updated_at: row.created_at };
   }
+  if (row.choice_type === "expense_reduction_intent") {
+    return { choice_type: row.choice_type, expense_ref: row.expense_ref, state: row.choice_state,
+      amount: row.amount == null ? null : Number(row.amount), updated_at: row.created_at };
+  }
+  if (row.choice_type === "creditor_contact_step") {
+    return { choice_type: row.choice_type, debt_index: row.debt_index, state: row.choice_state, updated_at: row.created_at };
+  }
   var out = { choice_type: row.choice_type };
   if (row.choice_type === "surplus_to_debt") out.debt_index = row.debt_index;
   else out.destination = row.reserve_destination;
@@ -104,10 +122,26 @@ function lowerPaymentEligible(result) {
     .map(function (d) { return d.debt_index; });
 }
 
+/**
+ * action_context of the stored evaluation. expense_categories only when the RPC returned the expense
+ * input of the evaluation's origin diagnosis snapshot (migration 20261001180000).
+ */
+function stateActionContext(state) {
+  return Object.prototype.hasOwnProperty.call(state, "origin_expense_input")
+    ? buildActionContext(state.result, state.origin_expense_input)
+    : buildActionContext(state.result);
+}
+
 function projectState(state) {
-  var actionContext = buildActionContext(state.result);
+  var actionContext = stateActionContext(state);
   var marked = {};
   (state.lower_payment_intent || []).forEach(function (m) { marked[m.debt_index] = m.created_at; });
+  var expenseHeads = {};
+  (state.expense_reduction_intent || []).forEach(function (h) { expenseHeads[h.expense_ref] = h; });
+  var contactHeads = {};
+  (state.creditor_contact_step || []).forEach(function (h) { contactHeads[h.debt_index] = h; });
+  var expenses = actionContext && Array.isArray(actionContext.expense_categories) ? actionContext.expense_categories : [];
+  var mora = actionContext && Array.isArray(actionContext.mora_debts) ? actionContext.mora_debts : [];
   return {
     evaluation_id: state.evaluation_id,
     classification_status: state.classification_status,
@@ -118,16 +152,27 @@ function projectState(state) {
         return { debt_index: i, state: marked[i] ? "marked" : "unmarked", updated_at: marked[i] || null };
       }),
       surplus_allocation: projectChoice(state.surplus_allocation),
+      expense_reduction_intent: expenses.map(function (c) {
+        var h = expenseHeads[c.expense_ref];
+        return { expense_ref: c.expense_ref, state: h ? "marked" : "unmarked", amount: h ? Number(h.amount) : null,
+          updated_at: h ? h.created_at : null };
+      }),
+      creditor_contact_step: mora.map(function (d) {
+        var h = contactHeads[d.debt_index];
+        return { debt_index: d.debt_index, state: h ? h.state : "none", updated_at: h ? h.created_at : null };
+      }),
     },
+    financial_actions: financialAction.deriveFinancialActions(state, actionContext).map(financialAction.projectFinancialAction),
     debt_management_opt_in: projectOptIn(state.debt_management_opt_in),
   };
 }
 
 /**
- * @param {{ repository: ReturnType<typeof import('./repository').createUserChoiceRepository> }} deps
+ * @param {{ repository: ReturnType<typeof import('./repository').createUserChoiceRepository>, interactionEnabled?: boolean }} deps
  */
 function createUserChoiceService(deps) {
   var repository = deps.repository;
+  var interactionEnabled = deps.interactionEnabled === true;
 
   async function getState(args) {
     var lookup = { anonymous_id: args.anonymousId };
@@ -143,6 +188,7 @@ function createUserChoiceService(deps) {
     if (typeof type !== "string" || !Object.prototype.hasOwnProperty.call(CHOICE_FIELDS, type)) {
       throw fail("INVALID_CHOICE_TYPE");
     }
+    if (!interactionEnabled && INTERACTION_CHOICE_TYPES.indexOf(type) !== -1) throw fail("V2_INTERACTION_DISABLED");
     var allowed = CHOICE_FIELDS[type];
     PAYLOAD_FIELDS.forEach(function (k) {
       if (allowed.indexOf(k) === -1 && present(body, k)) throw fail("INVALID_CHOICE_PAYLOAD");
@@ -157,12 +203,26 @@ function createUserChoiceService(deps) {
       amount: null,
       reserve_destination: null,
       lower_payment_state: null,
+      expense_ref: null,
+      choice_state: null,
     };
     if (type === "lower_payment_intent") {
       row.debt_index = debtIndexOrThrow(body.debt_index);
       var st = present(body, "state") ? body.state : "marked";
       if (LOWER_PAYMENT_STATES.indexOf(st) === -1) throw fail("INVALID_CHOICE_PAYLOAD");
       row.lower_payment_state = st;
+    } else if (type === "expense_reduction_intent") {
+      if (typeof body.expense_ref !== "string" || !EXPENSE_REF_RE.test(body.expense_ref)) throw fail("INVALID_EXPENSE_REF");
+      row.expense_ref = body.expense_ref;
+      var es = present(body, "state") ? body.state : "marked";
+      if (EXPENSE_STATES.indexOf(es) === -1) throw fail("INVALID_CHOICE_PAYLOAD");
+      row.choice_state = es;
+      if (es === "marked") row.amount = amountOrThrow(body.amount);
+      else if (present(body, "amount")) throw fail("INVALID_CHOICE_PAYLOAD");
+    } else if (type === "creditor_contact_step") {
+      row.debt_index = debtIndexOrThrow(body.debt_index);
+      if (CONTACT_STATES.indexOf(body.state) === -1) throw fail("INVALID_CHOICE_PAYLOAD");
+      row.choice_state = body.state;
     } else {
       row.amount = amountOrThrow(body.amount);
       if (type === "surplus_to_debt") {
@@ -216,5 +276,6 @@ module.exports = {
   createUserChoiceService: createUserChoiceService,
   RESERVE_DESTINATIONS: RESERVE_DESTINATIONS,
   LOWER_PAYMENT_STRATEGIES: LOWER_PAYMENT_STRATEGIES,
+  INTERACTION_CHOICE_TYPES: INTERACTION_CHOICE_TYPES,
   lowerPaymentEligible: lowerPaymentEligible,
 };

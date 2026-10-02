@@ -30,8 +30,29 @@
  * (migration 20261001120000) to authorize user choices (lower_payment_intent eligibility:
  * server/modules/userChoice/service.js); any change here must keep that function and the JS ↔ SQL
  * parity test in server/bin/v2-user-choice-db-test.js in step.
+ *
+ * V2-CTA-INTERACTION-01 — expense_categories (only when the caller passes the expense input of the
+ * evaluation's origin diagnosis snapshot, i.e. { gastos, custom_expenses }):
+ *   CONTENCION, and MANTENIMIENTO_OPTIMIZACION without monthly_surplus (flow 0)
+ *                    [{ expense_ref, amount }] catalog categories in EXPENSE_CATALOG order, then
+ *                    custom expenses as "custom:<n>". Projected from the financial_input_identity_v1
+ *                    canonical form, so evaluations reused across diagnoses (same identity) project
+ *                    the same list. n = 1-based position in the identity's custom list (blank / zero /
+ *                    excluded entries are not counted; invalid ones are counted but never projected):
+ *                    a positional V1 reference, not a semantic identity. Unknown gastos keys, invalid
+ *                    amounts and amounts that round to 0 cents or reach 1e12 are left out.
+ * Without that argument the output is exactly the result-only projection above.
+ * Re-derived in SQL by miplan_private.v2_expense_categories (migration 20261001180000); keep the
+ * JS ↔ SQL parity test in server/bin/v2-interaction-db-test.js in step.
  */
 "use strict";
+
+var canonicalizeFinancialInput = require("../../../js/financialInputIdentity").canonicalizeFinancialInput;
+
+var EXPENSE_CATALOG = ["vivienda", "alimentacion", "servicios", "transporte", "salud", "educacion", "hijos_familia", "ocio"];
+var MAX_CUSTOM_REF = 9999;
+var MAX_EXPENSE_CENTS = 1e14;
+var INVALID_EXPENSE = "!invalid";
 
 var UNKNOWN = "unknown";
 var KNOWN_PAYMENT = { KNOWN_POSITIVE: true, KNOWN_ZERO: true };
@@ -123,10 +144,55 @@ function activeDebts(debts) {
 }
 
 /**
+ * Cents of a canonical non-negative decimal string, half-up on the decimal digits (= round(numeric, 2)
+ * in SQL), or null when the integer part has more than 12 digits.
+ */
+function canonicalCents(c) {
+  var m = /^(\d+)(?:\.(\d+))?$/.exec(c);
+  if (!m || m[1].length > 12) return null;
+  var frac = (m[2] || "") + "000";
+  return Number(m[1]) * 100 + Number(frac.slice(0, 2)) + (frac.charAt(2) >= "5" ? 1 : 0);
+}
+
+function expenseAmount(c) {
+  if (typeof c !== "string" || c === INVALID_EXPENSE) return null;
+  var cts = canonicalCents(c);
+  return cts !== null && cts > 0 && cts < MAX_EXPENSE_CENTS ? cts / 100 : null;
+}
+
+/**
+ * @param {{ gastos?: object, custom_expenses?: Array }} expenseInput expense part of input_snapshot
+ * @returns {Array<{expense_ref: string, amount: number}>}
+ */
+function projectExpenseCategories(expenseInput) {
+  if (!isPlainObject(expenseInput)) return [];
+  var canonical = canonicalizeFinancialInput({ gastos: expenseInput.gastos, custom_expenses: expenseInput.custom_expenses });
+  if (canonical == null) return [];
+  var parsed = JSON.parse(canonical);
+  var byKey = {};
+  parsed[3].forEach(function (pair) { byKey[pair[0]] = pair[1]; });
+  var out = [];
+  EXPENSE_CATALOG.forEach(function (k) {
+    var amount = Object.prototype.hasOwnProperty.call(byKey, k) ? expenseAmount(byKey[k]) : null;
+    if (amount !== null) out.push({ expense_ref: k, amount: amount });
+  });
+  parsed[4].forEach(function (c, i) {
+    var amount = i + 1 <= MAX_CUSTOM_REF ? expenseAmount(c) : null;
+    if (amount !== null) out.push({ expense_ref: "custom:" + (i + 1), amount: amount });
+  });
+  return out;
+}
+
+function expenseCategoriesApply(strategy, out) {
+  return strategy === "CONTENCION" || (strategy === "MANTENIMIENTO_OPTIMIZACION" && out.monthly_surplus === null);
+}
+
+/**
  * @param {object} result stored evaluation result (classifier output shape)
+ * @param {object} [expenseInput] { gastos, custom_expenses } of the evaluation's origin diagnosis snapshot
  * @returns {object|null}
  */
-function buildActionContext(result) {
+function buildActionContext(result, expenseInput) {
   if (!isPlainObject(result) || result.classification_status !== "classified") return null;
   var fields = Object.prototype.hasOwnProperty.call(FIELDS_BY_STRATEGY, result.strategy)
     ? FIELDS_BY_STRATEGY[result.strategy]
@@ -149,10 +215,15 @@ function buildActionContext(result) {
   fields.forEach(function (f) {
     out[f] = build[f]();
   });
+  if (arguments.length > 1 && expenseCategoriesApply(result.strategy, out)) {
+    out.expense_categories = projectExpenseCategories(expenseInput);
+  }
   return out;
 }
 
 module.exports = {
   FIELDS_BY_STRATEGY: FIELDS_BY_STRATEGY,
+  EXPENSE_CATALOG: EXPENSE_CATALOG,
   buildActionContext: buildActionContext,
+  projectExpenseCategories: projectExpenseCategories,
 };

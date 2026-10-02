@@ -16,7 +16,8 @@
  * pageerror, and the normalized dashboard DOM equal to the flag-OFF run with the same facts.
  * Non-deterministic DOM parts normalized across runs: debt ids (deuda_<ts>), 13-digit
  * timestamps and UUIDs. Legacy timer-driven chrome (first-diagnosis celebration, 3000 ms; the
- * toast after reset) is awaited out before any measurement.
+ * first-dashboard toast, 5000 ms; the toast after reset) is awaited out before any measurement.
+ * Typed amounts are plain digits, read the same by every amount parser of the app.
  *
  * Usage: node dev/backend-arch/classifier-shadow/v2-wiring-e2e.js
  */
@@ -239,20 +240,20 @@ async function toDashboard(page, facts) {
   var sel = function (f) { return '[data-deuda-field="' + f + '"][data-deuda-idx="' + idx + '"]'; };
   await page.selectOption(sel("tipo"), "prestamo");
   await page.fill(sel("acreedor"), "Banco QA");
-  await typeAndBlur(page, sel("monto"), "120.000");
+  await typeAndBlur(page, sel("monto"), "120000");
   if (facts === "incomplete") {
     await page.click('[data-deuda-situacion="no_seguro"][data-deuda-idx="' + idx + '"]');
     var ns = '[data-deuda-field="atraso_tiempo_aprox"][data-deuda-val="no_sabe"][data-deuda-idx="' + idx + '"]';
     if (await page.$(ns)) await page.click(ns);
   } else {
     await page.click('[data-deuda-situacion="pagando_normal"][data-deuda-idx="' + idx + '"]');
-    await typeAndBlur(page, sel("pago"), "6.500");
+    await typeAndBlur(page, sel("pago"), "6500");
   }
   await page.click("#btn-guardar-deuda-edicion");
   await page.waitForTimeout(200);
   await clickContinue(page);
   await page.waitForSelector('[data-gasto="vivienda"]');
-  await typeAndBlur(page, '[data-gasto="vivienda"]', "20.000");
+  await typeAndBlur(page, '[data-gasto="vivienda"]', "20000");
   await clickContinue(page);
   await page.waitForFunction(function () { return window.CZState.step === 3; }, null, { timeout: 15000 });
 }
@@ -394,6 +395,11 @@ async function runScenario(browser, origin, sc, apis) {
     }
     // Legacy first-diagnosis celebration auto-dismisses after 3000 ms (celebrations.js OVERLAY_MS).
     await page.waitForFunction(function () { return !document.querySelector(".cz-celebration-root"); }, null, { timeout: 10000 });
+    // Legacy first-dashboard toast (ui.js, "Diagnóstico guardado", 5000 ms) removes itself on a timer:
+    // it must have been shown and be gone, otherwise its removal lands inside a measurement window.
+    await page.waitForFunction(function () {
+      return sessionStorage.getItem("cz_toast_dashboard_shown") === "1" && !document.getElementById("cz-toast");
+    }, null, { timeout: 15000 });
     out.quiet = await page.evaluate(pageWaitQuiet, { quietMs: 800, maxMs: 10000 });
     var before = await page.evaluate(pageInstallProbes);
     out.wrapped = before.wrapped;

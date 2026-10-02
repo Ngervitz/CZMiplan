@@ -213,9 +213,10 @@ async function run(pool) {
     "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;");
   var files = fs.readdirSync(path.join(ROOT, "server", "migrations")).filter(function (f) { return /\.sql$/.test(f); }).sort();
   var sqlOf = function (f) { return fs.readFileSync(path.join(ROOT, "server", "migrations", f), "utf8"); };
-  check("migration: " + MIGRATION + " is the last migration file", files[files.length - 1] === MIGRATION, files.slice(-2));
+  check("migration: " + MIGRATION + " present; only earlier migrations applied before it (later ones extend it and have their own harness)",
+    files.indexOf(MIGRATION) !== -1, files.slice(-2));
   for (var i = 0; i < files.length; i++) {
-    if (files[i] === MIGRATION) continue;
+    if (files[i] >= MIGRATION) continue;
     await pool.query(sqlOf(files[i]));
   }
   var migrationSql = sqlOf(MIGRATION);

@@ -86,6 +86,27 @@ function clamp(n, a, b) {
   return Math.max(a, Math.min(b, n));
 }
 
+// --- MONETARY-CONTRACT-01 — montos ---
+// Montos escritos por personas (formato Uruguay): miles con "." en grupos de 3,
+// centavos con "," (1–2 dígitos), prefijo opcional "$" o "UYU".
+// Cualquier otra forma es inválida ("50,000", "65000.50", "65.5", "65000abc", "U$S 100").
+var HUMAN_AMOUNT_RE = /^(\d+|\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?$/;
+var HUMAN_AMOUNT_PREFIX_RE = /^(?:\$|UYU)\s*/i;
+
+function parseHumanAmount(raw) {
+  if (raw == null) return { status: "empty", value: null };
+  if (typeof raw !== "string") return { status: "invalid", value: null };
+  var s = raw.trim();
+  if (!s) return { status: "empty", value: null };
+  var prefix = HUMAN_AMOUNT_PREFIX_RE.exec(s);
+  var body = prefix ? s.slice(prefix[0].length) : s;
+  var m = HUMAN_AMOUNT_RE.exec(body);
+  if (!m) return { status: "invalid", value: null };
+  var value = Number(m[1].replace(/\./g, "") + (m[2] ? "." + m[2] : ""));
+  if (!Number.isFinite(value)) return { status: "invalid", value: null };
+  return { status: "valid", value: value };
+}
+
 // --- Helpers de color ---
 function colorScore(s)  { return s >= 21 ? "#34ffaf" : s >= 13 ? "#ffd36f" : "#ff4e72"; }
 function colorNivel(n)  { return n === "A" ? "#34ffaf" : n === "B+" ? "#a78bfa" : n === "B" ? "#ffd36f" : "#ff4e72"; }
@@ -643,6 +664,12 @@ var CZ_SHADOW_MODE = true;
 var CZ_BACKEND_API_URL = "https://backend-production-17f9.up.railway.app";
 var CZ_SHADOW_PROD_HOSTS = ["cz-miplan2.vercel.app"];
 var CZ_SHADOW_TIMEOUT_MS = 8000;
+// V2-END-TO-END-WIRING-01 — frontend-only: keep the server-confirmed V2 strategy in CZState.
+// Never rendered. Rides on the shadow POST (shadow OFF → no V2 state). Backend never reads it.
+var CZ_V2_STRATEGY_STATE_ENABLED = false;
+// V2-CTA-INTERACTION-01 — CTA tools on the plan tab (expense / lower payment / surplus / creditor
+// contact), backed by the user-choice endpoints. Needs CZ_V2_STRATEGY_STATE_ENABLED. Off by default.
+var CZ_V2_INTERACTION_ENABLED = false;
 
 // Mi Plan Plus — precio único (UYU). Usar esta constante; no hardcodear 1290 en UI/tracking.
 const CZ_PLUS_PRICE_UYU = 1290;

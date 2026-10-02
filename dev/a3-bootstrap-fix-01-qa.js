@@ -266,6 +266,7 @@ function bootBrowser(opts) {
   var out = sanitize({
     context: { funnel: "credizona_rejected", external_ref: "LRW-X" },
     survey: {
+      source_survey_version: 1,
       respuestas: {
         p1: "d",
         p2: "a",
@@ -287,9 +288,14 @@ function bootBrowser(opts) {
   ok("sanitize ingreso", out.financial_prefill.ingreso === 42000);
   var bad = sanitize({
     context: { funnel: "credizona_rejected" },
-    survey: { respuestas: { p1: "ZZ" } },
+    survey: { source_survey_version: 1, respuestas: { p1: "ZZ" } },
   });
   ok("sanitize rejects invalid letter", !bad || !bad.survey || !bad.survey.respuestas.p1);
+  var unversioned = sanitize({
+    context: { funnel: "credizona_rejected" },
+    survey: { respuestas: { p1: "A", p2: "B" } },
+  });
+  ok("sanitize rejects survey without source_survey_version", !unversioned.survey);
 })();
 
 console.log("\nA3 bootstrap fix-01 QA: " + passed + " passed, " + failed + " failed");

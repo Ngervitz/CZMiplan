@@ -9,6 +9,8 @@ var KNOWN_ERRORS = [
   "EVALUATION_NOT_FOUND",
   "DIAGNOSIS_NOT_LINKED",
   "DEBT_NOT_ELIGIBLE",
+  "EXPENSE_NOT_ELIGIBLE",
+  "INVALID_EXPENSE_REF",
   "SURPLUS_NOT_AVAILABLE",
   "AMOUNT_OUT_OF_RANGE",
   "INVALID_AMOUNT",
@@ -58,7 +60,7 @@ function createUserChoiceRepository(deps) {
   }
 
   async function recordUserChoice(row) {
-    var { data, error } = await client.rpc("miplan_record_user_choice", {
+    var params = {
       p_secret: backendSecret,
       p_anonymous_id: row.anonymous_id,
       p_evaluation_id: row.evaluation_id,
@@ -68,7 +70,12 @@ function createUserChoiceRepository(deps) {
       p_amount: row.amount,
       p_reserve_destination: row.reserve_destination,
       p_lower_payment_state: row.lower_payment_state,
-    });
+    };
+    // Only the CTA interaction types (migration 20261001180000) send the trailing parameters, so the
+    // original nine-argument call stays valid before and after that migration.
+    if (row.expense_ref != null) params.p_expense_ref = row.expense_ref;
+    if (row.choice_state != null) params.p_choice_state = row.choice_state;
+    var { data, error } = await client.rpc("miplan_record_user_choice", params);
     if (error) throw dbError("DB_USER_CHOICE_FAILED", error);
     if (!data) throw dbError("DB_USER_CHOICE_FAILED", null);
     return data;

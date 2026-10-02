@@ -1748,6 +1748,7 @@ function renderTab() {
   if (tab === "plan")   el.innerHTML = renderTabPlan();
   if (tab === "deudas") el.innerHTML = renderTabDeudas();
   if (tab === "plus")   el.innerHTML = renderTabPlus();
+  if (tab === "plan" && window.CZV2Interaction) window.CZV2Interaction.mount(el);
   bindTabEvents();
   var qIdx = _st()._deuda_quick_edit_index;
   if (qIdx != null) focusDeudaQuickEditInput(qIdx);
@@ -4410,9 +4411,11 @@ function renderTabPlan() {
   var hasBehav = (typeof hasBehavioralSurveyData === "function")
     ? hasBehavioralSurveyData(st, diag)
     : !!TIENE_ENCUESTA;
-  var showBehavCta = (typeof shouldShowBehavioralRefinementCta === "function")
-    ? shouldShowBehavioralRefinementCta(st, diag)
-    : false;
+  // A completed V2 survey is never re-requested, even without a legacy behavioral score.
+  var showBehavCta = !st._handoffSurveyV2Completed
+    && (typeof shouldShowBehavioralRefinementCta === "function"
+      ? shouldShowBehavioralRefinementCta(st, diag)
+      : false);
   var _finScoreLabel = isIncompleteFinancialProfile(diag, st)
     ? _incompleteFinancialScoreLabel()
     : _scoreFinancieroLabel(fin.scoreFinanciero);

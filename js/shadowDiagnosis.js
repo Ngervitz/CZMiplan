@@ -15,6 +15,8 @@
   var _lastFingerprint = null;
   var _inFlight = false;
   var _cooldownUntil = 0;
+  var _rerunPending = false;
+  var _rerunTimer = null;
   var _stats = {
     attempts: 0,
     match: 0,
@@ -33,12 +35,31 @@
     return fallback;
   }
 
-  function getApiBaseUrl() {
-    var fromQuery = null;
+  function isLoopbackPage() {
     try {
-      var sp = new URLSearchParams(window.location.search);
-      if (sp.get("cz_api")) fromQuery = String(sp.get("cz_api") || "").trim();
-    } catch (e) {}
+      var h = String(window.location.hostname || "");
+      return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** ?cz_api= is a local-development override only; on any other page host it is ignored. */
+  function apiOverrideFromQuery() {
+    try {
+      if (!isLoopbackPage()) return null;
+      var raw = new URLSearchParams(window.location.search).get("cz_api");
+      if (!raw) return null;
+      var u = new URL(String(raw).trim());
+      if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+      return u.origin + u.pathname;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getApiBaseUrl() {
+    var fromQuery = apiOverrideFromQuery();
     var raw =
       fromQuery ||
       _readFlag("CZ_BACKEND_API_URL", typeof CZ_BACKEND_API_URL !== "undefined" ? CZ_BACKEND_API_URL : "") ||
@@ -68,7 +89,7 @@
 
   /**
    * Enabled when:
-   * - ?cz_shadow=1 (+ API via ?cz_api or CZ_BACKEND_API_URL), OR
+   * - ?cz_shadow=1 (+ API via CZ_BACKEND_API_URL, or ?cz_api on a loopback page), OR
    * - CZ_SHADOW_MODE kill-switch ON and host is prod allowlist (or localhost for config.local)
    * Kill switch: CZ_SHADOW_MODE=false disables auto-shadow (query still works for ops tests).
    */
@@ -84,6 +105,218 @@
     if (!getApiBaseUrl()) return false;
     if (q) return true;
     return !!(flag && isAllowlistedHost());
+  }
+
+  // ---- V2-END-TO-END-WIRING-01: server-confirmed V2 strategy kept in CZState, never rendered ----
+  var V2_STATE_KEY = "_v2FinancialStrategy";
+  var V2_STRATEGIES = {
+    CONTENCION: true,
+    REGULARIZACION: true,
+    REDUCCION_CARGA: true,
+    CONSOLIDACION: true,
+    MANTENIMIENTO_OPTIMIZACION: true,
+  };
+
+  function isV2StrategyStateEnabled() {
+    return (
+      _readFlag(
+        "CZ_V2_STRATEGY_STATE_ENABLED",
+        typeof CZ_V2_STRATEGY_STATE_ENABLED !== "undefined" ? CZ_V2_STRATEGY_STATE_ENABLED : false
+      ) === true
+    );
+  }
+
+  function getActiveJourneyId() {
+    try {
+      var jid =
+        (window.CZHandoffEntry &&
+          typeof window.CZHandoffEntry.getCurrentJourneyId === "function" &&
+          window.CZHandoffEntry.getCurrentJourneyId()) ||
+        (window.CZIdentity && window.CZIdentity.journey_id) ||
+        (window.CZState && window.CZState._journeyId) ||
+        "";
+      return jid ? String(jid) : "";
+    } catch (_e) {
+      return "";
+    }
+  }
+
+  function _isV2Strategy(s) {
+    return typeof s === "string" && Object.prototype.hasOwnProperty.call(V2_STRATEGIES, s);
+  }
+
+  // Closed catalog (classifier contract §19.2).
+  var V2_ENTRY_REASONS = {
+    FLOW_NEGATIVE: true,
+    ACTIVE_MORA: true,
+    HIGH_DEBT_BURDEN: true,
+    FLOW_ZERO: true,
+    SUSTAINABLE_DEBT_BURDEN: true,
+    NO_ACTIVE_DEBT: true,
+  };
+  var V2_CODE_RE = /^[A-Z][A-Z0-9_]*$/;
+  var V2_IDENTITY_VERSION = "financial_input_identity_v1";
+  var V2_IDENTITY_VALUE_RE = /^[0-9a-f]{64}$/;
+
+  function _isPlainObject(x) {
+    return !!x && typeof x === "object" && !Array.isArray(x);
+  }
+
+  function _isEntryReason(r) {
+    return typeof r === "string" && Object.prototype.hasOwnProperty.call(V2_ENTRY_REASONS, r);
+  }
+
+  function _isFactRef(x) {
+    if (!_isPlainObject(x) || typeof x.fact !== "string" || !x.fact) return false;
+    if (x.subject === "person") return true;
+    return x.subject === "debt" && typeof x.debt_index === "number" && x.debt_index >= 0 && x.debt_index % 1 === 0;
+  }
+
+  function _copyFactRef(x) {
+    var o = { fact: x.fact, subject: x.subject };
+    if (x.subject === "debt") o.debt_index = x.debt_index;
+    return o;
+  }
+
+  /** Strict validation of the public contract; returns a detached allowlisted copy or null. strategy may be null. */
+  function validateV2FinancialStrategy(v) {
+    if (!_isPlainObject(v)) return null;
+    if (v.survey_version !== 2) return null;
+    if (!Object.prototype.hasOwnProperty.call(v, "strategy")) return null;
+    if (!Array.isArray(v.reasons) || !v.reasons.every(_isEntryReason)) return null;
+    var ver = v.verification;
+    if (!_isPlainObject(ver) || typeof ver.required !== "boolean") return null;
+    if (!Array.isArray(ver.reasons) || !ver.reasons.every(function (r) {
+      return _isFactRef(r) && typeof r.code === "string" && V2_CODE_RE.test(r.code);
+    })) {
+      return null;
+    }
+    if (ver.required !== ver.reasons.length > 0) return null;
+    if (!Array.isArray(ver.missing_facts) || !ver.missing_facts.every(_isFactRef)) return null;
+    if (v.classification_status === "classified") {
+      if (!_isV2Strategy(v.strategy) || ver.missing_facts.length !== 0) return null;
+    } else if (v.classification_status === "incomplete") {
+      if (v.strategy !== null || v.reasons.length !== 0) return null;
+    } else {
+      return null;
+    }
+    var prov = v.provenance;
+    if (!_isPlainObject(prov)) return null;
+    if (typeof prov.classifier_version !== "string" || !prov.classifier_version) return null;
+    if (typeof prov.contract !== "string" || !prov.contract) return null;
+    var fid = v.financial_input_identity;
+    if (!_isPlainObject(fid) || fid.version !== V2_IDENTITY_VERSION) return null;
+    if (typeof fid.value !== "string" || !V2_IDENTITY_VALUE_RE.test(fid.value)) return null;
+    return {
+      survey_version: 2,
+      classification_status: v.classification_status,
+      strategy: v.strategy,
+      reasons: v.reasons.slice(),
+      verification: {
+        required: ver.required,
+        reasons: ver.reasons.map(function (r) {
+          return Object.assign({ code: r.code }, _copyFactRef(r));
+        }),
+        missing_facts: ver.missing_facts.map(_copyFactRef),
+      },
+      provenance: {
+        classifier_version: prov.classifier_version,
+        contract: prov.contract,
+      },
+      financial_input_identity: { version: fid.version, value: fid.value },
+    };
+  }
+
+  /** A stored V2 strategy never outlives its journey. */
+  function dropStaleV2Strategy(st) {
+    try {
+      st = st || window.CZState;
+      if (!st || !st[V2_STATE_KEY]) return;
+      if (st[V2_STATE_KEY].journey_id !== getActiveJourneyId()) st[V2_STATE_KEY] = null;
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  /** Client-side canonical financial input (binding only; the server owns the identity). */
+  function _canonicalInput(input) {
+    try {
+      var m = window.CZFinancialInputIdentity;
+      if (!input || !m || typeof m.canonicalizeFinancialInput !== "function") return null;
+      return m.canonicalizeFinancialInput(input);
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  function _currentCanonical(st) {
+    try {
+      return _canonicalInput(buildEngineInput(st));
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  function applyV2StrategyResponse(req, res) {
+    try {
+      if (!req.enabled) return;
+      var st = req.state;
+      // CZState replaced (reset) or journey changed while in flight: late response, discard.
+      if (!st || st !== window.CZState) return;
+      if (!req.journeyId || req.journeyId !== getActiveJourneyId()) {
+        dropStaleV2Strategy(st);
+        return;
+      }
+      var current = _currentCanonical(st);
+      var prev = st[V2_STATE_KEY];
+      // Financial input changed while in flight: the response describes an older identity.
+      if (!req.canonical || current !== req.canonical) {
+        if (prev && prev.input_canonical !== current) st[V2_STATE_KEY] = null;
+        return;
+      }
+      var json = res && res.ok && res.json && typeof res.json === "object" ? res.json : null;
+      var v2 =
+        json &&
+        json.diagnosis_id &&
+        String(json.journey_id || "") === req.journeyId &&
+        Object.prototype.hasOwnProperty.call(json, "v2_financial_strategy")
+          ? validateV2FinancialStrategy(json.v2_financial_strategy)
+          : null;
+      if (v2) {
+        st[V2_STATE_KEY] = {
+          journey_id: req.journeyId,
+          diagnosis_id: String(json.diagnosis_id),
+          classifier_version: v2.provenance.classifier_version,
+          financial_input_identity: v2.financial_input_identity,
+          input_canonical: req.canonical,
+          result: v2,
+        };
+      } else if (!prev || prev.journey_id !== req.journeyId || prev.input_canonical !== req.canonical) {
+        // Semantic duplicate without a V2 result keeps the state computed for the same input.
+        st[V2_STATE_KEY] = null;
+      }
+    } catch (_e) {
+      /* ignore */
+    } finally {
+      try {
+        if (window.CZV2Interaction) window.CZV2Interaction.refresh();
+      } catch (_e2) {
+        /* ignore */
+      }
+    }
+  }
+
+  /** V2 state only while it still describes the active journey and the current financial input. */
+  function getCurrentV2Strategy(st) {
+    try {
+      st = st || window.CZState;
+      var s = st && st[V2_STATE_KEY];
+      if (!s || s.journey_id !== getActiveJourneyId()) return null;
+      if (!s.input_canonical || s.input_canonical !== _currentCanonical(st)) return null;
+      return JSON.parse(JSON.stringify(s));
+    } catch (_e) {
+      return null;
+    }
   }
 
   function getTimeoutMs() {
@@ -519,16 +752,44 @@
    * Non-blocking shadow attempt.
    * Unique attempt = unique EngineInput fingerprint (session memory) + not in-flight.
    */
+  function _scheduleRerun(delayMs) {
+    if (_rerunTimer) return;
+    _rerunTimer = setTimeout(function () {
+      _rerunTimer = null;
+      maybeShadowDiagnosis(window.CZState, "rerun_latest");
+    }, Math.max(0, delayMs) + 1);
+  }
+
+  /** Refresh recovery: V2 state is memory-only, so a restored dashboard asks the server again. */
+  function restoreV2Strategy(st) {
+    try {
+      st = st || window.CZState;
+      if (!isV2StrategyStateEnabled() || !st || st[V2_STATE_KEY]) return;
+      maybeShadowDiagnosis(st, "session_restore");
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
   function maybeShadowDiagnosis(st, reason) {
     try {
+      dropStaleV2Strategy(st);
       if (!isShadowEnabled()) return;
       st = st || window.CZState;
       if (!st || !st.diag) return;
       if (st.step != null && Number(st.step) < 3) return;
 
       var now = Date.now();
-      if (_inFlight) return;
-      if (now < _cooldownUntil) return;
+      // V2 state on: edits while busy are not dropped, the latest input is re-evaluated afterwards.
+      // Off: legacy cadence (dropped).
+      if (_inFlight) {
+        if (isV2StrategyStateEnabled()) _rerunPending = true;
+        return;
+      }
+      if (now < _cooldownUntil) {
+        if (isV2StrategyStateEnabled()) _scheduleRerun(_cooldownUntil - now);
+        return;
+      }
 
       var anonId = getAnonymousId();
       if (!anonId) {
@@ -562,17 +823,21 @@
       }
 
       var payload = Object.assign({}, input);
-      try {
-        var jid =
-          (window.CZHandoffEntry &&
-            typeof window.CZHandoffEntry.getCurrentJourneyId === "function" &&
-            window.CZHandoffEntry.getCurrentJourneyId()) ||
-          (window.CZIdentity && window.CZIdentity.journey_id) ||
-          (window.CZState && window.CZState._journeyId) ||
-          "";
-        if (jid) payload.journey_id = String(jid);
-      } catch (_j) {
-        /* ignore */
+      var jid = getActiveJourneyId();
+      if (jid) payload.journey_id = jid;
+      var v2Req = {
+        enabled: isV2StrategyStateEnabled(),
+        state: st,
+        journeyId: jid,
+        canonical: _canonicalInput(input),
+      };
+      // New financial identity: the previous V2 result no longer describes it.
+      // Semantic duplicates (same canonical input) keep it.
+      if (v2Req.enabled && st === window.CZState) {
+        var prevV2 = st[V2_STATE_KEY];
+        if (!prevV2 || !v2Req.canonical || prevV2.input_canonical !== v2Req.canonical) {
+          st[V2_STATE_KEY] = null;
+        }
       }
       var body = JSON.stringify(payload);
       fetch(url, {
@@ -596,6 +861,7 @@
             });
         })
         .then(function (res) {
+          applyV2StrategyResponse(v2Req, res);
           if (!res.ok || !res.json || !res.json.result) {
             record("SHADOW_ERROR", {
               reason: reason || null,
@@ -638,6 +904,10 @@
         .then(function () {
           _inFlight = false;
           if (timer) clearTimeout(timer);
+          if (_rerunPending) {
+            _rerunPending = false;
+            _scheduleRerun(0);
+          }
         });
     } catch (e) {
       _inFlight = false;
@@ -657,11 +927,19 @@
     },
     isShadowEnabled: isShadowEnabled,
     getApiBaseUrl: getApiBaseUrl,
+    isV2StrategyStateEnabled: isV2StrategyStateEnabled,
+    validateV2FinancialStrategy: validateV2FinancialStrategy,
+    dropStaleV2Strategy: dropStaleV2Strategy,
+    getCurrentV2Strategy: getCurrentV2Strategy,
+    restoreV2Strategy: restoreV2Strategy,
     // test helpers
     _resetDedupeForTests: function () {
       _lastFingerprint = null;
       _inFlight = false;
       _cooldownUntil = 0;
+      _rerunPending = false;
+      if (_rerunTimer) clearTimeout(_rerunTimer);
+      _rerunTimer = null;
     },
   };
 })();
