@@ -5,14 +5,18 @@
 "use strict";
 
 var runEngine = require("../../../engine").runEngine;
-var classifyFinancialShadow =
-  require("../../../engine/classifier/financial-classifier").classifyFinancialShadow;
+var financialClassifier = require("../../../engine/classifier/financial-classifier");
+var classifyFinancialShadow = financialClassifier.classifyFinancialShadow;
+var classifyFinancialShadowV3 = financialClassifier.classifyFinancialShadowV3;
 var deriveFinancialInputIdentity = require("./financialIdentity").deriveFinancialInputIdentity;
+var deriveFinancialInputIdentityV2 = require("./financialIdentityV2").deriveFinancialInputIdentityV2;
+var resolveDebtContractVersion = require("../../../js/debtContract").resolveDebtContractVersion;
 var buildActionContext = require("./actionContext").buildActionContext;
 
 var SURVEY_VERSION_V2 = 2;
 
 var V2_STRATEGY_WRITE_UNCONFIRMED = "V2_STRATEGY_WRITE_UNCONFIRMED";
+var INVALID_DEBT_CONTRACT_VERSION = "INVALID_DEBT_CONTRACT_VERSION";
 
 function projectFactRef(item) {
   var out = { fact: item.fact, subject: item.subject };
@@ -279,7 +283,8 @@ var JOURNEY_ID_RE =
  * @param {string} deps.tenantId
  * @param {{ assertOwned?: Function, surveyVersionOf?: Function }} [deps.journeyService]
  * @param {typeof runEngine} [deps.runEngineFn]
- * @param {typeof classifyFinancialShadow} [deps.classifyFn]
+ * @param {typeof classifyFinancialShadow} [deps.classifyFn] debt contract v1 classifier
+ * @param {typeof classifyFinancialShadowV3} [deps.classifyV3Fn] debt contract v2 classifier
  */
 function createDiagnosisService(deps) {
   var repository = deps.repository;
@@ -287,6 +292,12 @@ function createDiagnosisService(deps) {
   var journeyService = deps.journeyService || null;
   var engineFn = deps.runEngineFn || runEngine;
   var classifyFn = deps.classifyFn || classifyFinancialShadow;
+  var classifyV3Fn = deps.classifyV3Fn || classifyFinancialShadowV3;
+  // Selected only by the snapshot's explicit debt_contract_version (js/debtContract.js).
+  var CONTRACTS = {
+    v1: { deriveIdentity: deriveFinancialInputIdentity, classify: classifyFn },
+    v2: { deriveIdentity: deriveFinancialInputIdentityV2, classify: classifyV3Fn },
+  };
 
   /**
    * V2-NEW-STRATEGY-INTEGRATION-01 — compute-only: V2 journeys get the new financial
@@ -306,9 +317,14 @@ function createDiagnosisService(deps) {
     try {
       var version = await journeyService.surveyVersionOf(args.journeyId, args.anonymousId);
       if (version !== SURVEY_VERSION_V2) return null;
-      var identity = deriveFinancialInputIdentity(args.engineInput);
+      var contract = CONTRACTS[resolveDebtContractVersion(args.engineInput)];
+      if (!contract) {
+        console.warn("[v2-strategy] not recorded: " + INVALID_DEBT_CONTRACT_VERSION);
+        return null;
+      }
+      var identity = contract.deriveIdentity(args.engineInput);
       if (!identity) return null;
-      var r = classifyFn(args.engineInput);
+      var r = contract.classify(args.engineInput);
       var saved = await repository.recordFinancialStrategyEvaluation({
         diagnosis_id: args.diagnosisId,
         journey_id: args.journeyId,

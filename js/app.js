@@ -326,26 +326,47 @@ function createEmptyDebtObject() {
   };
 }
 
-function sanitizeDebtNumericInputString(raw) {
-  if (raw == null) return "";
-  var s = String(raw);
-  var out = "";
-  var sepUsed = false;
-  for (var i = 0; i < s.length; i++) {
-    var c = s[i];
-    if (c >= "0" && c <= "9") {
-      out += c;
-    } else if ((c === "." || c === ",") && !sepUsed) {
-      out += c;
-      sepUsed = true;
-    }
-  }
-  return out;
+// MONETARY-CONTRACT-01 — typed amounts go through parseHumanAmount (config.js).
+// Invalid text is never written to state; it is tracked in st._moneyInvalid
+// (transient, not persisted) so the UI keeps it visible and blocks progress.
+function toggleMoneyInputError(key, show) {
+  if (typeof document === "undefined" || !document.querySelector) return;
+  var el = document.querySelector('[data-money-error="' + key + '"]');
+  if (el) el.style.display = show ? "" : "none";
 }
 
-function debtNumericValueForState(sanitized) {
-  if (sanitized === "") return "";
-  return String(sanitized).replace(",", ".");
+function readHumanMoneyInput(key, raw, showError, parser) {
+  var st = window.CZState;
+  var parsed = (parser || parseHumanAmount)(raw == null ? "" : String(raw));
+  if (parsed.status === "invalid") {
+    if (!st._moneyInvalid) st._moneyInvalid = {};
+    st._moneyInvalid[key] = String(raw);
+    if (showError) toggleMoneyInputError(key, true);
+  } else {
+    if (st._moneyInvalid) delete st._moneyInvalid[key];
+    toggleMoneyInputError(key, false);
+  }
+  return parsed;
+}
+
+// #ing-formal es el ingreso mensual principal: solo dígitos, como el perfil; vacío también es inválido.
+function parseIngresoFormalInput(raw) {
+  var parsed = parseIngresoMensualDigits(raw);
+  return parsed.status === "empty" ? { status: "invalid", value: null } : parsed;
+}
+
+function hasMoneyInvalidWithPrefix(prefix) {
+  var inv = (window.CZState || {})._moneyInvalid;
+  if (!inv) return false;
+  return Object.keys(inv).some(function(k) { return k.indexOf(prefix) === 0; });
+}
+
+function clearMoneyInvalidWithPrefix(prefix) {
+  var inv = (window.CZState || {})._moneyInvalid;
+  if (!inv) return;
+  Object.keys(inv).forEach(function(k) {
+    if (k.indexOf(prefix) === 0) delete inv[k];
+  });
 }
 
 function parseDebtNumeric(val) {
@@ -355,38 +376,27 @@ function parseDebtNumeric(val) {
   return parseFloat(s.replace(",", "."));
 }
 
-function applyDebtNumericInputSanitize(inputEl) {
-  if (!inputEl) return;
-  var sanitized = sanitizeDebtNumericInputString(inputEl.value);
-  if (inputEl.value !== sanitized) inputEl.value = sanitized;
-}
-
-function syncDebtNumericFieldFromInput(inputEl, field, deudaIdx) {
+function syncDebtNumericFieldFromInput(inputEl, field, deudaIdx, showError) {
   var st = window.CZState;
   if (!inputEl || !st.deudas[deudaIdx]) return;
-  applyDebtNumericInputSanitize(inputEl);
-  st.deudas[deudaIdx][field] = debtNumericValueForState(inputEl.value);
+  var parsed = readHumanMoneyInput("deuda:" + deudaIdx + ":" + field, inputEl.value, !!showError);
+  st.deudas[deudaIdx][field] = parsed.status === "valid" ? String(parsed.value) : "";
 }
 
 function applyDebtNumericFieldBlur(inputEl, field, deudaIdx) {
   var st = window.CZState;
   var d = st.deudas[deudaIdx];
   if (!d || !inputEl) return;
-  applyDebtNumericInputSanitize(inputEl);
-  var display = inputEl.value;
-  var stored = debtNumericValueForState(display);
+  var parsed = readHumanMoneyInput("deuda:" + deudaIdx + ":" + field, inputEl.value, true);
 
-  if (display === "") {
+  if (parsed.status === "empty") {
     var pre = inputEl.dataset.prefocusValue;
-    if (pre != null && String(pre).trim() !== "") {
-      var preStored = debtNumericValueForState(String(pre).trim());
-      var preNum = parseDebtNumeric(preStored);
-      if (!Number.isNaN(preNum) && preNum > 0) {
-        inputEl.value = String(pre).trim();
-        d[field] = preStored;
-        delete inputEl.dataset.prefocusValue;
-        return;
-      }
+    var preParsed = pre != null ? parseHumanAmount(String(pre)) : null;
+    if (preParsed && preParsed.status === "valid" && preParsed.value > 0) {
+      inputEl.value = formatAmountForInput(preParsed.value);
+      d[field] = String(preParsed.value);
+      delete inputEl.dataset.prefocusValue;
+      return;
     }
     inputEl.value = "";
     d[field] = "";
@@ -394,30 +404,21 @@ function applyDebtNumericFieldBlur(inputEl, field, deudaIdx) {
     return;
   }
 
-  if (field === "monto") {
-    var n = parseDebtNumeric(stored);
-    if (Number.isNaN(n) || n <= 0) {
-      inputEl.value = "";
-      d.monto = "";
-      delete inputEl.dataset.prefocusValue;
-      return;
-    }
-    inputEl.value = display;
-    d.monto = stored;
+  if (parsed.status === "invalid") {
+    d[field] = "";
     delete inputEl.dataset.prefocusValue;
     return;
   }
-  if (field === "pago") {
-    if (Number.isNaN(parseDebtNumeric(stored))) {
-      inputEl.value = "";
-      d.pago = "";
-      delete inputEl.dataset.prefocusValue;
-      return;
-    }
-    inputEl.value = display;
-    d.pago = stored;
+
+  if (field === "monto" && parsed.value <= 0) {
+    inputEl.value = "";
+    d.monto = "";
     delete inputEl.dataset.prefocusValue;
+    return;
   }
+  inputEl.value = formatAmountForInput(parsed.value);
+  d[field] = String(parsed.value);
+  delete inputEl.dataset.prefocusValue;
 }
 
 function normalizeDebtPagoForSave(d) {
@@ -429,6 +430,30 @@ function normalizeDebtPagoForSave(d) {
   } else {
     d.pago = pagoMensual;
   }
+}
+
+// Debt contract v2: current monthly payment of atrasado_pagando / mora / reclamo_disputa, kept apart
+// from legacy pago and never normalized by it. number > 0 = known, 0 = known zero, null = unknown.
+var DEBT_CURRENT_PAYMENT_SITUACIONES = { atrasado_pagando: true, mora: true, reclamo_disputa: true };
+
+function isDebtContractV2Capture() {
+  var s = window.CZShadowDiagnosis;
+  return !!(s && typeof s.isDebtContractV2Capture === "function" && s.isDebtContractV2Capture());
+}
+
+function readDebtCurrentPaymentInput(inputEl, deudaIdx, showError) {
+  var d = window.CZState.deudas[deudaIdx];
+  if (!d || !inputEl) return null;
+  var parsed = readHumanMoneyInput("deuda:" + deudaIdx + ":pago_mensual_actual", inputEl.value, !!showError);
+  d.pago_mensual_actual = parsed.status === "valid" && parsed.value >= 0 ? parsed.value : null;
+  return parsed;
+}
+
+function normalizeDebtCurrentPaymentForSave(d) {
+  if (!d || !isDebtContractV2Capture()) return;
+  var v = d.pago_mensual_actual;
+  d.pago_mensual_actual = DEBT_CURRENT_PAYMENT_SITUACIONES[d.situacion_ui] &&
+    typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null;
 }
 
 var DEBT_MSG_PAGO_ACTIVO_REQUERIDO = "Para indicar que la deuda está siendo pagada necesitás ingresar un pago mensual mayor a $0.";
@@ -478,7 +503,13 @@ function validateDebtForSave(d) {
   }
 
   var sit = d.situacion_ui || "";
-  if (sit === "pagando_normal" || sit === "atrasado_pagando") {
+  var contractV2 = isDebtContractV2Capture();
+  if (contractV2 && DEBT_CURRENT_PAYMENT_SITUACIONES[sit] &&
+      typeof d.pago_mensual_actual === "number" && d.pago_mensual_actual > saldo) {
+    return { ok: false, msg: DEBT_MSG_PAGO_EXCEDE_SALDO };
+  }
+  // Debt contract v2: atrasado_pagando may currently pay 0 or an unknown amount (pago_mensual_actual).
+  if (sit === "pagando_normal" || (sit === "atrasado_pagando" && !contractV2)) {
     if (sit === "pagando_normal") {
       var pagoRaw = d.pago == null ? "" : String(d.pago).trim();
       var pagoValue = parseFloat(pagoRaw);
@@ -541,16 +572,15 @@ function commitDeudaQuickMontoFromInput(inputEl) {
 
   var d = st.deudas[idx];
   var prev = st._deuda_quick_edit_prev_monto;
-  var rawStr = String(inputEl.value).trim();
-  var num = parseFloat(rawStr);
-  var valid = rawStr !== "" && !isNaN(num) && num >= 0;
+  var parsedMonto = parseHumanAmount(String(inputEl.value));
+  var valid = parsedMonto.status === "valid";
 
   st._deuda_quick_edit_index = null;
   st._deuda_quick_edit_prev_monto = null;
 
   if (d) {
     if (valid) {
-      d.monto = inputEl.value;
+      d.monto = String(parsedMonto.value);
       d.cancelada = false;
       if (typeof enriquecerDeuda === "function") enriquecerDeuda(d);
       if (typeof calcularMotor === "function") {
@@ -566,6 +596,9 @@ function commitDeudaQuickMontoFromInput(inputEl) {
     } else if (prev !== undefined && prev !== null) {
       d.monto = prev;
     }
+  }
+  if (parsedMonto.status === "invalid" && typeof showToast === "function") {
+    showToast(HUMAN_AMOUNT_FORMAT_ERROR, 4200);
   }
 
   st._deuda_quick_edit_committing = false;
@@ -624,7 +657,7 @@ function sanitizeDebtFieldsForSituacion(d) {
     d.atraso_tiempo_aprox   = null;
     d.pago_fuente           = "no_paga";
     d.estado                = (d.atraso_tiempo === "mas_90") ? "mora" : "atraso_grave";
-  } else if (sit === "mora_reclamo") {
+  } else if (situacionLegacyDeuda(sit) === "mora_reclamo") {
     d.pago                  = 0;
     d.atraso_tiempo         = null;
     d.atraso_tiempo_aprox   = null;
@@ -644,17 +677,25 @@ function sanitizeDebtFieldsForSituacion(d) {
   }
 }
 
+// A current payment declared for another situation never carries over (unknown until re-declared), with or
+// without the V2 capture. A debt that never had the field stays without it, so legacy payloads keep their shape.
+function invalidateDebtCurrentPayment(d) {
+  if (isDebtContractV2Capture() || d.pago_mensual_actual !== undefined) d.pago_mensual_actual = null;
+}
+
 function applySituacionUiChange(d, newSit) {
   var prev = d.situacion_ui || null;
   if (newSit === prev) return false;
 
   d.situacion_ui = newSit;
+  invalidateDebtCurrentPayment(d);
+  var prevLegacy = situacionLegacyDeuda(prev);
 
   if (newSit === "pagando_normal") {
     d.atraso_tiempo         = null;
     d.atraso_tiempo_aprox   = null;
     d.ultimo_pago_declarado = null;
-    if (prev === "deje_pagar" || prev === "mora_reclamo") {
+    if (prevLegacy === "deje_pagar" || prevLegacy === "mora_reclamo") {
       d.pago               = 0;
       d.pago_clarificacion = null;
     }
@@ -664,7 +705,7 @@ function applySituacionUiChange(d, newSit) {
   } else if (newSit === "atrasado_pagando") {
     d.pago_clarificacion = null;
     d.atraso_tiempo_aprox = null;
-    if (prev === "deje_pagar" || prev === "mora_reclamo" || prev === "no_seguro") {
+    if (prevLegacy === "deje_pagar" || prevLegacy === "mora_reclamo" || prevLegacy === "no_seguro") {
       d.pago          = 0;
       d.atraso_tiempo = null;
     }
@@ -680,7 +721,7 @@ function applySituacionUiChange(d, newSit) {
     d.estado          = "atraso_grave";
     d.pago_fuente     = "no_paga";
     d.debt_confidence = "medium";
-  } else if (newSit === "mora_reclamo") {
+  } else if (situacionLegacyDeuda(newSit) === "mora_reclamo") {
     d.pago                  = 0;
     d.atraso_tiempo         = null;
     d.atraso_tiempo_aprox   = null;
@@ -736,7 +777,9 @@ function finalizeDebtEdit(saveIdx) {
   var d  = st.deudas[saveIdx];
   if (!d) return;
 
-  var validation = validateDebtForSave(d);
+  var validation = hasMoneyInvalidWithPrefix("deuda:" + saveIdx + ":")
+    ? { ok: false, msg: HUMAN_AMOUNT_FORMAT_ERROR }
+    : validateDebtForSave(d);
   if (!validation.ok) {
     st._deuda_validation_error = validation.msg;
     if (st.step === 3 && window.CredizonaUI && typeof window.CredizonaUI.renderTab === "function") {
@@ -752,6 +795,7 @@ function finalizeDebtEdit(saveIdx) {
   normalizeDebtPagoForSave(d);
   normalizeDebtCreditorFields(d);
   sanitizeDebtFieldsForSituacion(d);
+  normalizeDebtCurrentPaymentForSave(d);
   if (typeof enriquecerDeuda === "function") enriquecerDeuda(d);
 
   d.updated_at = new Date().toISOString();
@@ -1128,6 +1172,7 @@ window.guardarLocal = function(extra) {
       vertical_profiling_completed:     !!st.vertical_profiling_completed,
       // P-05 — journey that owns this state; same-journey state outranks the handoff bootstrap
       handoff_journey_id:      st._journeyId || null,
+      url_income_consumed_by_journey_id: st.url_income_consumed_by_journey_id || null,
       fecha:                   new Date().toISOString(),
     }, extra)));
   } catch (e) {}
@@ -1264,6 +1309,12 @@ function next() {
       window.CredizonaUI.renderAll();
       return;
     }
+    if (hasMoneyInvalidWithPrefix("gasto:") || hasMoneyInvalidWithPrefix("custom:")) {
+      showToast(HUMAN_AMOUNT_FORMAT_ERROR, 4200);
+      window.CredizonaUI.renderAll();
+      return;
+    }
+
     var total = typeof getTotalMonthlyExpenses === "function"
       ? getTotalMonthlyExpenses()
       : Object.values(st.gastos).reduce(function(s, v) {
@@ -1620,17 +1671,20 @@ function syncPreProfileFromState(st) {
   }
 }
 
+// URL-INCOME-01 — ?ingreso= is a bootstrap prefill without identity. Once a journey
+// (journey_id) consumed it, it is never reapplied to that journey.
 function applyUrlIngresoSource(st) {
   st = st || window.CZState || {};
   if (typeof hasUrlIngresoParam !== "function" || !hasUrlIngresoParam()) return;
-  var ing = typeof parseUrlIngresoValue === "function"
-    ? parseUrlIngresoValue()
-    : parseFloat(PRE.ingreso);
-  if (isNaN(ing) || ing <= 0) return;
+  var jid = st._journeyId ? String(st._journeyId) : "";
+  if (jid && st.url_income_consumed_by_journey_id === jid) return;
+  var ing = parseUrlIngresoValue();
+  if (!(ing > 0)) return;
   if (typeof PRE !== "undefined") PRE.ingreso = ing;
   st.declared_ingreso = ing;
   st.income_source = "url_param";
   st.financial_income_complete = true;
+  st.url_income_consumed_by_journey_id = jid || null;
 }
 
 function applyUrlProfileSources(st) {
@@ -1736,7 +1790,8 @@ function collectBasicProfileForm() {
   var name = (nameEl && nameEl.value || "").trim();
   var emailRaw = (emailEl && emailEl.value || "").trim();
   var email = typeof sanitizeUrlEmail === "function" ? sanitizeUrlEmail(emailRaw) : null;
-  var incomeVal = parseFloat(incomeEl && incomeEl.value);
+  var incomeParsed = parseIngresoMensualDigits(incomeEl ? String(incomeEl.value) : "");
+  var incomeVal = incomeParsed.status === "valid" ? incomeParsed.value : NaN;
   var valid = true;
 
   if (!name) {
@@ -1751,7 +1806,10 @@ function collectBasicProfileForm() {
     showBasicProfileFieldError("profile-laboral-error", "Seleccioná tu situación laboral.");
     valid = false;
   }
-  if (!incomeVal || incomeVal <= 0 || isNaN(incomeVal)) {
+  if (incomeParsed.status === "invalid") {
+    showBasicProfileFieldError("profile-ingreso-error", INGRESO_MENSUAL_FORMAT_ERROR);
+    valid = false;
+  } else if (!incomeVal || incomeVal <= 0 || isNaN(incomeVal)) {
     showBasicProfileFieldError("profile-ingreso-error", "Ingresá un monto estimado, aunque tus ingresos varíen. Cualquier entrada de dinero cuenta.");
     valid = false;
   }
@@ -1774,10 +1832,22 @@ function applyBasicProfileSubmission(st, data) {
   st.declared_nombre = data.name;
   st.declared_laboral = data.laboral;
   st.user_email = data.email;
+  var prefillSource = st.income_source === "handoff" || st.income_source === "url_param"
+    ? st.income_source
+    : null;
+  var incomeTouched = !!st._incomeFieldTouched
+    || Number(st.declared_ingreso) !== Number(data.incomeVal);
+  st._incomeFieldTouched = false;
   st.declared_ingreso = data.incomeVal;
   st.financial_income_complete = true;
   st.financial_profile_complete = true;
-  st.income_source = "user_input";
+  // K6/A4 — handoff / URL income keep their source unless the user typed in the field;
+  // typing counts as intervention even when the value ends up identical.
+  if (prefillSource) {
+    st.income_source = incomeTouched ? "user_update" : prefillSource;
+  } else {
+    st.income_source = "user_input";
+  }
 }
 
 function getProfileFirstName(st) {
@@ -2109,6 +2179,8 @@ async function init() {
       st.financial_expenses_complete = false;
       st.no_debts_declared = false;
       st._showGastosWarning = false;
+      // Handoff income wins; without it, ?ingreso= is consumed by this journey as url_param.
+      if (st.income_source !== "handoff") applyUrlIngresoSource(st);
       // Re-stamp declared_* from PRE if handoff already filled PRE
       if (typeof PRE !== "undefined") {
         if (PRE.ingreso != null && Number(PRE.ingreso) > 0) {
@@ -2241,6 +2313,7 @@ async function init() {
     st.declared_nombre = dataToUse.declared_nombre || null;
     st.declared_laboral = dataToUse.declared_laboral || null;
     st.income_source = dataToUse.income_source || null;
+    st.url_income_consumed_by_journey_id = dataToUse.url_income_consumed_by_journey_id || null;
     st.financial_income_complete = dataToUse.financial_income_complete != null
       ? !!dataToUse.financial_income_complete
       : false;
@@ -2936,10 +3009,16 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
 
+      if (e.target.id === "inp-ingreso-mensual") {
+        st._incomeFieldTouched = true;
+        return;
+      }
+
       // Gastos — categorías
       var gastoKey = e.target.getAttribute("data-gasto");
       if (gastoKey) {
-        st.gastos[gastoKey] = e.target.value;
+        var gastoParsed = readHumanMoneyInput("gasto:" + gastoKey, e.target.value, false);
+        st.gastos[gastoKey] = gastoParsed.status === "valid" ? gastoParsed.value : "";
         syncGastosMissingConfirmedAfterExpensesDeclared(st);
         window.guardarLocal();
         if (window.CredizonaUI && typeof window.CredizonaUI.updateGastosTotalDisplay === "function") {
@@ -2963,7 +3042,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         var cexp = st.custom_expenses[customIdx];
         if (customField === "amount") {
-          cexp.amount = parseFloat(e.target.value) || 0;
+          var customParsed = readHumanMoneyInput("custom:" + customIdx, e.target.value, false);
+          cexp.amount = customParsed.status === "valid" ? customParsed.value : 0;
         } else {
           cexp.description = e.target.value;
           if (!detectDebtKeywordsInDescription(cexp.description)) {
@@ -2992,8 +3072,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (st.deudas[deudaIdx]) {
           var d = st.deudas[deudaIdx];
-          if (deudaField === "monto" || deudaField === "pago") {
+          if (deudaField === "monto" || deudaField === "pago" || deudaField === "ultimo_pago_declarado") {
             syncDebtNumericFieldFromInput(e.target, deudaField, deudaIdx);
+          } else if (deudaField === "pago_mensual_actual") {
+            readDebtCurrentPaymentInput(e.target, deudaIdx, false);
           } else {
             d[deudaField] = e.target.value;
           }
@@ -3031,9 +3113,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
           // Case B: mirror ultimo_pago to pago for scoring; upgrade confidence when > 0
           if (deudaField === "ultimo_pago_declarado") {
-            d.pago        = e.target.value;
+            d.pago        = d.ultimo_pago_declarado;
             d.pago_fuente = "ultimo_pago_declarado";
-            if (parseFloat(e.target.value) > 0) {
+            if (parseFloat(d.ultimo_pago_declarado) > 0) {
               d.debt_confidence = "high";
             }
           }
@@ -3056,7 +3138,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Ingreso formal
       if (e.target.id === "ing-formal") {
-        st.herr.ingresos.formal = parseFloat(e.target.value) || 0;
+        var formalParsed = readHumanMoneyInput("ing:formal", e.target.value, false, parseIngresoFormalInput);
+        if (formalParsed.status !== "invalid") {
+          st.herr.ingresos.formal = formalParsed.status === "valid" ? formalParsed.value : 0;
+        }
         recalcularIngresosLocal();
         return;
       }
@@ -3071,8 +3156,14 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!st.herr.ingresos.extras) st.herr.ingresos.extras = [];
         if (!st.herr.ingresos.extras[ingIdx]) st.herr.ingresos.extras[ingIdx] = {};
 
-        st.herr.ingresos.extras[ingIdx][ingField] =
-          ingField === "monto" ? (parseFloat(e.target.value) || 0) : e.target.value;
+        if (ingField === "monto") {
+          var extraParsed = readHumanMoneyInput("ing:extra:" + ingIdx, e.target.value, e.type === "change");
+          if (extraParsed.status !== "invalid") {
+            st.herr.ingresos.extras[ingIdx].monto = extraParsed.status === "valid" ? extraParsed.value : 0;
+          }
+        } else {
+          st.herr.ingresos.extras[ingIdx][ingField] = e.target.value;
+        }
 
         recalcularIngresosLocal();
         return;
@@ -3121,10 +3212,40 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       var blurField = e.target.getAttribute("data-deuda-field");
       var blurIdx   = e.target.getAttribute("data-deuda-idx");
-      if (blurField === "monto" || blurField === "pago") {
+      if (blurField === "monto" || blurField === "pago" || blurField === "ultimo_pago_declarado") {
         blurIdx = parseInt(blurIdx, 10);
         if (!isNaN(blurIdx)) {
           applyDebtNumericFieldBlur(e.target, blurField, blurIdx);
+          var dBlur = window.CZState.deudas[blurIdx];
+          if (blurField === "ultimo_pago_declarado" && dBlur) {
+            dBlur.pago = dBlur.ultimo_pago_declarado;
+          }
+        }
+        return;
+      }
+      if (blurField === "pago_mensual_actual") {
+        // El botón "No estoy pagando nada" comparte data-deuda-field; solo el input lleva monto.
+        if (e.target.tagName !== "INPUT") return;
+        var actualParsed = readDebtCurrentPaymentInput(e.target, parseInt(blurIdx, 10), true);
+        if (actualParsed && actualParsed.status === "valid") e.target.value = formatAmountForInput(actualParsed.value);
+        return;
+      }
+      var moneyKey = null;
+      if (e.target.getAttribute("data-gasto")) {
+        moneyKey = "gasto:" + e.target.getAttribute("data-gasto");
+      } else if (e.target.getAttribute("data-custom-expense-field") === "amount") {
+        moneyKey = "custom:" + e.target.getAttribute("data-custom-idx");
+      } else if (e.target.id === "ing-formal") {
+        moneyKey = "ing:formal";
+      } else if (e.target.getAttribute("data-ing-extra-field") === "monto") {
+        moneyKey = "ing:extra:" + e.target.getAttribute("data-ing-extra-idx");
+      }
+      if (moneyKey) {
+        var isIngresoFormal = moneyKey === "ing:formal";
+        var blurParsed = readHumanMoneyInput(moneyKey, e.target.value, true,
+          isIngresoFormal ? parseIngresoFormalInput : null);
+        if (blurParsed.status === "valid" && !isIngresoFormal) {
+          e.target.value = formatAmountForInput(blurParsed.value);
         }
       }
     });
@@ -3160,8 +3281,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (st.deudas[deudaIdx]) {
           var dC = st.deudas[deudaIdx];
-          if (deudaField === "monto" || deudaField === "pago") {
-            syncDebtNumericFieldFromInput(e.target, deudaField, deudaIdx);
+          if (deudaField === "monto" || deudaField === "pago" || deudaField === "ultimo_pago_declarado") {
+            syncDebtNumericFieldFromInput(e.target, deudaField, deudaIdx, true);
+            if (deudaField === "ultimo_pago_declarado") dC.pago = dC.ultimo_pago_declarado;
+          } else if (deudaField === "pago_mensual_actual") {
+            readDebtCurrentPaymentInput(e.target, deudaIdx, true);
           } else {
             dC[deudaField] = e.target.value;
           }
@@ -3284,8 +3408,14 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!st.herr.ingresos.extras) st.herr.ingresos.extras = [];
         if (!st.herr.ingresos.extras[ingIdx]) st.herr.ingresos.extras[ingIdx] = {};
 
-        st.herr.ingresos.extras[ingIdx][ingField] =
-          ingField === "monto" ? (parseFloat(e.target.value) || 0) : e.target.value;
+        if (ingField === "monto") {
+          var extraParsed = readHumanMoneyInput("ing:extra:" + ingIdx, e.target.value, e.type === "change");
+          if (extraParsed.status !== "invalid") {
+            st.herr.ingresos.extras[ingIdx].monto = extraParsed.status === "valid" ? extraParsed.value : 0;
+          }
+        } else {
+          st.herr.ingresos.extras[ingIdx][ingField] = e.target.value;
+        }
 
         recalcularIngresosLocal();
         return;
@@ -3381,6 +3511,20 @@ document.addEventListener("DOMContentLoaded", function() {
 
       // Bridge screen — redirect to survey (preserve UTM/SEO attribution params only)
       if (e.target.id === "btn-bridge-survey") {
+        // A Credizona handoff without a deliverable survey already left the Credizona survey:
+        // continue inside Mi Plan (same start as btn-diagnosis-start), never back to SURVEY_URL.
+        if (window.CZState._handoffPrefill === true) {
+          var stH = window.CZState;
+          stH.miplan_started = true;
+          stH.step = 1;
+          stH.temporal.miplan_started_at = new Date().toISOString();
+          setRecoveryState("miplan_started");
+          setRecoveryState("debt_refinement_started");
+          trackEvent(CZ_EVENT_NAMES.DEBT_REFINEMENT_STARTED, { source: "bridge_screen" });
+          window.guardarLocal();
+          window.CredizonaUI.renderAll();
+          return;
+        }
         setRecoveryState("survey_started");
         trackEvent(CZ_EVENT_NAMES.SURVEY_STARTED, { source: "bridge_screen" });
         window.guardarLocal();
@@ -3574,6 +3718,7 @@ document.addEventListener("DOMContentLoaded", function() {
         customRemoveIdx = parseInt(customRemoveIdx, 10);
         if (st.custom_expenses && st.custom_expenses[customRemoveIdx] !== undefined) {
           st.custom_expenses.splice(customRemoveIdx, 1);
+          clearMoneyInvalidWithPrefix("custom:");
           if (st._custom_expense_debt_excluded) {
             st._custom_expense_debt_excluded = {};
           }
@@ -3658,6 +3803,7 @@ document.addEventListener("DOMContentLoaded", function() {
         situacionIdx = parseInt(situacionIdx, 10);
         var dSit = st.deudas[situacionIdx];
         if (dSit && applySituacionUiChange(dSit, situacionVal)) {
+          if (st._moneyInvalid) delete st._moneyInvalid["deuda:" + situacionIdx + ":pago_mensual_actual"];
           if (typeof enriquecerDeuda === "function") enriquecerDeuda(dSit);
           // CRM_ONLY — backend handles this
           trackCRMEvent(CZ_EVENT_NAMES.PAYMENT_BEHAVIOR_CLASSIFIED, {
@@ -3692,7 +3838,13 @@ document.addEventListener("DOMContentLoaded", function() {
         btnIdx = parseInt(btnIdx, 10);
         var dBtn = st.deudas[btnIdx];
         if (dBtn) {
-          dBtn[btnField] = btnVal;
+          if (btnField === "pago_mensual_actual") {
+            // Explicit "No estoy pagando nada": known zero (number), never the string "0".
+            dBtn.pago_mensual_actual = 0;
+            if (st._moneyInvalid) delete st._moneyInvalid["deuda:" + btnIdx + ":pago_mensual_actual"];
+          } else {
+            dBtn[btnField] = btnVal;
+          }
 
           // pago_clarificacion: mark source as non-declared
           if (btnField === "pago_clarificacion") {
@@ -3753,6 +3905,7 @@ document.addEventListener("DOMContentLoaded", function() {
         st._deuda_delete_confirm_index = null;
         st._deuda_is_new_add = false;
         st._deuda_validation_error = null;
+        clearMoneyInvalidWithPrefix("deuda:");
         clearDeudaSaveFeedback(st);
         resetDebtCompletionFlagIfNoActiveDebts(st);
         window.guardarLocal();
@@ -3835,6 +3988,7 @@ document.addEventListener("DOMContentLoaded", function() {
         deleteConfirmIdx = parseInt(deleteConfirmIdx, 10);
         if (st.deudas[deleteConfirmIdx] !== undefined) {
           st.deudas.splice(deleteConfirmIdx, 1);
+          clearMoneyInvalidWithPrefix("deuda:");
           if (st.editing_debt_index === deleteConfirmIdx) {
             st.editing_debt_index = null;
             st._deuda_edit_snapshot = null;
@@ -4035,6 +4189,7 @@ document.addEventListener("DOMContentLoaded", function() {
             dPag.monto_original = montoPrev;
           }
           dPag.situacion_ui = "pagada";
+          invalidateDebtCurrentPayment(dPag);
           dPag.pago         = 0;
           dPag.pago_fuente  = "pagada";
           dPag.cancelada    = true;
@@ -4094,6 +4249,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         if (!st.herr.ingresos.extras) st.herr.ingresos.extras = [];
         st.herr.ingresos.extras.splice(quitarIng, 1);
+        clearMoneyInvalidWithPrefix("ing:extra:");
 
         recalcularIngresosLocal();
         window.CredizonaUI.renderTab();
@@ -4281,10 +4437,14 @@ function syncIngresosFromDom(st) {
 
   var formalEl = document.getElementById("ing-formal");
   if (formalEl) {
-    st.herr.ingresos.formal = parseFloat(formalEl.value) || 0;
+    var formalParsed = readHumanMoneyInput("ing:formal", formalEl.value, false, parseIngresoFormalInput);
+    if (formalParsed.status !== "invalid") {
+      st.herr.ingresos.formal = formalParsed.status === "valid" ? formalParsed.value : 0;
+    }
   } else if (!st.herr.ingresos.formal) {
     st.herr.ingresos.formal = getCanonicalIngreso();
   }
+  if (hasMoneyInvalidWithPrefix("ing:")) return NaN;
 
   var extra = (st.herr.ingresos.extras || []).reduce(function(s, e) {
     return s + (parseFloat(e.monto) || 0);
@@ -4458,7 +4618,7 @@ window.CZDebugFinancial = function() {
   }, 0);
 
   var pagosMensualesActivos = deudas.reduce(function(s, d) {
-    var sit = d.situacion_ui;
+    var sit = situacionLegacyDeuda(d.situacion_ui);
     if (sit === "deje_pagar" || sit === "mora_reclamo") return s;
     return s + (parseFloat(d.pago) || 0);
   }, 0);
@@ -4477,12 +4637,12 @@ window.CZDebugFinancial = function() {
   }, 0);
 
   var has_mora_or_deje_pagar = deudas.some(function(d) {
-    return d.situacion_ui === "deje_pagar" || d.situacion_ui === "mora_reclamo";
+    return d.situacion_ui === "deje_pagar" || situacionLegacyDeuda(d.situacion_ui) === "mora_reclamo";
   });
   var has_unpaid_debt = deudas.some(function(d) {
     var monto = parseFloat(d.monto) || 0;
     if (monto <= 0) return false;
-    var sit = d.situacion_ui;
+    var sit = situacionLegacyDeuda(d.situacion_ui);
     if (sit === "deje_pagar" || sit === "mora_reclamo") return true;
     return (parseFloat(d.pago) || 0) === 0;
   });

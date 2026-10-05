@@ -79,9 +79,21 @@
     try {
       var h = String(window.location.hostname || "");
       if (getProdHosts().indexOf(h) !== -1) return true;
-      // Local/dev when flag+URL set via config.local.js (no query required)
-      if (h === "localhost" || h === "127.0.0.1") return true;
+      // Local/dev auto-shadow only against a non-production API (config.local.js); the
+      // committed default API is production and must never receive local traffic implicitly.
+      if (h === "localhost" || h === "127.0.0.1") return isNonProductionApi(getApiBaseUrl());
       return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** Loopback or reserved non-resolvable names (RFC 6761): .test, .localhost, .invalid. */
+  function isNonProductionApi(url) {
+    try {
+      var host = new URL(url).hostname;
+      return host === "localhost" || host === "127.0.0.1" || host === "[::1]" ||
+        /\.(test|localhost|invalid)$/.test(host);
     } catch (e) {
       return false;
     }
@@ -155,7 +167,10 @@
     NO_ACTIVE_DEBT: true,
   };
   var V2_CODE_RE = /^[A-Z][A-Z0-9_]*$/;
-  var V2_IDENTITY_VERSION = "financial_input_identity_v1";
+  var V2_IDENTITY_VERSIONS = {
+    financial_input_identity_v1: true,
+    financial_input_identity_v2: true,
+  };
   var V2_IDENTITY_VALUE_RE = /^[0-9a-f]{64}$/;
 
   function _isPlainObject(x) {
@@ -205,7 +220,10 @@
     if (typeof prov.classifier_version !== "string" || !prov.classifier_version) return null;
     if (typeof prov.contract !== "string" || !prov.contract) return null;
     var fid = v.financial_input_identity;
-    if (!_isPlainObject(fid) || fid.version !== V2_IDENTITY_VERSION) return null;
+    if (!_isPlainObject(fid) || typeof fid.version !== "string" ||
+        !Object.prototype.hasOwnProperty.call(V2_IDENTITY_VERSIONS, fid.version)) {
+      return null;
+    }
     if (typeof fid.value !== "string" || !V2_IDENTITY_VALUE_RE.test(fid.value)) return null;
     return {
       survey_version: 2,
@@ -238,15 +256,35 @@
     }
   }
 
-  /** Client-side canonical financial input (binding only; the server owns the identity). */
+  /**
+   * Client-side canonical financial input under the snapshot's own debt contract (binding only;
+   * the server owns the identity). Invalid marker or missing modules → null (never binds).
+   */
   function _canonicalInput(input) {
     try {
-      var m = window.CZFinancialInputIdentity;
-      if (!input || !m || typeof m.canonicalizeFinancialInput !== "function") return null;
-      return m.canonicalizeFinancialInput(input);
+      var m = window.CZDebtContract;
+      if (!input || !m || typeof m.canonicalizeForContract !== "function") return null;
+      return m.canonicalizeForContract(input);
     } catch (_e) {
       return null;
     }
+  }
+
+  function _identityVersionFor(input) {
+    try {
+      var m = window.CZDebtContract;
+      return input && m && typeof m.identityVersionFor === "function" ? m.identityVersionFor(input) : null;
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  /**
+   * Debt contract v2 (explicit pago_mensual_actual, mora / reclamo_disputa) is captured only while
+   * the V2 strategy state is on; otherwise the UI and the snapshot stay on the legacy v1 contract.
+   */
+  function isDebtContractV2Capture() {
+    return isV2StrategyStateEnabled();
   }
 
   function _currentCanonical(st) {
@@ -282,6 +320,8 @@
         Object.prototype.hasOwnProperty.call(json, "v2_financial_strategy")
           ? validateV2FinancialStrategy(json.v2_financial_strategy)
           : null;
+      // A result computed under another debt contract does not describe this snapshot.
+      if (v2 && (!req.identityVersion || v2.financial_input_identity.version !== req.identityVersion)) v2 = null;
       if (v2) {
         st[V2_STATE_KEY] = {
           journey_id: req.journeyId,
@@ -337,6 +377,105 @@
       id = localStorage.getItem("cz_anonymous_id");
     } catch (e) {}
     return id ? String(id) : null;
+  }
+
+  /**
+   * ENTRY-01 — map income_source → field provenance semantics.
+   * Prefill is not automatic truth; user_update marks modification after prefill.
+   */
+  function mapIncomeFieldProvenance(incomeSource) {
+    switch (incomeSource) {
+      case "url_param":
+        return { source: "url_prefill", user_modified: false };
+      case "handoff":
+        return { source: "handoff", user_modified: false, detail: "handoff" };
+      case "user_update":
+        return { source: "user_entered", user_modified: true };
+      case "user_input":
+        return { source: "user_entered", user_modified: false };
+      case "localStorage_restore":
+        return { source: "user_entered", user_modified: false, detail: "session_restore" };
+      case "crm_restore":
+        return { source: "external_import", user_modified: false, detail: "crm_stub" };
+      case "backend":
+        return { source: "external_import", user_modified: false, detail: "backend" };
+      default:
+        return incomeSource
+          ? { source: "user_entered", user_modified: false, detail: String(incomeSource) }
+          : null;
+    }
+  }
+
+  function buildFieldProvenance(st) {
+    st = st || {};
+    var fp = {};
+    var ing = mapIncomeFieldProvenance(st.income_source);
+    if (ing) {
+      fp.ingreso = ing;
+      fp.declared_ingreso = ing;
+    }
+    if (typeof hasUrlNombreParam === "function" && hasUrlNombreParam()) {
+      fp.declared_nombre = { source: "url_prefill", user_modified: false };
+    } else if (st.declared_nombre) {
+      fp.declared_nombre = { source: "user_entered", user_modified: false };
+    }
+    if (typeof hasUrlEmailParam === "function" && hasUrlEmailParam()) {
+      fp.declared_email = { source: "url_prefill", user_modified: false };
+    } else if (st.declared_email || st.user_email) {
+      fp.declared_email = { source: "user_entered", user_modified: false };
+    }
+    if (typeof hasUrlLaboralParam === "function" && hasUrlLaboralParam()) {
+      fp.declared_laboral = { source: "url_prefill", user_modified: false };
+    } else if (st.declared_laboral) {
+      fp.declared_laboral = { source: "user_entered", user_modified: false };
+    }
+    var tiene =
+      typeof TIENE_ENCUESTA !== "undefined" ? !!TIENE_ENCUESTA : false;
+    if (tiene) {
+      fp.respuestas = {
+        source:
+          typeof isSeoIaEntry === "function" && isSeoIaEntry()
+            ? "seo_survey"
+            : "url_prefill",
+        user_modified: false,
+      };
+    }
+    return fp;
+  }
+
+  /**
+   * Canonical entry_context for persistence (ENTRY-01).
+   * Merges frozen CZ_ENTRY_CONTEXT with live field_provenance.
+   */
+  function buildPersistableEntryContext(st) {
+    var base =
+      typeof normalizeEntryContext === "function"
+        ? normalizeEntryContext()
+        : typeof CZ_ENTRY_CONTEXT !== "undefined" && CZ_ENTRY_CONTEXT
+          ? CZ_ENTRY_CONTEXT
+          : null;
+    if (!base || typeof base !== "object") {
+      return {
+        entryContext: "organic",
+        trafficSource: "direct",
+        hasRejectionContext: false,
+        evidenceStrength: "weak",
+        reasons: [],
+        attribution_policy:
+          typeof CZ_ATTRIBUTION_POLICY !== "undefined"
+            ? CZ_ATTRIBUTION_POLICY
+            : "CURRENT_ENTRY",
+        field_provenance: buildFieldProvenance(st),
+        schema_version: 1,
+      };
+    }
+    var out = {};
+    var keys = Object.keys(base);
+    for (var i = 0; i < keys.length; i++) {
+      out[keys[i]] = base[keys[i]];
+    }
+    out.field_provenance = buildFieldProvenance(st);
+    return out;
   }
 
   /**
@@ -398,13 +537,19 @@
           ? !!CZ_DECISION_PROVENANCE
           : false,
       user_intent: st.user_intent != null ? st.user_intent : null,
-      entry_context:
-        typeof CZ_ENTRY_CONTEXT !== "undefined" && CZ_ENTRY_CONTEXT
-          ? CZ_ENTRY_CONTEXT
-          : "DEFAULT",
+      entry_context: buildPersistableEntryContext(st),
+      // Explicit acquisition mirror for servers that prefer top-level (also inside entry_context)
+      acquisition:
+        (typeof CZ_ENTRY_CONTEXT !== "undefined" &&
+          CZ_ENTRY_CONTEXT &&
+          CZ_ENTRY_CONTEXT.acquisition) ||
+        (typeof getSeoIaAcquisitionPayload === "function"
+          ? getSeoIaAcquisitionPayload()
+          : null),
     };
+    if (isDebtContractV2Capture()) input.debt_contract_version = "v2";
 
-    // Never send client authorities
+    // Never send client authorities / contact-only PII as engine financial input
     delete input.now_ms;
     delete input.engine_result;
     delete input.engine_version;
@@ -412,6 +557,9 @@
     delete input.completeness;
     delete input.completeness_recomputed;
     delete input.result;
+    delete input.cedula;
+    delete input.telefono;
+    delete input.monto;
 
     return input;
   }
@@ -830,6 +978,7 @@
         state: st,
         journeyId: jid,
         canonical: _canonicalInput(input),
+        identityVersion: _identityVersionFor(input),
       };
       // New financial identity: the previous V2 result no longer describes it.
       // Semantic duplicates (same canonical input) keep it.
@@ -928,6 +1077,7 @@
     isShadowEnabled: isShadowEnabled,
     getApiBaseUrl: getApiBaseUrl,
     isV2StrategyStateEnabled: isV2StrategyStateEnabled,
+    isDebtContractV2Capture: isDebtContractV2Capture,
     validateV2FinancialStrategy: validateV2FinancialStrategy,
     dropStaleV2Strategy: dropStaleV2Strategy,
     getCurrentV2Strategy: getCurrentV2Strategy,

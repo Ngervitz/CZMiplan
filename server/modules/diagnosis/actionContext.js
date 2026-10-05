@@ -44,6 +44,12 @@
  * Without that argument the output is exactly the result-only projection above.
  * Re-derived in SQL by miplan_private.v2_expense_categories (migration 20261001180000); keep the
  * JS ↔ SQL parity test in server/bin/v2-interaction-db-test.js in step.
+ *
+ * Disputed debts (debt contract v2, situacion_ui reclamo_disputa): disputedDebtIndices reads the
+ * DEBT_IN_DISPUTE verification reasons that shadow-03 stores in the result (one per such debt). They stay
+ * in active_debts and the canonical facts, but are never the target of a debt-targeted action
+ * (lower_payment_intent, surplus_to_debt, creditor_contact_step). Re-derived in SQL by
+ * miplan_private.v2_disputed_debts (migration 20261004120000).
  */
 "use strict";
 
@@ -56,6 +62,7 @@ var INVALID_EXPENSE = "!invalid";
 
 var UNKNOWN = "unknown";
 var KNOWN_PAYMENT = { KNOWN_POSITIVE: true, KNOWN_ZERO: true };
+var DISPUTE_CODE = "DEBT_IN_DISPUTE";
 
 var FIELDS_BY_STRATEGY = {
   CONTENCION: ["monthly_gap", "active_debts"],
@@ -144,6 +151,23 @@ function activeDebts(debts) {
 }
 
 /**
+ * @param {object} result stored evaluation result
+ * @returns {number[]} debt_index of every DEBT_IN_DISPUTE debt reason, ascending, no duplicates
+ */
+function disputedDebtIndices(result) {
+  var reasons = isPlainObject(result) && Array.isArray(result.verification_reasons) ? result.verification_reasons : [];
+  var seen = {};
+  var out = [];
+  reasons.forEach(function (r) {
+    if (!isPlainObject(r) || r.code !== DISPUTE_CODE || r.subject !== "debt" || !isDebtIndex(r.debt_index)) return;
+    if (seen[r.debt_index]) return;
+    seen[r.debt_index] = true;
+    out.push(r.debt_index);
+  });
+  return out.sort(function (a, b) { return a - b; });
+}
+
+/**
  * Cents of a canonical non-negative decimal string, half-up on the decimal digits (= round(numeric, 2)
  * in SQL), or null when the integer part has more than 12 digits.
  */
@@ -226,4 +250,5 @@ module.exports = {
   EXPENSE_CATALOG: EXPENSE_CATALOG,
   buildActionContext: buildActionContext,
   projectExpenseCategories: projectExpenseCategories,
+  disputedDebtIndices: disputedDebtIndices,
 };

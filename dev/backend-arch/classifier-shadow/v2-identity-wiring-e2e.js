@@ -19,6 +19,8 @@ var h = require("./v2-wiring-e2e");
 var sanitize = require("../../../server/modules/journey/sanitizeContext");
 var financialIdentity = require("../../../server/modules/diagnosis/financialIdentity");
 var classifier = require("../../../engine/classifier/financial-classifier");
+var financialIdentityV2 = require("../../../server/modules/diagnosis/financialIdentityV2");
+var debtContract = require("../../../js/debtContract");
 
 var ROOT = path.join(__dirname, "..", "..", "..");
 var NEXT_CLASSIFIER = "miplan-financial-classifier-next-test";
@@ -128,7 +130,7 @@ function v2(page) {
     return {
       raw: raw === undefined ? "<absent>" : JSON.parse(JSON.stringify(raw)),
       current: window.CZShadowDiagnosis.getCurrentV2Strategy(),
-      canonical: window.CZFinancialInputIdentity.canonicalizeFinancialInput(window.CZShadowDiagnosis.buildEngineInput(st)),
+      canonical: window.CZDebtContract.canonicalizeForContract(window.CZShadowDiagnosis.buildEngineInput(st)),
       journey: window.CZHandoffEntry.getCurrentJourneyId(),
       stats: window.CZShadowDiagnosis.getStats(),
       step: st.step,
@@ -162,9 +164,20 @@ function diffKeys(a, b, prefix, out) {
 function lastResp(rec) {
   return rec.posts[rec.posts.length - 1].response;
 }
+function postedInput(post) {
+  return require("../../../server/modules/diagnosis/service").extractEngineInput(JSON.parse(JSON.stringify(post.body)));
+}
+// Selected only by the snapshot's debt_contract_version marker, like the server.
 function serverIdentity(post) {
-  return financialIdentity.deriveFinancialInputIdentity(
-    require("../../../server/modules/diagnosis/service").extractEngineInput(JSON.parse(JSON.stringify(post.body)))).value;
+  var input = postedInput(post);
+  return (debtContract.resolveDebtContractVersion(input) === "v2"
+    ? financialIdentityV2.deriveFinancialInputIdentityV2(input)
+    : financialIdentity.deriveFinancialInputIdentity(input)).value;
+}
+function expectedClassifierVersion(post) {
+  return debtContract.resolveDebtContractVersion(postedInput(post)) === "v2"
+    ? classifier.CLASSIFIER_VERSION_V3
+    : classifier.CLASSIFIER_VERSION;
 }
 
 async function main() {
@@ -175,6 +188,11 @@ async function main() {
     next: await h.startApi(h.memoryDiagnosisRepository(), {
       classifyFn: function (input) {
         var r = classifier.classifyFinancialShadow(input);
+        r.classifier_version = NEXT_CLASSIFIER;
+        return r;
+      },
+      classifyV3Fn: function (input) {
+        var r = classifier.classifyFinancialShadowV3(input);
         r.classifier_version = NEXT_CLASSIFIER;
         return r;
       },
@@ -196,7 +214,8 @@ async function main() {
     var r1 = lastResp(rec);
     check("setup: dashboard -> 1 POST, V2 state bound to journey / diagnosis / classifier_version / identity / current input",
       rec.posts.length === 1 && s1.raw && s1.raw.diagnosis_id === r1.diagnosis_id && s1.raw.journey_id === rec.journeyId &&
-      s1.raw.classifier_version === classifier.CLASSIFIER_VERSION &&
+      postedInput(rec.posts[0]).debt_contract_version === "v2" &&
+      s1.raw.classifier_version === expectedClassifierVersion(rec.posts[0]) &&
       s1.raw.financial_input_identity.value === serverIdentity(rec.posts[0]) &&
       s1.raw.input_canonical === s1.canonical && s1.current && s1.current.diagnosis_id === r1.diagnosis_id,
       { raw: s1.raw, posts: rec.posts.length });

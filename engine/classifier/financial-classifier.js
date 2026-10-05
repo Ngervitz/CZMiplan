@@ -5,6 +5,8 @@
  * Normative source: dev/backend-arch/CLASSIFIER-CONTRACT-CONSOLIDATED-01.md
  *
  * Public API: classifyFinancialShadow(engineInput) → shadow result (plain object).
+ * classifyFinancialShadowV3(engineInput) → shadow-03 result for snapshots under debt contract v2
+ * (explicit debt_contract_version marker; selection is the caller's job, never inferred here).
  *
  * Shadow means shadow: this module is not required by engine/core/pipeline.js,
  * server/ or js/. It never reads survey answers, scores, planId, scoreReset,
@@ -15,6 +17,8 @@
 
 var CLASSIFIER_VERSION = "miplan-financial-classifier-shadow-02";
 var CONTRACT_ID = "CLASSIFIER-CONTRACT-CONSOLIDATED-01";
+var CLASSIFIER_VERSION_V3 = "miplan-financial-classifier-shadow-03";
+var CONTRACT_ID_V3 = "CLASSIFIER-CONTRACT-CONSOLIDATED-01+DEBT-PAYMENT-CONTRACT-V2";
 
 // T-v1 (contract §10.3): server-side versioned constant. Never read from input, env, DB or flags.
 var DEBT_BURDEN_THRESHOLD = 0.30;
@@ -78,6 +82,40 @@ var MORA_OR_PROBLEM_STATES = {
   deje_pagar: true,
   mora_reclamo: true,
   legacy_mora: true,
+};
+
+// shadow-03 (debt contract v2): mora_reclamo is split into mora / reclamo_disputa and the current
+// monthly payment of atrasado_pagando / mora / reclamo_disputa is the explicit pago_mensual_actual
+// (number > 0, 0 = known zero, null = unknown). Legacy estado and mora_reclamo are not mapped.
+// Appended to the shadow-02 catalog so shared codes keep their relative order.
+var REASON_CATALOG_V3 = REASON_CATALOG.concat([
+  { code: "DEBT_IN_DISPUTE", fact: "active_mora" },
+]);
+
+var REASON_INDEX_V3 = {};
+REASON_CATALOG_V3.forEach(function (r, i) {
+  REASON_INDEX_V3[r.code] = i;
+});
+
+var SITUATIONS_V3 = {
+  pagando_normal: true,
+  atrasado_pagando: true,
+  deje_pagar: true,
+  mora: true,
+  reclamo_disputa: true,
+  no_seguro: true,
+};
+
+var MORA_STATES_V3 = {
+  atrasado_pagando: true,
+  deje_pagar: true,
+  mora: true,
+};
+
+var CURRENT_PAYMENT_STATES_V3 = {
+  atrasado_pagando: true,
+  mora: true,
+  reclamo_disputa: true,
 };
 
 var PHANTOM = "debt_set";
@@ -303,6 +341,120 @@ function deriveDebt(d, index) {
   return { fact: out, codes: codes };
 }
 
+function resolveSituationV3(d) {
+  var sit = d.situacion_ui;
+  if (typeof sit === "string" && sit.trim() !== "") {
+    sit = sit.trim();
+    if (SITUATIONS_V3[sit]) return { kind: sit, source: "situacion_ui" };
+    return { kind: "missing", source: "situacion_ui_unrecognized" };
+  }
+  return { kind: "missing", source: "none" };
+}
+
+function deriveDebtV3(d, index) {
+  var sit = resolveSituationV3(d);
+  var balance = parseAmount(d.monto);
+  var balanceStatus = balance == null || balance < 0 ? "missing" : balance === 0 ? "zero" : "positive";
+  var codes = [];
+  var out = {
+    debt_index: index,
+    active_debt: null,
+    active_mora: null,
+    monthly_debt_payment: null,
+  };
+
+  if (balanceStatus === "positive") {
+    out.active_debt = true;
+  } else if (balanceStatus === "zero") {
+    out.active_debt = UNKNOWN;
+    codes.push("DEBT_BALANCE_ZERO_NOT_SETTLED");
+  } else {
+    out.active_debt = UNKNOWN;
+    codes.push("DEBT_BALANCE_UNKNOWN");
+  }
+
+  switch (sit.kind) {
+    case "pagando_normal":
+      out.active_mora = false;
+      break;
+    case "atrasado_pagando":
+    case "deje_pagar":
+    case "mora":
+      out.active_mora = true;
+      break;
+    case "reclamo_disputa":
+      // A disputed debt is not assumed to be in mora; no strategy is derived from the dispute itself.
+      out.active_mora = UNKNOWN;
+      codes.push("DEBT_IN_DISPUTE");
+      break;
+    case "no_seguro":
+      out.active_mora = UNKNOWN;
+      codes.push("DEBT_SITUATION_UNSURE");
+      break;
+    default:
+      out.active_mora = UNKNOWN;
+      codes.push("DEBT_SITUATION_MISSING");
+  }
+  if (MORA_STATES_V3[sit.kind] && balanceStatus !== "positive") {
+    out.active_mora = UNKNOWN;
+    codes.push(balanceStatus === "zero" ? "DEBT_MORA_STATE_BALANCE_ZERO" : "DEBT_MORA_STATE_BALANCE_UNKNOWN");
+  }
+
+  var confirmedActive = out.active_debt === true;
+  var unauthorizedCode = balanceStatus === "zero"
+    ? "DEBT_PAYMENT_DECLARED_BALANCE_ZERO"
+    : "DEBT_PAYMENT_DECLARED_BALANCE_UNKNOWN";
+
+  if (CURRENT_PAYMENT_STATES_V3[sit.kind]) {
+    // Only the explicit current payment counts; legacy pago / ultimo_pago_declarado are never read here.
+    var current = parseAmount(d.pago_mensual_actual);
+    if (current == null || current < 0) {
+      out.monthly_debt_payment = { status: "UNKNOWN", value: UNKNOWN };
+      codes.push("DEBT_PAYMENT_UNKNOWN");
+    } else if (!confirmedActive) {
+      out.monthly_debt_payment = { status: "UNKNOWN", value: UNKNOWN };
+      if (current > 0) out.declared_payment_amount = current;
+      codes.push(unauthorizedCode);
+    } else if (current === 0) {
+      out.monthly_debt_payment = { status: "KNOWN_ZERO", value: 0 };
+    } else {
+      out.monthly_debt_payment = { status: "KNOWN_POSITIVE", value: current };
+    }
+  } else if (sit.kind === "deje_pagar") {
+    if (confirmedActive) {
+      out.monthly_debt_payment = { status: "KNOWN_ZERO", value: 0 };
+    } else {
+      out.monthly_debt_payment = { status: "UNKNOWN", value: UNKNOWN };
+      codes.push(unauthorizedCode);
+    }
+  } else {
+    var declared = parseAmount(d.pago);
+    if (declared != null && declared > 0) {
+      if (confirmedActive) {
+        out.monthly_debt_payment = { status: "KNOWN_POSITIVE", value: declared };
+      } else {
+        out.monthly_debt_payment = { status: "UNKNOWN", value: UNKNOWN };
+        out.declared_payment_amount = declared;
+        codes.push(unauthorizedCode);
+      }
+    } else {
+      out.monthly_debt_payment = { status: "UNKNOWN", value: UNKNOWN };
+      codes.push("DEBT_PAYMENT_UNKNOWN");
+    }
+  }
+
+  out.provenance = {
+    declared_situation: typeof d.situacion_ui === "string" && d.situacion_ui !== "" ? d.situacion_ui : null,
+    situation_source: sit.source,
+    balance_status: balanceStatus,
+  };
+  if (sit.kind === "pagando_normal" && typeof d.pago_clarificacion === "string" && d.pago_clarificacion) {
+    out.provenance.payment_clarification = d.pago_clarificacion;
+  }
+
+  return { fact: out, codes: codes };
+}
+
 // ---------------------------------------------------------------------------
 // Aggregation — TRUE > UNKNOWN > FALSE (§7.2, §8.2)
 // ---------------------------------------------------------------------------
@@ -499,12 +651,38 @@ function computeMissingFacts(model, S, incomeUnknown, expensesUnknown) {
 // Main
 // ---------------------------------------------------------------------------
 
+var PROFILE_SHADOW_02 = {
+  version: CLASSIFIER_VERSION,
+  contract: CONTRACT_ID,
+  catalog: REASON_CATALOG,
+  index: REASON_INDEX,
+  deriveDebt: deriveDebt,
+};
+
+var PROFILE_SHADOW_03 = {
+  version: CLASSIFIER_VERSION_V3,
+  contract: CONTRACT_ID_V3,
+  catalog: REASON_CATALOG_V3,
+  index: REASON_INDEX_V3,
+  deriveDebt: deriveDebtV3,
+};
+
 function classifyFinancialShadow(input) {
+  return classifyWithProfile(input, PROFILE_SHADOW_02);
+}
+
+function classifyFinancialShadowV3(input) {
+  return classifyWithProfile(input, PROFILE_SHADOW_03);
+}
+
+function classifyWithProfile(input, profile) {
   if (!isPlainObject(input)) throw new Error("CLASSIFIER_INPUT_REQUIRED");
+  var reasonCatalog = profile.catalog;
+  var reasonIndex = profile.index;
 
   var reasons = [];
   function addReason(code, subject, debtIndex) {
-    var entry = { code: code, fact: REASON_CATALOG[REASON_INDEX[code]].fact, subject: subject };
+    var entry = { code: code, fact: reasonCatalog[reasonIndex[code]].fact, subject: subject };
     if (subject === "debt") entry.debt_index = debtIndex;
     reasons.push(entry);
   }
@@ -530,7 +708,7 @@ function classifyFinancialShadow(input) {
       excluded.push({ debt_index: i, reason: "paid_or_cancelled" });
       return;
     }
-    var r = deriveDebt(d, i);
+    var r = profile.deriveDebt(d, i);
     if (r.fact.provenance.situation_source === "legacy_estado") legacyMapped.push(i);
     debts.push(r.fact);
     r.codes.forEach(function (c) { addReason(c, "debt", i); });
@@ -625,7 +803,7 @@ function classifyFinancialShadow(input) {
 
   // verification (§16, §19.1): catalog order, then debt order.
   reasons.sort(function (a, b) {
-    var d = REASON_INDEX[a.code] - REASON_INDEX[b.code];
+    var d = reasonIndex[a.code] - reasonIndex[b.code];
     if (d !== 0) return d;
     return (a.debt_index == null ? -1 : a.debt_index) - (b.debt_index == null ? -1 : b.debt_index);
   });
@@ -641,8 +819,8 @@ function classifyFinancialShadow(input) {
   }
 
   return {
-    classifier_version: CLASSIFIER_VERSION,
-    contract: CONTRACT_ID,
+    classifier_version: profile.version,
+    contract: profile.contract,
     classification_status: classified ? "classified" : "incomplete",
     strategy: strategy,
     compatible_strategies: S,
@@ -677,11 +855,14 @@ function classifyFinancialShadow(input) {
 
 module.exports = {
   CLASSIFIER_VERSION: CLASSIFIER_VERSION,
+  CLASSIFIER_VERSION_V3: CLASSIFIER_VERSION_V3,
   DEBT_BURDEN_THRESHOLD: DEBT_BURDEN_THRESHOLD,
   DEBT_BURDEN_THRESHOLD_VERSION: DEBT_BURDEN_THRESHOLD_VERSION,
   REASON_CATALOG: REASON_CATALOG,
+  REASON_CATALOG_V3: REASON_CATALOG_V3,
   STRATEGY_ORDER: STRATEGY_ORDER,
   UNKNOWN: UNKNOWN,
   NOT_APPLICABLE: NOT_APPLICABLE,
   classifyFinancialShadow: classifyFinancialShadow,
+  classifyFinancialShadowV3: classifyFinancialShadowV3,
 };

@@ -90,8 +90,11 @@ function clamp(n, a, b) {
 // Montos escritos por personas (formato Uruguay): miles con "." en grupos de 3,
 // centavos con "," (1–2 dígitos), prefijo opcional "$" o "UYU".
 // Cualquier otra forma es inválida ("50,000", "65000.50", "65.5", "65000abc", "U$S 100").
+// Los valores técnicos (estado, APIs, EngineInput) usan normalizeTechnicalAmount.
 var HUMAN_AMOUNT_RE = /^(\d+|\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?$/;
 var HUMAN_AMOUNT_PREFIX_RE = /^(?:\$|UYU)\s*/i;
+var HUMAN_AMOUNT_FORMAT_ERROR =
+  "Revisá el monto: usá punto para los miles y coma para los centavos (ej: 65.000 o 65.000,50).";
 
 function parseHumanAmount(raw) {
   if (raw == null) return { status: "empty", value: null };
@@ -105,6 +108,46 @@ function parseHumanAmount(raw) {
   var value = Number(m[1].replace(/\./g, "") + (m[2] ? "." + m[2] : ""));
   if (!Number.isFinite(value)) return { status: "invalid", value: null };
   return { status: "valid", value: value };
+}
+
+function normalizeTechnicalAmount(raw) {
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  if (typeof raw !== "string") return null;
+  var s = raw.trim();
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+  var n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatAmountForInput(raw) {
+  var n = normalizeTechnicalAmount(raw);
+  if (n == null || n < 0) return "";
+  var cents = Math.round(n * 100);
+  var intPart = String(Math.floor(cents / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  var dec = cents % 100;
+  return dec ? intPart + "," + (dec < 10 ? "0" : "") + dec : intPart;
+}
+
+// --- CZ-SALARIO-BOUNDARY-FIX-01 — ingreso mensual declarado a mano ---
+// Pesos uruguayos enteros, solo dígitos: "65000" = $65.000. Sin separadores, signo, prefijo
+// ni espacios; no pasa por parseHumanAmount (que sigue rigiendo gastos, deudas y demás montos).
+var INGRESO_MENSUAL_DIGITS_RE = /^[0-9]+$/;
+var INGRESO_MENSUAL_FORMAT_ERROR = "Ingresá el monto solo con números, sin puntos ni comas.";
+
+function parseIngresoMensualDigits(raw) {
+  if (raw == null || raw === "") return { status: "empty", value: null };
+  if (typeof raw !== "string" || !INGRESO_MENSUAL_DIGITS_RE.test(raw)) return { status: "invalid", value: null };
+  var value = Number(raw);
+  if (!Number.isSafeInteger(value)) return { status: "invalid", value: null };
+  return { status: "valid", value: value };
+}
+
+// Prefill del campo: enteros como dígitos ("65000"). Un valor no entero se muestra tal cual,
+// sin redondear, y el usuario tiene que corregirlo para poder continuar.
+function formatIngresoMensualForInput(raw) {
+  var n = normalizeTechnicalAmount(raw);
+  if (n == null || n <= 0) return "";
+  return String(n);
 }
 
 // --- Helpers de color ---
@@ -121,15 +164,26 @@ function sanitizeUrlEmail(raw) {
   return e;
 }
 
+// URL-INCOME-01 — PENDING CONTRACT: the producer of ?ingreso= is unknown. Provisional strict
+// technical grammar (fail-closed). A value that also reads as Uruguayan thousands
+// ("65.000", "1.234.567") is rejected, never guessed as 65 or 65000.
+var URL_INGRESO_THOUSANDS_RE = /^\d{1,3}(?:\.\d{3})+$/;
+
+function parseUrlIngresoParam(raw) {
+  if (raw == null) return null;
+  var s = String(raw).trim();
+  if (URL_INGRESO_THOUSANDS_RE.test(s)) return null;
+  var n = normalizeTechnicalAmount(s);
+  return n != null && n > 0 ? n : null;
+}
+
 function hasUrlIngresoParam() {
-  var p = new URLSearchParams(window.location.search);
-  return p.has("ingreso") && p.get("ingreso") !== "";
+  return parseUrlIngresoParam(new URLSearchParams(window.location.search).get("ingreso")) != null;
 }
 
 function parseUrlIngresoValue() {
-  if (!hasUrlIngresoParam()) return 0;
-  var n = parseFloat(new URLSearchParams(window.location.search).get("ingreso"));
-  return isNaN(n) ? 0 : n;
+  var n = parseUrlIngresoParam(new URLSearchParams(window.location.search).get("ingreso"));
+  return n == null ? 0 : n;
 }
 
 function hasUrlNombreParam() {
@@ -212,7 +266,7 @@ const PRE = getPreLoaded();
 var TIENE_ENCUESTA = Object.values(PRE.respuestas).some(v => v !== null);
 
 var SEGMENTO = (function () {
-  var tieneIngreso = !!new URLSearchParams(window.location.search).get("ingreso");
+  var tieneIngreso = hasUrlIngresoParam();
   if (tieneIngreso && TIENE_ENCUESTA) return 1;
   if (tieneIngreso && !TIENE_ENCUESTA) return 2;
   return 3;
@@ -670,6 +724,11 @@ var CZ_V2_STRATEGY_STATE_ENABLED = false;
 // V2-CTA-INTERACTION-01 — CTA tools on the plan tab (expense / lower payment / surplus / creditor
 // contact), backed by the user-choice endpoints. Needs CZ_V2_STRATEGY_STATE_ENABLED. Off by default.
 var CZ_V2_INTERACTION_ENABLED = false;
+// V2 debt-management interest opt-in (POST /v1/evaluations/:id/debt-management-opt-in): commercial,
+// separate from the plan, never authorizes sharing data with third parties. Shape:
+// { text_version: "lowercase-id", title: "...", body: "...", consent_label: "..." }.
+// null until the copy is approved: the opt-in card stays hidden and nothing is sent.
+var CZ_V2_DEBT_MANAGEMENT_OPTIN_COPY = null;
 
 // Mi Plan Plus — precio único (UYU). Usar esta constante; no hardcodear 1290 en UI/tracking.
 const CZ_PLUS_PRICE_UYU = 1290;

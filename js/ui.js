@@ -302,8 +302,9 @@ function _profileFieldInput(type, id, attrs) {
   var autocomplete = attrs.autocomplete ? (' autocomplete="' + attrs.autocomplete + '"') : "";
   var placeholder = attrs.placeholder ? (' placeholder="' + attrs.placeholder + '"') : "";
   var value = attrs.value != null ? (' value="' + attrs.value + '"') : "";
+  var inputmode = attrs.inputmode ? (' inputmode="' + attrs.inputmode + '"') : "";
   return '<input type="' + type + '" id="' + id + '" class="profile-field-input"'
-    + autocomplete + placeholder + value
+    + autocomplete + inputmode + placeholder + value
     + (extraStyle ? (' style="' + extraStyle + '"') : "")
     + "/>";
 }
@@ -358,13 +359,15 @@ function renderIngreso() {
     + '<label style="display:block;font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:8px;">¿Cuánto dinero te entra aproximadamente por mes?</label>'
     + '<div style="position:relative;max-width:100%;">'
     + '<span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
-    + _profileFieldInput("number", "inp-ingreso-mensual", {
-        placeholder: "Ej: 65.000",
-        value: incomeVal,
+    + _profileFieldInput("text", "inp-ingreso-mensual", {
+        inputmode: "numeric",
+        placeholder: "Ej: 65000",
+        value: formatIngresoMensualForInput(incomeVal),
         style: "padding-left:36px;",
       })
     + '</div>'
     + '<div style="margin-top:8px;font-size:13px;color:#8390b5;line-height:1.55;">Incluí sueldo, changas, comisiones, ventas, ayuda familiar u otras entradas de dinero. Si varía, usá un estimado promedio.</div>'
+    + '<div style="margin-top:6px;font-size:13px;color:#8390b5;line-height:1.55;">En pesos, solo números, sin puntos ni comas (ej: 65000 = $65.000).</div>'
     + _profileFieldError("profile-ingreso-error")
     + '</div>'
 
@@ -615,9 +618,28 @@ function updateCustomExpenseClassificationUI(idx) {
   slot.innerHTML = renderCustomExpenseClassification(idx, exp);
 }
 
+// MONETARY-CONTRACT-01 — an invalid typed amount is never persisted; the raw text
+// stays visible (st._moneyInvalid, transient) until the user corrects it.
+function _moneyInvalidRaw(key) {
+  var inv = _st()._moneyInvalid;
+  return inv && Object.prototype.hasOwnProperty.call(inv, key) ? inv[key] : null;
+}
+
+function _moneyInputValue(key, stateValue, format) {
+  var raw = _moneyInvalidRaw(key);
+  var v = raw != null ? String(raw) : (format || formatAmountForInput)(stateValue);
+  return v.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+function _moneyInputError(key, message) {
+  var show = _moneyInvalidRaw(key) != null;
+  return '<div data-money-error="' + key + '" style="' + (show ? "" : "display:none;")
+    + 'margin-top:6px;font-size:13px;color:#ff4e72;line-height:1.5;">' + (message || HUMAN_AMOUNT_FORMAT_ERROR) + '</div>';
+}
+
 function renderCustomExpenseRow(exp, idx) {
   var desc = exp.description || "";
-  var amt  = exp.amount ? String(exp.amount) : "";
+  var amt  = _moneyInputValue("custom:" + idx, exp.amount ? exp.amount : "");
   var icon = typeof EXPENSE_CAT_ICONS !== "undefined" ? EXPENSE_CAT_ICONS.otros : "📦";
   return '<div class="custom-expense-row" data-custom-expense-row="' + idx + '" style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'
@@ -629,8 +651,9 @@ function renderCustomExpenseRow(exp, idx) {
     + '<div data-custom-expense-classify-slot="' + idx + '">' + renderCustomExpenseClassification(idx, exp) + '</div>'
     + '<label style="font-size:13px;color:#8390b5;display:block;margin-bottom:6px;">Monto mensual</label>'
     + '<div style="position:relative;max-width:100%;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
-    + '<input type="number" data-custom-expense-field="amount" data-custom-idx="' + idx + '" placeholder="0" value="' + amt + '" style="width:100%;max-width:100%;padding-left:36px;box-sizing:border-box;"/>'
+    + '<input type="text" inputmode="decimal" data-custom-expense-field="amount" data-custom-idx="' + idx + '" placeholder="0" value="' + amt + '" style="width:100%;max-width:100%;padding-left:36px;box-sizing:border-box;"/>'
     + '</div>'
+    + _moneyInputError("custom:" + idx)
     + '<div data-custom-expense-insight="' + idx + '">' + renderGastoCategoryInsight("otros", parseFloat(exp.amount) || 0) + '</div>'
     + '</div>';
 }
@@ -662,7 +685,7 @@ function renderGastos() {
     + '<div class="section-text">Completamos el contexto real de tu flujo mensual. Una estimacion alcanza para ver el margen disponible.</div>'
     + EXPENSE_CATS.map(function(c, i) {
         var val    = parseFloat(gastos[c.k]) || 0;
-        var isOpen = val > 0 || i === 0;
+        var isOpen = val > 0 || i === 0 || _moneyInvalidRaw("gasto:" + c.k) != null;
         var icon   = icons[c.k] ? icons[c.k] + " " : "";
         return '<div class="accordion-item">'
           + '<button class="accordion-trigger' + (isOpen ? " open" : "") + '" data-accordion>'
@@ -673,8 +696,9 @@ function renderGastos() {
           + '<span class="chevron">&#9660;</span></button>'
           + '<div class="accordion-body' + (isOpen ? " open" : "") + '">'
           + '<div style="position:relative;max-width:100%;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;pointer-events:none;">$</span>'
-          + '<input type="number" style="padding-left:36px;width:100%;max-width:100%;box-sizing:border-box;" placeholder="0" value="' + (gastos[c.k] || "") + '" data-gasto="' + c.k + '"/>'
+          + '<input type="text" inputmode="decimal" style="padding-left:36px;width:100%;max-width:100%;box-sizing:border-box;" placeholder="0" value="' + _moneyInputValue("gasto:" + c.k, gastos[c.k] || "") + '" data-gasto="' + c.k + '"/>'
           + '</div>'
+          + _moneyInputError("gasto:" + c.k)
           + '<div data-gasto-insight="' + c.k + '">' + renderGastoCategoryInsight(c.k, val) + '</div>'
           + '</div></div>';
       }).join("")
@@ -856,12 +880,29 @@ var _SITUACION_OPTS = [
   { v: "no_seguro",        l: "No estoy seguro",                  color: "#8390b5", bg: "rgba(131,144,181,.1)" },
 ];
 
+// Debt contract v2: mora_reclamo is split and never generated; atrasado_pagando may have a current payment of 0.
+var _SITUACION_OPTS_V2 = [
+  { v: "pagando_normal",   l: "La estoy pagando normalmente",     color: "#34ffaf", bg: "rgba(52,255,175,.1)"  },
+  { v: "atrasado_pagando", l: "Me atrasé con los pagos",          color: "#ffd36f", bg: "rgba(255,211,111,.1)" },
+  { v: "deje_pagar",       l: "Dejé de pagar",                   color: "#ff7538", bg: "rgba(255,117,56,.1)"  },
+  { v: "mora",             l: "En mora",                          color: "#ff4e72", bg: "rgba(255,78,114,.1)"  },
+  { v: "reclamo_disputa",  l: "En reclamo o disputa",             color: "#c39bff", bg: "rgba(195,155,255,.1)" },
+  { v: "no_seguro",        l: "No estoy seguro",                  color: "#8390b5", bg: "rgba(131,144,181,.1)" },
+];
+
+var _DEBT_CURRENT_PAYMENT_SITUACIONES = { atrasado_pagando: true, mora: true, reclamo_disputa: true };
+
+function _debtContractV2() {
+  var s = window.CZShadowDiagnosis;
+  return !!(s && typeof s.isDebtContractV2Capture === "function" && s.isDebtContractV2Capture());
+}
+
 function _renderSituacionUI(d, i) {
   var sel = d.situacion_ui || "";
   return '<div style="margin-top:18px;">'
     + '<div style="font-size:15px;font-weight:700;color:rgba(255,255,255,.85);margin-bottom:10px;">¿Qué está pasando hoy con esta deuda?</div>'
     + '<div style="display:flex;flex-direction:column;gap:8px;">'
-    + _SITUACION_OPTS.map(function(o) {
+    + (_debtContractV2() ? _SITUACION_OPTS_V2 : _SITUACION_OPTS).map(function(o) {
         var active = sel === o.v;
         return '<button type="button"'
           + ' data-deuda-situacion="' + o.v + '"'
@@ -913,10 +954,50 @@ function _renderPagoSection(d, i) {
 
   var pref  = '<div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>';
   var numIn = function(field, val) {
-    return pref + '<input type="number" style="padding-left:36px;" placeholder="0" value="'
-      + (val != null && val !== "" ? val : "")
-      + '" data-deuda-field="' + field + '" data-deuda-idx="' + i + '"/></div>';
+    var key = "deuda:" + i + ":" + field;
+    return pref + '<input type="text" inputmode="decimal" style="padding-left:36px;" placeholder="0" value="'
+      + _moneyInputValue(key, val != null && val !== "" ? val : "")
+      + '" data-deuda-field="' + field + '" data-deuda-idx="' + i + '"/></div>'
+      + _moneyInputError(key);
   };
+
+  // Debt contract v2 — current monthly payment: blank = unknown (null), "No estoy pagando nada" / 0 = known zero.
+  if (_debtContractV2() && _DEBT_CURRENT_PAYMENT_SITUACIONES[situacion]) {
+    var actual = d.pago_mensual_actual;
+    var pagoActual = function(label) {
+      return '<div class="field"><label>' + label + '</label>'
+        + numIn("pago_mensual_actual", typeof actual === "number" ? actual : "")
+        + '<div style="margin-top:8px;">'
+        + _renderBtnGroup([{ v: "0", l: "No estoy pagando nada" }], "pago_mensual_actual", actual === 0 ? "0" : "", i)
+        + '</div>'
+        + '<div style="font-size:13px;color:#8390b5;margin-top:4px;">Si no sabés el monto, dejalo vacío.</div>'
+        + '</div>';
+    };
+    if (situacion === "atrasado_pagando") {
+      return '<div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;">'
+        + '<div class="field"><label>¿Hace cuánto no pagás completo?</label>'
+        + _renderBtnGroup([
+            { v: "menos_30", l: "Menos de 30 días"   },
+            { v: "30_90",    l: "Entre 30 y 90 días" },
+          ], "atraso_tiempo", d.atraso_tiempo || "", i)
+        + '</div>'
+        + pagoActual("¿Cuánto estás pagando por mes actualmente?")
+        + '<div class="field"><label>¿Cuánto pagaste la última vez? (opcional)</label>'
+        + numIn("ultimo_pago_declarado", d.ultimo_pago_declarado != null && d.ultimo_pago_declarado !== "" ? d.ultimo_pago_declarado : d.pago)
+        + '</div>'
+        + '</div>';
+    }
+    if (situacion === "mora") {
+      return '<div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;">'
+        + pagoActual("¿Estás haciendo pagos actualmente? Si pagás algo, ¿cuánto por mes?")
+        + '</div>';
+    }
+    return '<div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;">'
+      + '<div style="padding:10px 14px;background:rgba(195,155,255,.06);border:1px solid rgba(195,155,255,.18);border-radius:10px;">'
+      + '<span style="font-size:13px;color:#8390b5;">Mi Plan no asigna automáticamente una estrategia financiera sobre esta deuda mientras esté en reclamo o disputa.</span></div>'
+      + pagoActual("¿Estás pagando algo por esta deuda actualmente? ¿Cuánto por mes?")
+      + '</div>';
+  }
 
   // Case A — pagando normalmente (pago capturado en la tarjeta; solo aclaración si quedó en 0)
   if (situacion === "pagando_normal") {
@@ -1027,7 +1108,7 @@ function _renderPresionNote(d) {
       return wrap('Aunque hoy no haya pagos activos, la deuda sigue impactando tu situación financiera.');
     }
 
-    if (sit === "mora_reclamo") {
+    if (sit === "mora_reclamo" || sit === "mora") {
       return wrap('El impacto principal hoy parece venir del atraso acumulado.');
     }
 
@@ -1091,6 +1172,8 @@ function _deudaStatusBadgeMeta(d) {
     mora_30_60:        "En mora",
     mora_60_90:        "En mora",
     mora_reclamo:      "En mora",
+    mora:              "En mora",
+    reclamo_disputa:   "En reclamo",
     deje_pagar:        "Sin pagos",
   };
   var label = labels[sit] || "Sin pagos";
@@ -1180,13 +1263,17 @@ function renderDeudaCard(d, i) {
 
     // Monto
     + '<div class="field"><label>Monto de la deuda</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
-    + '<input type="text" inputmode="decimal" autocomplete="off" style="padding-left:36px;" placeholder="0" value="' + (d.monto || "") + '" data-deuda-field="monto" data-deuda-idx="' + i + '"/></div></div>'
+    + '<input type="text" inputmode="decimal" autocomplete="off" style="padding-left:36px;" placeholder="0" value="' + _moneyInputValue("deuda:" + i + ":monto", d.monto || "") + '" data-deuda-field="monto" data-deuda-idx="' + i + '"/></div>'
+    + _moneyInputError("deuda:" + i + ":monto") + '</div>'
 
-    // Pago mensual — opcional (CSS label → PAGO MENSUAL (SI LO SABÉS))
-    + '<div class="field"><label>Pago mensual (si lo sabés)</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
+    // Pago mensual — opcional (CSS label → PAGO MENSUAL (SI LO SABÉS)).
+    // Debt contract v2: the current-payment situations capture pago_mensual_actual instead.
+    + (_debtContractV2() && _DEBT_CURRENT_PAYMENT_SITUACIONES[d.situacion_ui] ? "" :
+      '<div class="field"><label>Pago mensual (si lo sabés)</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
     + '<input type="text" inputmode="decimal" autocomplete="off" style="padding-left:36px;" placeholder="0" value="'
-    + (d.pago != null && d.pago !== "" ? d.pago : "")
-    + '" data-deuda-field="pago" data-deuda-idx="' + i + '"/></div></div>'
+    + _moneyInputValue("deuda:" + i + ":pago", d.pago != null && d.pago !== "" ? d.pago : "")
+    + '" data-deuda-field="pago" data-deuda-idx="' + i + '"/></div>'
+    + _moneyInputError("deuda:" + i + ":pago") + '</div>')
 
     + '</div>'
 
@@ -1239,7 +1326,9 @@ function renderMetricsLive() {
   }, 0);
 
   return '<div class="metric"><small>Deuda total</small><strong style="color:#ff4e72;">' + fmt(fin.totalDeuda) + '</strong></div>'
-    + '<div class="metric"><small>Pago mensual</small><strong style="color:#ffd36f;">' + fmt(fin.totalPago) + '</strong></div>'
+    + (_debtContractV2() && _hasActiveCurrentPaymentDebt()
+        ? ""
+        : '<div class="metric"><small>Pago mensual</small><strong style="color:#ffd36f;">' + fmt(fin.totalPago) + '</strong></div>')
     + '<div class="metric"><small>Interes mensual est.</small><strong style="color:' + colorRiesgo(fin.nivelRiesgo) + ';font-size:18px;">~' + fmt(interesTotalEst) + '</strong></div>'
     // SPRINT 7B.2 — V1 RISK BADGE HIDDEN (not deleted)
     // Reason: color-coded risk damages premium tone
@@ -1667,9 +1756,12 @@ function renderDeudasResumen(deudas) {
     + '<div><div style="font-size:13px;color:#8390b5;margin-bottom:6px;">Total deuda activa</div>'
     + '<div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.92);line-height:1;letter-spacing:-.5px;word-break:break-word;">'
     + fmt(Math.round(stats.totalActiva)) + "</div></div>"
-    + '<div><div style="font-size:13px;color:#8390b5;margin-bottom:6px;">Pagos mensuales</div>'
-    + '<div style="font-size:22px;font-weight:800;color:' + a.title + ';line-height:1.3;word-break:break-word;">'
-    + fmt(Math.round(stats.pagosMensuales)) + "</div></div>"
+    // Legacy pagos of atrasado / mora / disputes are not their Debt Contract V2 current payment.
+    + (_debtContractV2() && _hasActiveCurrentPaymentDebt()
+        ? ""
+        : '<div><div style="font-size:13px;color:#8390b5;margin-bottom:6px;">Pagos mensuales</div>'
+          + '<div style="font-size:22px;font-weight:800;color:' + a.title + ';line-height:1.3;word-break:break-word;">'
+          + fmt(Math.round(stats.pagosMensuales)) + "</div></div>")
     + "</div></div>";
 }
 
@@ -1853,9 +1945,19 @@ function renderRelacionDeudaIngreso(diag) {
   if (dtiRatio == null) return "";
 
   var narr = buildDebtIncomeNarrative(dtiRatio);
+  if (_v2IsRegularizacion() && (parseFloat(dtiRatio) || 0) < 1) {
+    narr = {
+      primary:   narr.primary,
+      secondary: "Con deudas en atraso, esta relación no indica si vas a poder retomar los pagos sin ajustar tu presupuesto.",
+    };
+  } else if (_v2SupersedesLegacyFinancials() && (parseFloat(dtiRatio) || 0) < 1) {
+    narr = { primary: narr.primary, secondary: "" };
+  }
   return cardOpen
     + '<div style="font-size:17px;font-weight:700;color:rgba(255,255,255,.9);line-height:1.45;margin-bottom:10px;">' + narr.primary + '</div>'
-    + '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:14px;">' + narr.secondary + '</div>'
+    + (narr.secondary
+        ? '<div style="font-size:15px;color:#8390b5;line-height:1.65;margin-bottom:14px;">' + narr.secondary + '</div>'
+        : "")
     + _dashTechIndicator("Indicador técnico: " + _dtiRatioDisplay(dtiRatio))
     + '</div>';
 }
@@ -1940,6 +2042,7 @@ function renderConfianzaDiagnostico(diag) {
   }
 
   var missingPayMsg = (!st.gastos_missing_confirmed
+      && !_v2SupersedesLegacyFinancials()
       && (diag.missing_payment_information || iv2.missing_payment_information))
     ? '<div style="margin-top:12px;padding:12px 14px;background:rgba(255,196,0,.06);border:1px solid rgba(255,196,0,.2);border-radius:10px;font-size:14px;color:#ffd447;line-height:1.6;">'
       + "Registraste deuda activa pero no informaste pagos mensuales. Algunas estimaciones pueden ser menos precisas hasta completar esa información."
@@ -3361,8 +3464,15 @@ function renderRetryBlockedFallbackCta(diag, st) {
   }
   var hierarchy = resolveDashboardCtaHierarchy(diag, st);
   var deudas = st.deudas || [];
+  // V2 owns the plan: no legacy "ordenar mi deuda" / MiDeuda eligibility path (V2 opt-in is separate).
+  var v2Owned = !!_v2PanoramaView();
 
   if (hierarchy.primary === "mideuda") {
+    if (v2Owned) {
+      return hierarchy.secondary === "complete_expenses"
+        ? _renderCompleteExpensesCtaHtml({ primary: false, marginTop: "10px" })
+        : "";
+    }
     return _renderMideudaFallbackCtaHtml(hierarchy);
   }
 
@@ -3382,6 +3492,7 @@ function renderRetryBlockedFallbackCta(diag, st) {
   }
 
   if (deudas.length > 0) {
+    if (v2Owned) return "";
     return '<div style="margin-top:16px;">'
       + '<div style="font-size:14px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:12px;">'
       + 'Antes de volver a solicitar, conviene ordenar y confirmar tu deuda actual.'
@@ -3721,7 +3832,7 @@ function resolveExplanationQueEstaPasando(diag, st, coherence) {
   };
 }
 
-function renderNarrativaInterpretacion(diag, st, coherence) {
+function renderNarrativaInterpretacion(diag, st, coherence, opts) {
   var iv2 = diag.interpretacion_v2;
   if (!iv2 || !iv2.narrativa_jerarquizada) return "";
   st = st || _st();
@@ -3787,7 +3898,7 @@ function renderNarrativaInterpretacion(diag, st, coherence) {
     + block("Qué está pasando",        textoPrincipal, true)
     + (showPresion ? block("Presión principal",          nPresion  ? nPresion.texto  : null) : "")
     + block("Capacidad de recuperación", nRecup     ? nRecup.texto    : null)
-    + (heroOwnsNextStep ? "" : block("Primer paso recomendado", textoPaso))
+    + (heroOwnsNextStep || (opts && opts.hideNextStep) ? "" : block("Primer paso recomendado", textoPaso))
     + injectedCtaHtml
     + confidenceNote
     + '</div>';
@@ -3845,6 +3956,14 @@ function _renderTuSituacionHoy(diag, st) {
       + '<div style="padding:14px 16px;background:rgba(255,196,0,.08);border:1px solid rgba(255,196,0,.2);border-radius:12px;font-size:15px;color:#ffd447;font-weight:700;line-height:1.65;">'
       + "Próximo paso recomendado: completar tus gastos mensuales."
       + "</div>"
+      + _renderSituacionHoyEditGastosCta()
+      + "</div>";
+  }
+
+  if (_v2SupersedesLegacyFinancials()) {
+    return '<div class="plan-card dash-situacion-hoy-card" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.09);">'
+      + '<div style="font-size:20px;font-weight:800;margin-bottom:14px;line-height:1.3;">📌 Tu situación hoy</div>'
+      + '<div style="font-size:14px;color:#8390b5;line-height:1.5;">' + _lineaDiaEvaluacion(st) + "</div>"
       + _renderSituacionHoyEditGastosCta()
       + "</div>";
   }
@@ -4232,10 +4351,136 @@ function _visiblePlanTitle(plan) {
   return plan.titulo || "Tu plan";
 }
 
-function _renderDashboardHeroCard(diag, st, coherence) {
+// V2 decides; legacy components may explain. Non-null only with the V2 flags on and a current valid
+// V2 result for the active journey and financial input (v2Interaction.js).
+function _v2PanoramaView() {
+  try {
+    var api = typeof window !== "undefined" ? window.CZV2Interaction : null;
+    return api && typeof api.currentPanoramaView === "function" ? api.currentPanoramaView() : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// REGULARIZACION is decided on current cash flow: a positive flow may come from suspended payments and
+// shrink once they resume, so legacy copy must not present it as money left over or as room to pay.
+function _v2IsRegularizacion() {
+  var v = _v2PanoramaView();
+  return !!(v && v.kind === "classified" && v.strategy === "REGULARIZACION");
+}
+
+// CONTENCION is entered only on a negative V2 flow: legacy copy must not suggest room to pay more.
+function _v2IsContencion() {
+  var v = _v2PanoramaView();
+  return !!(v && v.kind === "classified" && v.strategy === "CONTENCION");
+}
+
+function _hasActiveCurrentPaymentDebt(st) {
+  var deudas = (st || _st()).deudas || [];
+  if (typeof deudasActivasParaCalculo === "function") deudas = deudasActivasParaCalculo(deudas);
+  return deudas.some(function (d) { return !!(d && _DEBT_CURRENT_PAYMENT_SITUACIONES[d.situacion_ui]); });
+}
+
+// For atrasado_pagando / mora / reclamo_disputa the Debt Contract V2 payment is pago_mensual_actual, while the
+// legacy engine reads pago / ultimo_pago_declarado and treats mora and disputes alike as mora_reclamo: its flow,
+// payment, margin and mora readings may contradict V2 and must not be shown next to it.
+function _v2SupersedesLegacyFinancials() {
+  return !!_v2PanoramaView() && _hasActiveCurrentPaymentDebt();
+}
+
+// Strategy names as defined in docs/DECISIONS.md (DEC-CLASSIFIER). Never mapped from planId.
+var _V2_STRATEGY_TITLE = Object.freeze({
+  CONTENCION: "Contención",
+  REGULARIZACION: "Regularización",
+  REDUCCION_CARGA: "Reducción de carga",
+  CONSOLIDACION: "Consolidación",
+  MANTENIMIENTO_OPTIMIZACION: "Mantenimiento/Optimización",
+});
+
+var _V2_STRATEGY_STATUS_TIER = Object.freeze({
+  CONTENCION: 4,
+  REGULARIZACION: 4,
+  REDUCCION_CARGA: 3,
+  CONSOLIDACION: 1,
+  MANTENIMIENTO_OPTIMIZACION: 1,
+});
+
+function _v2EntryReasonText(reason) {
+  switch (reason) {
+    case "FLOW_NEGATIVE": return _EXPLANATION_RECOVERY_FLUJO_TEXT;
+    case "ACTIVE_MORA": return _EXPLANATION_RECOVERY_MORA_TEXT;
+    case "HIGH_DEBT_BURDEN": return "Las cuotas de tus deudas ocupan una parte alta de tu ingreso mensual.";
+    case "FLOW_ZERO": return "Hoy tus ingresos y tus gastos quedan parejos.";
+    case "SUSTAINABLE_DEBT_BURDEN": return _WHAT_IS_HAPPENING_HEALTHY_MEDIO_BAJO;
+    case "NO_ACTIVE_DEBT": return _WHAT_IS_HAPPENING_HEALTHY_ZERO_DEBT;
+    default: return "";
+  }
+}
+
+function _renderV2HeroCard(view) {
+  var status = _planStatusLabelFromTier(_V2_STRATEGY_STATUS_TIER[view.strategy] || 0);
+  var pc = status.color || "#40d7ff";
+  var problem = (view.entry_reasons || []).map(_v2EntryReasonText).filter(Boolean).join(" ");
+  return '<div class="cz-hero-card plan-card dash-tier-a" id="cz-dashboard-hero" data-v2-strategy="' + view.strategy + '" style="border-color:' + pc + '55;'
+    + 'background:linear-gradient(165deg,' + pc + '18 0%,rgba(255,255,255,.04) 58%);'
+    + 'padding:24px 22px;margin-bottom:4px;">'
+    + '<div style="font-size:12px;font-weight:800;color:' + pc + ';text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">'
+    + "Tu panorama actual"
+    + "</div>"
+    + '<div style="font-size:26px;font-weight:900;color:rgba(255,255,255,.96);line-height:1.25;margin-bottom:10px;">'
+    + (_V2_STRATEGY_TITLE[view.strategy] || "")
+    + "</div>"
+    + '<div style="margin-bottom:14px;">'
+    + _renderPlanStatusLabelHtml(status)
+    + "</div>"
+    + (problem
+        ? '<div style="font-size:15px;color:#8390b5;line-height:1.65;">' + problem + "</div>"
+        : "")
+    + "</div>";
+}
+
+function _renderIncompleteHeroHtml(heroCtaHtml) {
+  return '<div class="cz-hero-card plan-card dash-tier-a" id="cz-dashboard-hero" style="border-color:rgba(255,211,111,.45);'
+    + 'background:linear-gradient(165deg,rgba(255,211,111,.12) 0%,rgba(255,255,255,.04) 55%);'
+    + 'padding:24px 22px;margin-bottom:4px;">'
+    + '<div style="font-size:12px;font-weight:800;color:#ffd447;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">'
+    + "Paso prioritario"
+    + "</div>"
+    + '<div style="font-size:26px;font-weight:900;color:rgba(255,255,255,.96);line-height:1.25;margin-bottom:12px;">'
+    + "Tu diagnóstico todavía no está completo"
+    + "</div>"
+    + '<div style="font-size:16px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:18px;">'
+    + "Nos falta conocer algunos datos para estimar con mayor precisión tu situación financiera."
+    + "</div>"
+    + heroCtaHtml
+    + '<div style="margin-top:14px;font-size:13px;color:#8390b5;line-height:1.6;">'
+    + "Completá la información pendiente para mejorar la precisión de tu diagnóstico."
+    + "</div>"
+    + "</div>";
+}
+
+// V2 incomplete only because of debts in reclamo / disputa: an outcome, not missing data (no completion CTA).
+function _renderV2DisputeHeroHtml() {
+  return '<div class="cz-hero-card plan-card dash-tier-a" id="cz-dashboard-hero" data-v2-hero="dispute" style="border-color:rgba(195,155,255,.45);'
+    + 'background:linear-gradient(165deg,rgba(195,155,255,.12) 0%,rgba(255,255,255,.04) 55%);'
+    + 'padding:24px 22px;margin-bottom:4px;">'
+    + '<div style="font-size:26px;font-weight:900;color:rgba(255,255,255,.96);line-height:1.25;margin-bottom:12px;">'
+    + "Tenés una deuda en reclamo o disputa"
+    + "</div>"
+    + '<div style="font-size:16px;color:rgba(255,255,255,.82);line-height:1.65;">'
+    + "Mi Plan no asigna automáticamente una estrategia financiera sobre esa deuda mientras esté en reclamo o disputa."
+    + "</div>"
+    + "</div>";
+}
+
+function _renderDashboardHeroCard(diag, st, coherence, v2View) {
   diag = diag || _diag();
   st = st || _st();
   coherence = coherence || resolveDashboardCoherence(diag, st);
+  // V2 incomplete: the missing-data card (v2Interaction.js) carries the per-reason actions.
+  if (v2View && v2View.kind === "classified") return _renderV2HeroCard(v2View);
+  if (v2View && v2View.kind === "incomplete" && v2View.dispute_only) return _renderV2DisputeHeroHtml();
+  if (v2View && v2View.kind === "incomplete") return _renderIncompleteHeroHtml("");
   var pc = (diag.plan && diag.plan.color) ? diag.plan.color : "#40d7ff";
   var heroContent = resolveHeroContent(diag, st, coherence);
 
@@ -4249,23 +4494,7 @@ function _renderDashboardHeroCard(diag, st, coherence) {
           buttonLabel: "Completar gastos",
         })
       : (showDebtsCta ? _renderHeroDebtsCtaHtml() : "");
-    return '<div class="cz-hero-card plan-card dash-tier-a" id="cz-dashboard-hero" style="border-color:rgba(255,211,111,.45);'
-      + 'background:linear-gradient(165deg,rgba(255,211,111,.12) 0%,rgba(255,255,255,.04) 55%);'
-      + 'padding:24px 22px;margin-bottom:4px;">'
-      + '<div style="font-size:12px;font-weight:800;color:#ffd447;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">'
-      + "Paso prioritario"
-      + "</div>"
-      + '<div style="font-size:26px;font-weight:900;color:rgba(255,255,255,.96);line-height:1.25;margin-bottom:12px;">'
-      + "Tu diagnóstico todavía no está completo"
-      + "</div>"
-      + '<div style="font-size:16px;color:rgba(255,255,255,.82);line-height:1.65;margin-bottom:18px;">'
-      + "Nos falta conocer algunos datos para estimar con mayor precisión tu situación financiera."
-      + "</div>"
-      + heroCtaHtml
-      + '<div style="margin-top:14px;font-size:13px;color:#8390b5;line-height:1.6;">'
-      + "Completá la información pendiente para mejorar la precisión de tu diagnóstico."
-      + "</div>"
-      + "</div>";
+    return _renderIncompleteHeroHtml(heroCtaHtml);
   }
 
   var plan = heroContent.plan || diag.plan || {};
@@ -4412,7 +4641,9 @@ function renderTabPlan() {
     ? hasBehavioralSurveyData(st, diag)
     : !!TIENE_ENCUESTA;
   // A completed V2 survey is never re-requested, even without a legacy behavioral score.
+  // A Credizona handoff never sends the user back to the Credizona survey (SURVEY_URL).
   var showBehavCta = !st._handoffSurveyV2Completed
+    && st._handoffPrefill !== true
     && (typeof shouldShowBehavioralRefinementCta === "function"
       ? shouldShowBehavioralRefinementCta(st, diag)
       : false);
@@ -4437,6 +4668,19 @@ function renderTabPlan() {
       + '</div>'
     : '';
 
+  // V2 owns hero, state and next step ("Tus próximos pasos"); planId-driven advice is hidden.
+  var v2View = _v2PanoramaView();
+  if (window.CZV2Interaction && typeof window.CZV2Interaction.markRendered === "function") {
+    window.CZV2Interaction.markRendered(v2View);
+  }
+  var legacyFinSuperseded = _v2SupersedesLegacyFinancials();
+  if (legacyFinSuperseded) {
+    _finScoreLabel = v2View.kind === "classified"
+      ? _planStatusLabelFromTier(_V2_STRATEGY_STATUS_TIER[v2View.strategy] || 0)
+      : (v2View.dispute_only ? _planStatusLabelFromTier(0) : _incompleteFinancialScoreLabel());
+    _zeroPaymentDebtClarification = "";
+  }
+
   var _profileFirstName = (typeof getProfileFirstName === "function") ? getProfileFirstName(st) : "";
   var _greetingHtml = _profileFirstName
     ? '<div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.95);margin-bottom:18px;">Hola '
@@ -4450,17 +4694,24 @@ function renderTabPlan() {
 
     // 1 — Hero Card
     + _dashZoneOpen("hero")
-    + _renderDashboardHeroCard(diag, st, coherence)
+    + _renderDashboardHeroCard(diag, st, coherence, v2View)
     + _dashZoneClose()
 
+    + (v2View ? _dashZoneGapSpacerHtml() + '<div data-v2i-slot="1"></div>' : "")
+
     + (function() {
+        if (v2View) return "";
         var primaryHtml = renderPrimaryActionCard(diag, st, coherence);
         if (!primaryHtml) return "";
         return _dashZoneGapSpacerHtml() + primaryHtml + _dashZoneGapSpacerHtml();
       })()
 
     // 2 — Tu situación actual (primary diagnosis)
-    + _dashZoneOpen("diagnostico", CZ_DASH_ZONE_GAP)
+    + (legacyFinSuperseded
+        ? (_gastosMissingCard || _earlyExpensesCta
+            ? _dashZoneOpen("diagnostico", CZ_DASH_ZONE_GAP) + _gastosMissingCard + _earlyExpensesCta + _dashZoneClose()
+            : "")
+        : _dashZoneOpen("diagnostico", CZ_DASH_ZONE_GAP)
     + _gastosMissingCard
     + _earlyExpensesCta
     + renderFinancialRealityWarning(diag)
@@ -4473,7 +4724,7 @@ function renderTabPlan() {
     + 'color:#8390b5;line-height:1.6;">'
     + 'Este análisis se basa exclusivamente en la información que declaraste.'
     + '</div>'
-    + (!_incompleteProfile
+    + (!_incompleteProfile && !v2View
         ? '<div class="plan-card" style="border-color:' + pc + '33;">'
           + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:18px;">'
           + '<div style="font-size:14px;color:#8390b5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Que busca este plan</div>'
@@ -4484,25 +4735,27 @@ function renderTabPlan() {
               : '')
           + '</div>'
         : '')
-    + renderNarrativaInterpretacion(diag, st, coherence)
+    + renderNarrativaInterpretacion(diag, st, coherence, { hideNextStep: !!v2View })
     + _dashIaSectionClose()
-    + _dashZoneClose()
+    + _dashZoneClose())
 
     // 3 — Low-expenses confirmation (dashboard-only contextual card)
-    + _dashZoneOpen("low-expenses-confirm", CZ_DASH_ZONE_GAP)
-    + renderLowExpensesConfirmCard(diag, st)
-    + _dashZoneClose()
+    + (function() {
+        var card = renderLowExpensesConfirmCard(diag, st);
+        if (legacyFinSuperseded && !card) return "";
+        return _dashZoneOpen("low-expenses-confirm", CZ_DASH_ZONE_GAP) + card + _dashZoneClose();
+      })()
 
     // 4 — Qué hacer ahora (+ horizonte, acciones)
-    + _dashZoneOpen("accion", CZ_DASH_ZONE_GAP, _incompleteProfile ? "dash-accion-compact" : "")
+    + (legacyFinSuperseded ? "" : _dashZoneOpen("accion", CZ_DASH_ZONE_GAP, _incompleteProfile ? "dash-accion-compact" : "")
     + _dashIaSectionOpen(true, "accion")
     + _dashIaLabel("Qué hacer ahora", "accion")
     + renderHorizonteRecalificacion(diag, st, coherence)
     // Sprint B3a — Hidden Factor inline card removed; dash-zone-plus is canonical Plus offer.
     // detectHiddenFactorOpportunity() preserved for future use outside this tab.
-    + '<div style="display:none;height:0;overflow:hidden;">' + renderAccionPrioritaria(diag) + '</div>'
+    + (v2View ? "" : '<div style="display:none;height:0;overflow:hidden;">' + renderAccionPrioritaria(diag) + '</div>')
     + (function() {
-        if (coherence.hideAccionPrioritaria) return "";
+        if (v2View || coherence.hideAccionPrioritaria) return "";
         var nextStepResolved = resolveNextStepContent(diag, st, coherence);
         var textoAccion = nextStepResolved.text;
         if (!textoAccion) return "";
@@ -4515,15 +4768,15 @@ function renderTabPlan() {
           + textoAccion
           + '</div></div></div>';
       })()
-    + (prio ? _renderDashboardPriorityCard(diag, st, prio) : "")
+    + (prio && !v2View ? _renderDashboardPriorityCard(diag, st, prio) : "")
     + _dashIaSectionClose()
-    + _dashZoneClose()
+    + _dashZoneClose())
 
     // 4 — Qué está frenando tu perfil (+ relación deuda/ingreso)
-    + (_shouldRenderFrenandoSection(diag, coherence)
+    + ((legacyFinSuperseded ? _shouldShowRelacionDeudaIngresoSection(diag) : _shouldRenderFrenandoSection(diag, coherence))
         ? _dashZoneOpen("frenando", CZ_DASH_ZONE_GAP, "dash-zone-density")
           + _dashIaSectionOpen(false, "frenando")
-          + (!_shouldHideBlockersContent(diag, coherence)
+          + (!legacyFinSuperseded && !_shouldHideBlockersContent(diag, coherence)
               ? _dashIaLabel("Qué está frenando tu perfil", "frenando")
                 + renderBloqueadores(diag)
                 + renderPlan4SinDeudaActivaExplicacion(diag)
@@ -4544,11 +4797,13 @@ function renderTabPlan() {
     + '</div>'
     + _dashZoneClose()
 
-    // 6 — Acciones recomendadas (visible by default)
-    + _dashZoneOpen("acciones-recom", CZ_DASH_ZONE_GAP)
-    + renderHerramientas()
-    + renderContextualActionBlock(resolveContextualActionSegment(diag, st))
-    + _dashZoneClose()
+    // 6 — Acciones recomendadas (visible by default; planId advice, hidden when V2 owns the plan)
+    + (v2View
+        ? ""
+        : _dashZoneOpen("acciones-recom", CZ_DASH_ZONE_GAP)
+          + renderHerramientas()
+          + renderContextualActionBlock(resolveContextualActionSegment(diag, st))
+          + _dashZoneClose())
 
     // 7 — Tu situación hoy
     + _dashZoneOpen("situacion-hoy", CZ_DASH_ZONE_GAP, "dash-zone-density")
@@ -4559,7 +4814,7 @@ function renderTabPlan() {
     + _dashZoneOpen("numeros", CZ_DASH_ZONE_GAP)
     + _renderNumerosAccordionShell(
         // Sprint B2f — Edit Expenses CTA lives only in Tu situación hoy (#btn-editar-gastos-situacion-hoy).
-        renderRecommendedToolsSection(diag)
+        (v2View ? "" : renderRecommendedToolsSection(diag))
         + renderRadiografia()
         + (function() {
         var sev = _severityFromDiag(diag);
@@ -4571,6 +4826,7 @@ function renderTabPlan() {
         } else if (sev.has_unpaid_debt) {
           flujoNote = '<div style="margin-top:12px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;font-size:13px;color:#8390b5;line-height:1.6;">El flujo actual puede verse artificialmente liberado por pagos suspendidos.</div>';
         }
+        if (legacyFinSuperseded) flujoNote = "";
         var ratioPct = Math.round(fin.ratio * 100);
         var ratioColor = ratioPct > 50 ? "#ff4e72" : ratioPct > 35 ? "#ffd447" : "#34ffaf";
         var ratioSub   = "meta: menos del 30%";
@@ -4605,11 +4861,11 @@ function renderTabPlan() {
             };
         return '<div class="metrics">'
           + [
-              flujoMetric,
+              legacyFinSuperseded || _v2IsRegularizacion() ? null : flujoMetric,
               { l: "Total de deudas",           v: fmt(fin.totalDeuda),               c: "#ffd36f",  s: (_st().deudas||[]).length + " deuda" + ((_st().deudas||[]).length !== 1 ? "s" : "") },
-              { l: "De tu sueldo va a deudas",  v: ratioPct + "%",                    c: ratioColor, s: ratioSub },
-              { l: "Pagas en cuotas por mes",   v: fmt(fin.totalPago),                c: "rgba(255,255,255,.7)", s: "suma de minimos" },
-            ].map(function(m) { return '<div class="metric"><small>' + m.l + '</small><strong style="color:' + m.c + ';">' + m.v + '</strong><div style="font-size:14px;color:#8390b5;margin-top:6px;">' + m.s + '</div></div>'; }).join("")
+              legacyFinSuperseded ? null : { l: "De tu sueldo va a deudas",  v: ratioPct + "%",                    c: ratioColor, s: ratioSub },
+              legacyFinSuperseded ? null : { l: "Pagas en cuotas por mes",   v: fmt(fin.totalPago),                c: "rgba(255,255,255,.7)", s: "suma de minimos" },
+            ].filter(Boolean).map(function(m) { return '<div class="metric"><small>' + m.l + '</small><strong style="color:' + m.c + ';">' + m.v + '</strong><div style="font-size:14px;color:#8390b5;margin-top:6px;">' + m.s + '</div></div>'; }).join("")
           + flujoNote
           + '</div>';
       })()
@@ -4759,8 +5015,9 @@ function renderRadiografia() {
   if (!diag || !st.deudas || st.deudas.length === 0) return "";
   var r    = calcularRadiografia();
   var sev  = _severityFromDiag(diag);
+  var regularizacion = _v2IsRegularizacion();
   var hasSuspendedDebt = sev.has_mora_or_deje_pagar || st.deudas.some(function(d) {
-    return d.situacion_ui === "deje_pagar" || d.situacion_ui === "mora_reclamo";
+    return d.situacion_ui === "deje_pagar" || situacionLegacyDeuda(d.situacion_ui) === "mora_reclamo";
   });
   var DISC = '<div style="font-size:12px;color:#8390b5;margin-top:6px;">* Basado en tasas estimadas de mercado. Tu tasa real puede variar.</div>';
   var SUSPENDED_DISC = '<div style="font-size:12px;color:#8390b5;margin-top:6px;">Estimacion orientativa. No representa una cuota ni un pago activo.</div>';
@@ -4795,15 +5052,30 @@ function renderRadiografia() {
   if (st.gastos_missing_confirmed && ratioPct <= 35) {
     ratioCopy = "La carga de pagos sobre el ingreso parece limitada, pero sin gastos declarados el margen real puede ser menor.";
   }
+  if (regularizacion && ratioPct <= 35 && !(r.comprometido === 0 && sev.has_unpaid_debt)) {
+    ratioCopy = "Esto mide solo los pagos que hacés hoy; no incluye lo que haga falta para ponerte al día con las deudas atrasadas.";
+  }
+  var contencion = _v2IsContencion();
+  if (contencion && ratioPct <= 35 && !(r.comprometido === 0 && sev.has_unpaid_debt)) {
+    ratioCopy = _v2EntryReasonText("FLOW_NEGATIVE");
+  }
 
   // Sprint 8.3 — guard aggregate interest display
   var interesUnrealistic = PRE.ingreso > 0 && r.interesMensualTotal / PRE.ingreso > 1.5;
+
+  // Payoff, extra payment and share of income come from legacy payments; the interest total would count a
+  // disputed balance as debt that accrues.
+  var superseded = _v2SupersedesLegacyFinancials();
+  var activas = typeof deudasActivasParaCalculo === "function" ? deudasActivasParaCalculo(st.deudas) : st.deudas;
+  var showInteres = !(superseded && activas.some(function(d) { return d && d.situacion_ui === "reclamo_disputa"; }));
+  var gastosInsights = renderRadiografiaGastosInsights();
+  if (superseded && !showInteres && !gastosInsights) return "";
 
   return '<div style="margin-bottom:20px;max-width:100%;' + _dashSectionAccentCss("radiografia") + '">'
     + _dashCardTitle("📊", "Radiografía financiera", "radiografia")
 
     // 1. Interes puro / costo latente
-    + '<div style="background:rgba(255,78,114,.07);border:1px solid rgba(255,78,114,.2);border-radius:18px;padding:20px;margin-bottom:12px;">'
+    + (!showInteres ? "" : '<div style="background:rgba(255,78,114,.07);border:1px solid rgba(255,78,114,.2);border-radius:18px;padding:20px;margin-bottom:12px;">'
     + '<div style="font-size:13px;font-weight:800;color:#ff4e72;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">💸 ' + interesTitle + '</div>'
     + (interesUnrealistic
         ? '<div style="font-size:15px;color:#8390b5;line-height:1.65;">El deterioro potencial de esta deuda es muy alto y el saldo actualizado debe verificarse.</div>'
@@ -4811,10 +5083,10 @@ function renderRadiografia() {
           + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">' + interesLabelMes + '</div><div style="font-size:34px;font-weight:900;color:#ff4e72;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal)) + '</div></div>'
           + '<div><div style="font-size:12px;color:#8390b5;margin-bottom:5px;">' + interesLabelAno + '</div><div style="font-size:34px;font-weight:900;color:#ffd447;line-height:1;letter-spacing:-1px;">' + fmt(Math.round(r.interesMensualTotal * 12)) + '</div></div>'
           + '</div>')
-    + interesDisclaimer + '</div>'
+    + interesDisclaimer + '</div>')
 
     // 2. Meses por deuda
-    + (st.deudas.some(function(_, i) { return r.mesesPorDeuda[i] !== null; })
+    + (!superseded && st.deudas.some(function(_, i) { return r.mesesPorDeuda[i] !== null; })
         ? '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px;margin-bottom:12px;">'
           + '<div style="font-size:13px;font-weight:800;color:#ffd447;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">📅 Cuando cancelarias cada deuda</div>'
           + st.deudas.map(function(d, i) {
@@ -4829,7 +5101,7 @@ function renderRadiografia() {
         : "")
 
     // 3. Ahorro extra
-    + (r.ahorroPagandoExtra
+    + (r.ahorroPagandoExtra && !regularizacion && !contencion && !superseded
         ? '<div style="background:rgba(52,255,175,.07);border:1px solid rgba(52,255,175,.2);border-radius:18px;padding:20px;margin-bottom:12px;">'
           + '<div style="font-size:13px;font-weight:800;color:#34ffaf;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">⚡ Si pagas ' + fmt(r.ahorroPagandoExtra.extra) + ' extra por mes</div>'
           + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
@@ -4842,7 +5114,7 @@ function renderRadiografia() {
         : "")
 
     // 4. % comprometido — active payments only (Sprint 7B.2); framing fix (Sprint 7B.3)
-    + '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px;margin-bottom:12px;">'
+    + (superseded ? "" : '<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:20px;margin-bottom:12px;">'
     + '<div style="font-size:13px;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">📊 De tu sueldo, cuanto va a pagos de deudas</div>'
     + '<div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">'
     + '<div style="font-size:52px;font-weight:900;color:' + ratioColor + ';line-height:1;letter-spacing:-2px;">' + ratioPct + '%</div>'
@@ -4851,14 +5123,16 @@ function renderRadiografia() {
     + '<div style="height:14px;background:rgba(255,255,255,.08);border-radius:7px;overflow:hidden;margin-bottom:8px;">'
     + '<div style="height:100%;border-radius:7px;width:' + ratioPct + '%;background:' + ratioColor + ';"></div></div>'
     + '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8390b5;"><span>Pagos activos: ' + fmt(Math.round(r.comprometido)) + '</span><span>'
-    + (isIncompleteFinancialProfile(diag, st)
+    + (regularizacion
+        ? ""
+        : isIncompleteFinancialProfile(diag, st)
         ? "Flujo libre: Pendiente de calcular"
         : ((st.gastos_missing_confirmed ? "Flujo libre est. (sin gastos)" : "Flujo libre") + ": " + fmt(Math.max(0, r.flujoLibreActivo))))
     + '</span></div>'
-    + '</div>'
+    + '</div>')
 
     // Sprint 12.3 — contexto de gastos vs ingreso (solo step 3, ingreso > 0, gastos > 0)
-    + renderRadiografiaGastosInsights()
+    + gastosInsights
 
     + '</div>';
 }
@@ -4971,7 +5245,9 @@ function renderDeudaLive(d, i, totalDeuda, ingreso) {
   var pagada     = _isDeudaPagadaUI(d);
   var st         = _st();
   var montoMostrar = parseFloat(pagada && d.monto_original != null ? d.monto_original : d.monto) || 0;
-  var pago       = parseFloat(d.pago) || 0;
+  var pago       = _debtContractV2() && _DEBT_CURRENT_PAYMENT_SITUACIONES[d.situacion_ui]
+    ? (typeof d.pago_mensual_actual === "number" ? d.pago_mensual_actual : 0)
+    : (parseFloat(d.pago) || 0);
   var badge      = _deudaStatusBadgeMeta(d);
   var quickOpen  = !pagada && st._deuda_quick_edit_index === i;
   var editBanner = (st.editing_debt_index === i)
@@ -4997,7 +5273,7 @@ function renderDeudaLive(d, i, totalDeuda, ingreso) {
     amountBlock = '<div style="margin:4px 0 8px;max-width:100%;">'
       + '<div style="position:relative;max-width:100%;">'
       + '<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:16px;pointer-events:none;">$</span>'
-      + '<input type="number" data-editar-deuda="' + i + '" value="' + (d.monto != null ? d.monto : "") + '" placeholder="0" '
+      + '<input type="text" inputmode="decimal" data-editar-deuda="' + i + '" value="' + formatAmountForInput(d.monto != null ? d.monto : "") + '" placeholder="0" '
       + 'style="padding-left:34px;width:100%;max-width:100%;box-sizing:border-box;"/>'
       + "</div></div>";
   } else {
@@ -6025,7 +6301,8 @@ function renderHerramientasPlan1() {
     "El ingreso registrado en tu solicitud es " + fmt(PRE.ingreso) + ". Suma cualquier otro ingreso que no figure ahi.",
     '<div style="margin-top:4px;">'
     + '<div style="position:relative;margin-bottom:12px;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
-    + '<input type="number" style="padding-left:36px;" id="ing-formal" value="' + (ing.formal || PRE.ingreso) + '"/></div>'
+    + '<input type="text" inputmode="numeric" placeholder="Ej: 65000" style="padding-left:36px;" id="ing-formal" value="' + _moneyInputValue("ing:formal", ing.formal || PRE.ingreso, formatIngresoMensualForInput) + '"/></div>'
+    + _moneyInputError("ing:formal", INGRESO_MENSUAL_FORMAT_ERROR)
     + '<div id="ingresos-extras">'
     + (ing.extras || []).map(function(e, i) {
         return '<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:flex-end;margin-bottom:12px;">'
@@ -6033,7 +6310,8 @@ function renderHerramientasPlan1() {
           + ["Changa","Alquiler que cobro","Ayuda familiar","Comision","Horas extra","Otro"].map(function(t) { return '<option value="' + t + '"' + (e.tipo === t ? " selected" : "") + '>' + t + '</option>'; }).join("")
           + '</select></div>'
           + '<div><label>Monto mensual</label><div style="position:relative;"><span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#8390b5;font-weight:700;font-size:18px;">$</span>'
-          + '<input type="number" style="padding-left:36px;" value="' + (e.monto || "") + '" data-ing-extra-idx="' + i + '" data-ing-extra-field="monto"/></div></div>'
+          + '<input type="text" inputmode="decimal" style="padding-left:36px;" value="' + _moneyInputValue("ing:extra:" + i, e.monto || "") + '" data-ing-extra-idx="' + i + '" data-ing-extra-field="monto"/></div>'
+          + _moneyInputError("ing:extra:" + i) + '</div>'
           + '<button class="remove-btn" data-quitar-ing-extra="' + i + '" style="margin-bottom:0;">&#215;</button></div>';
       }).join("")
     + '</div>'

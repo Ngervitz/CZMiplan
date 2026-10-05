@@ -13,8 +13,11 @@
  *   MONTHLY_RESERVE           surplus_reserve                   { destination, amount }
  * target_reduction is what the user declared they could cut, never a reduction achieved.
  * creditor_contact_step produces registered progress, not a financial action.
+ * A disputed debt (actionContext.disputedDebtIndices) is never a debt_index target.
  */
 "use strict";
+
+var disputedDebtIndices = require("../diagnosis/actionContext").disputedDebtIndices;
 
 var ACTION_VERSION = "financial_action_v1";
 var LOWER_PAYMENT_STRATEGIES = { CONTENCION: true, REDUCCION_CARGA: true };
@@ -51,8 +54,12 @@ function deriveFinancialActions(state, actionContext) {
   }
   var out = [];
 
+  var disputed = {};
+  disputedDebtIndices(state.result).forEach(function (i) { disputed[i] = true; });
   var activeByIndex = {};
-  asArray(actionContext.active_debts).forEach(function (d) { activeByIndex[d.debt_index] = d; });
+  asArray(actionContext.active_debts).forEach(function (d) {
+    if (disputed[d.debt_index] !== true) activeByIndex[d.debt_index] = d;
+  });
 
   if (LOWER_PAYMENT_STRATEGIES[state.strategy] === true) {
     asArray(state.lower_payment_intent)

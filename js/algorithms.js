@@ -527,6 +527,12 @@ function _guardrailEncuestaCriticaReal(enc, resp) {
   return enc.nivel === "C" || (enc.flagsRiesgo && enc.flagsRiesgo.length > 0);
 }
 
+// Debt contract v2 splits the legacy "mora_reclamo" situation into "mora" and "reclamo_disputa".
+// The legacy engine keeps its single mora_reclamo semantics for both; any other value is unchanged.
+function situacionLegacyDeuda(sit) {
+  return sit === "mora" || sit === "reclamo_disputa" ? "mora_reclamo" : sit;
+}
+
 function _guardrailHasActiveMora(fin, iv2, behav) {
   behav = behav || (fin && fin.behavioral) || {};
   iv2   = iv2   || {};
@@ -688,7 +694,7 @@ function calcularMotor() {
   // interpretation engine can read them without touching CZState.deudas directly.
   const deudas = _deudas();
   const situCounts = deudas.reduce(function(acc, d) {
-    var s = d.situacion_ui || null;
+    var s = situacionLegacyDeuda(d.situacion_ui) || null;
     if (s) acc[s] = (acc[s] || 0) + 1;
     return acc;
   }, {});
@@ -702,7 +708,7 @@ function calcularMotor() {
     debts_con_situacion:   deudas.filter(function(d) { return d.situacion_ui != null; }).length,
     debts_sin_situacion:   deudas.filter(function(d) { return d.situacion_ui == null; }).length,
     dominant_situacion:    dominantSituacion,
-    tiene_mora_declarada:  deudas.some(function(d)  { return d.situacion_ui === "mora_reclamo"; }),
+    tiene_mora_declarada:  deudas.some(function(d)  { return situacionLegacyDeuda(d.situacion_ui) === "mora_reclamo"; }),
     tiene_informal:        deudas.some(function(d)  { return d.tipo === "informal"; }),
     tiene_pago_parcial:    deudas.some(function(d)  { return d.pago_fuente === "ultimo_pago_declarado"; }),
     tiene_no_declarado:    deudas.some(function(d)  { return d.pago_fuente === "no_declarado"; }),
@@ -859,10 +865,10 @@ function calcularPartnerSignals(deudas, fin) {
   deudas = deudasActivasParaCalculo(deudas || []);
   fin = fin || {};
   var mora_activa = deudas.some(function(d) {
-    return d.situacion_ui === "mora_reclamo" || d.situacion_ui === "deje_pagar";
+    return situacionLegacyDeuda(d.situacion_ui) === "mora_reclamo" || d.situacion_ui === "deje_pagar";
   }) || (fin.cantMoras || 0) > 0;
   var deuda_vencida = deudas.some(function(d) {
-    var sit = d.situacion_ui || "";
+    var sit = situacionLegacyDeuda(d.situacion_ui) || "";
     return sit === "atrasado_pagando" || sit === "deje_pagar" || sit === "mora_reclamo";
   });
   var flag_demasiadas_deudas = deudas.length >= 3;
@@ -954,7 +960,7 @@ function calcularRadiografia() {
   // presion_latente_estimada and deuda_total are NOT included here.
   var pagosMensualesActivos = deudas.reduce(function(s, d) {
     if (isDeudaPagada(d)) return s;
-    var sit = d.situacion_ui;
+    var sit = situacionLegacyDeuda(d.situacion_ui);
     // Explicitly stopped or in mora: payment is 0 (guard against legacy stale values)
     if (sit === "deje_pagar" || sit === "mora_reclamo") return s;
     return s + (parseFloat(d.pago) || 0);
@@ -1065,7 +1071,7 @@ function enriquecerDeuda(d) {
   // The UI sets debt_confidence explicitly on situacion_ui selection and on
   // payment amount declaration. Here we only fill in the fallback for legacy debts.
   if (!d.debt_confidence) {
-    var sit = d.situacion_ui || "";
+    var sit = situacionLegacyDeuda(d.situacion_ui) || "";
     if (sit === "mora_reclamo") {
       d.debt_confidence = "high";
     } else if (sit === "no_seguro" || !sit) {
@@ -1120,13 +1126,13 @@ function calcularSeveridadFinanciera(fin, deudas, ingreso) {
   }, 0);
 
   var has_mora_or_deje_pagar = deudas.some(function(d) {
-    return d.situacion_ui === "deje_pagar" || d.situacion_ui === "mora_reclamo";
+    return d.situacion_ui === "deje_pagar" || situacionLegacyDeuda(d.situacion_ui) === "mora_reclamo";
   });
 
   var has_unpaid_debt = deudas.some(function(d) {
     var monto = parseFloat(d.monto) || 0;
     if (monto <= 0) return false;
-    var sit = d.situacion_ui;
+    var sit = situacionLegacyDeuda(d.situacion_ui);
     if (sit === "deje_pagar" || sit === "mora_reclamo") return true;
     return (parseFloat(d.pago) || 0) === 0;
   });
@@ -1155,7 +1161,7 @@ function calcularSeveridadFinanciera(fin, deudas, ingreso) {
         && d.atraso_tiempo === "mas_90"
         && montoIngresoRatio >= 12) {
       severity_behavioral = "critico";
-    } else if (d.situacion_ui === "mora_reclamo" && montoIngresoRatio >= 6) {
+    } else if (situacionLegacyDeuda(d.situacion_ui) === "mora_reclamo" && montoIngresoRatio >= 6) {
       if (severity_behavioral !== "critico") severity_behavioral = "alto";
     }
   });
@@ -1883,7 +1889,7 @@ function interpretarDiagnostico(diag) {
     });
   }
 
-  var hayMoraReclamo = deudas.some(function(d) { return d.situacion_ui === "mora_reclamo"; });
+  var hayMoraReclamo = deudas.some(function(d) { return situacionLegacyDeuda(d.situacion_ui) === "mora_reclamo"; });
   if (cantMoras > 0 && hayMoraReclamo) {
     bloqueadores.push({
       tipo:        "mora_prolongada",
@@ -2009,7 +2015,7 @@ function interpretarDiagnostico(diag) {
   var deudasActivasConf = deudasActivasParaCalculo(deudas);
   if (deudasActivasConf.length > 0) {
     var todasLegitimasSinPago = deudasActivasConf.every(function(d) {
-      var sit = d.situacion_ui || "";
+      var sit = situacionLegacyDeuda(d.situacion_ui) || "";
       return sit === "deje_pagar" || sit === "mora_reclamo" || sit === "informal"
         || d.tipo === "informal";
     });
@@ -2341,7 +2347,7 @@ function _evalCtxAcciones(diag) {
     totalPago: totalPago,
     ingreso: ingreso,
     totalGastos: totalGastos,
-    situacion: prio ? (prio.situacion_ui || null) : null,
+    situacion: prio ? (situacionLegacyDeuda(prio.situacion_ui) || null) : null,
     topExpense: top,
     pctTop: pctTop,
     totalIngresosExtra: totalIngresosExtra,
@@ -2900,7 +2906,7 @@ function detectHiddenFactorOpportunity(diag) {
   var deudas = (window.CZState && window.CZState.deudas) || [];
   var hasBadDebt = deudas.some(function(d) {
     return d.situacion_ui === "deje_pagar"
-      || d.situacion_ui === "mora_reclamo"
+      || situacionLegacyDeuda(d.situacion_ui) === "mora_reclamo"
       || d.pago_fuente  === "mora_sin_pago";
   });
   if (hasBadDebt) return false;

@@ -11,6 +11,7 @@
 
 var actionContextModule = require("../diagnosis/actionContext");
 var buildActionContext = actionContextModule.buildActionContext;
+var disputedDebtIndices = actionContextModule.disputedDebtIndices;
 var financialAction = require("../financialAction/derive");
 
 var UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -108,18 +109,48 @@ function projectOptIn(row) {
   };
 }
 
+/** Debt-targeted actions never target a disputed debt (actionContext.disputedDebtIndices). */
+function notDisputed(result) {
+  var disputed = {};
+  disputedDebtIndices(result).forEach(function (i) { disputed[i] = true; });
+  return function (d) { return disputed[d.debt_index] !== true; };
+}
+
 /**
  * Debts on which lower_payment_intent is valid, derived only from the stored evaluation result: the
- * strategy is in LOWER_PAYMENT_STRATEGIES and the debt is an action_context active debt with a known
- * payment > 0 (there is a payment to lower).
+ * strategy is in LOWER_PAYMENT_STRATEGIES and the debt is an action_context active debt, not disputed,
+ * with a known payment > 0 (there is a payment to lower).
  */
 function lowerPaymentEligible(result) {
   var actionContext = buildActionContext(result);
   if (!actionContext || LOWER_PAYMENT_STRATEGIES.indexOf(result.strategy) === -1) return [];
   var debts = Array.isArray(actionContext.active_debts) ? actionContext.active_debts : [];
   return debts
+    .filter(notDisputed(result))
     .filter(function (d) { return typeof d.monthly_debt_payment === "number" && d.monthly_debt_payment > 0; })
     .map(function (d) { return d.debt_index; });
+}
+
+/**
+ * Debts that can receive surplus_to_debt: the evaluation has a monthly_surplus and the debt is an
+ * action_context active debt, not disputed. Must equal surplus_debts in miplan_private.v2_choice_authority.
+ */
+function surplusToDebtEligible(result) {
+  var actionContext = buildActionContext(result);
+  if (!actionContext || !isPlainObject(actionContext.monthly_surplus)) return [];
+  var debts = Array.isArray(actionContext.active_debts) ? actionContext.active_debts : [];
+  return debts.filter(notDisputed(result)).map(function (d) { return d.debt_index; });
+}
+
+/**
+ * Debts that can receive creditor_contact_step (any state): action_context mora debts, not disputed.
+ * Must equal contact_debts in miplan_private.v2_interaction_authority.
+ */
+function creditorContactEligible(result) {
+  var actionContext = buildActionContext(result);
+  if (!actionContext) return [];
+  var debts = Array.isArray(actionContext.mora_debts) ? actionContext.mora_debts : [];
+  return debts.filter(notDisputed(result)).map(function (d) { return d.debt_index; });
 }
 
 /**
@@ -141,7 +172,8 @@ function projectState(state) {
   var contactHeads = {};
   (state.creditor_contact_step || []).forEach(function (h) { contactHeads[h.debt_index] = h; });
   var expenses = actionContext && Array.isArray(actionContext.expense_categories) ? actionContext.expense_categories : [];
-  var mora = actionContext && Array.isArray(actionContext.mora_debts) ? actionContext.mora_debts : [];
+  var alloc = state.surplus_allocation;
+  if (alloc && alloc.choice_type === "surplus_to_debt" && !notDisputed(state.result)(alloc)) alloc = null;
   return {
     evaluation_id: state.evaluation_id,
     classification_status: state.classification_status,
@@ -151,15 +183,16 @@ function projectState(state) {
       lower_payment_intent: lowerPaymentEligible(state.result).map(function (i) {
         return { debt_index: i, state: marked[i] ? "marked" : "unmarked", updated_at: marked[i] || null };
       }),
-      surplus_allocation: projectChoice(state.surplus_allocation),
+      surplus_allocation: projectChoice(alloc),
+      surplus_to_debt_targets: surplusToDebtEligible(state.result).map(function (i) { return { debt_index: i }; }),
       expense_reduction_intent: expenses.map(function (c) {
         var h = expenseHeads[c.expense_ref];
         return { expense_ref: c.expense_ref, state: h ? "marked" : "unmarked", amount: h ? Number(h.amount) : null,
           updated_at: h ? h.created_at : null };
       }),
-      creditor_contact_step: mora.map(function (d) {
-        var h = contactHeads[d.debt_index];
-        return { debt_index: d.debt_index, state: h ? h.state : "none", updated_at: h ? h.created_at : null };
+      creditor_contact_step: creditorContactEligible(state.result).map(function (i) {
+        var h = contactHeads[i];
+        return { debt_index: i, state: h ? h.state : "none", updated_at: h ? h.created_at : null };
       }),
     },
     financial_actions: financialAction.deriveFinancialActions(state, actionContext).map(financialAction.projectFinancialAction),
@@ -278,4 +311,6 @@ module.exports = {
   LOWER_PAYMENT_STRATEGIES: LOWER_PAYMENT_STRATEGIES,
   INTERACTION_CHOICE_TYPES: INTERACTION_CHOICE_TYPES,
   lowerPaymentEligible: lowerPaymentEligible,
+  surplusToDebtEligible: surplusToDebtEligible,
+  creditorContactEligible: creditorContactEligible,
 };

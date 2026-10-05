@@ -50,6 +50,16 @@ var createMemoryStrategyEvaluationStore =
   require("../../../server/testing/memoryStrategyEvaluations").createMemoryStrategyEvaluationStore;
 var sanitize = require("../../../server/modules/journey/sanitizeContext");
 var classify = require("../../../engine/classifier/financial-classifier").classifyFinancialShadow;
+var classifyV3 = require("../../../engine/classifier/financial-classifier").classifyFinancialShadowV3;
+var financialIdentityV2 = require("../../../server/modules/diagnosis/financialIdentityV2");
+var debtContract = require("../../../js/debtContract");
+
+// Expected classifier / identity for a posted snapshot, selected only by its debt_contract_version marker.
+function contractOf(engineInput) {
+  return debtContract.resolveDebtContractVersion(engineInput) === "v2"
+    ? { classify: classifyV3, deriveIdentity: financialIdentityV2.deriveFinancialInputIdentityV2 }
+    : { classify: classify, deriveIdentity: financialIdentity.deriveFinancialInputIdentity };
+}
 
 var ANON = "55555555-5555-4555-8555-555555555555";
 var EPISODE = {
@@ -522,7 +532,7 @@ function validatorMatrixInPage() {
     mut(ok, function (c) { c.provenance.classifier_version = ""; }),
     mut(ok, function (c) { delete c.provenance.contract; }),
     mut(ok, function (c) { delete c.financial_input_identity; }),
-    mut(ok, function (c) { c.financial_input_identity.version = "financial_input_identity_v2"; }),
+    mut(ok, function (c) { c.financial_input_identity.version = "financial_input_identity_v3"; }),
     mut(ok, function (c) { c.financial_input_identity.value = c.financial_input_identity.value.toUpperCase(); }),
     mut(ok, function (c) { c.financial_input_identity.value = "abc"; }),
   ].map(function (v) { return V(v) === null; });
@@ -613,17 +623,21 @@ async function main() {
   // ---- flag ON + classified ----
   var on = out.ON_CLASSIFIED;
   var onResp = on.rec.posts[0].response;
-  var expected = classify(diagnosisServiceModule.extractEngineInput(JSON.parse(JSON.stringify(on.rec.posts[0].body))));
+  var onInput = diagnosisServiceModule.extractEngineInput(JSON.parse(JSON.stringify(on.rec.posts[0].body)));
+  var onContract = contractOf(onInput);
+  var expected = onContract.classify(onInput);
+  check("ON + classified: posted EngineInput carries debt_contract_version \"v2\" (flag ON captures debt contract v2)",
+    onInput.debt_contract_version === "v2", onInput.debt_contract_version);
   check("ON + classified: response = projection of the classifier on the posted EngineInput (" + expected.strategy + ")",
     hasV2(onResp) && same(onResp.v2_financial_strategy, diagnosisServiceModule.projectV2FinancialStrategy(expected, 2,
-      financialIdentity.deriveFinancialInputIdentity(diagnosisServiceModule.extractEngineInput(JSON.parse(JSON.stringify(on.rec.posts[0].body)))))) &&
+      onContract.deriveIdentity(onInput))) &&
     expected.classification_status === "classified", onResp && onResp.v2_financial_strategy);
   check("[T12] ON + classified: CZState._v2FinancialStrategy bound to journey, diagnosis, classifier_version, identity and input",
     on.state.has_key && same(Object.keys(on.state.value),
       ["journey_id", "diagnosis_id", "classifier_version", "financial_input_identity", "input_canonical", "result"]) &&
     on.state.value.classifier_version === onResp.v2_financial_strategy.provenance.classifier_version &&
     same(on.state.value.financial_input_identity, onResp.v2_financial_strategy.financial_input_identity) &&
-    on.state.value.input_canonical === financialIdentity.canonicalizeFinancialInput(on.rec.posts[0].body) &&
+    on.state.value.input_canonical === debtContract.canonicalizeForContract(onInput) &&
     on.state.value.journey_id === on.rec.journeyId && on.state.active_journey === on.rec.journeyId &&
     on.state.value.diagnosis_id === onResp.diagnosis_id && same(on.state.value.result, onResp.v2_financial_strategy) &&
     on.state.value.result.survey_version === 2 && on.state.value.result.strategy === expected.strategy, on.state.value);

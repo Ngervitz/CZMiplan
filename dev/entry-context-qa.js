@@ -45,6 +45,8 @@
       URLSearchParams: URLSearchParams,
       Math: Math,
       JSON: JSON,
+      Date: Date,
+      isNaN: isNaN,
     };
     sandbox.window = sandbox;
     sandbox.location = {
