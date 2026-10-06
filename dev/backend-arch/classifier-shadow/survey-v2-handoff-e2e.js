@@ -10,8 +10,8 @@
  *   V2_E      V2, P7 = E (purchase_or_home_improvement)            → survey completed,
  *   V2_J      V2, P7 = J (other)                                     no legacy answers
  *   WITHHELD  JANUS flag OFF (survey_v2_handoff_disabled)
- *   REJECTED  unknown version rejected by the Mi Plan sanitizer    → no survey: bridge screen
- *   ABSENT    no survey in JANUS
+ *   REJECTED  unknown version rejected by the Mi Plan sanitizer    → no survey: handoff skips the
+ *   ABSENT    no survey in JANUS                                     bridge, starts at the debts step
  *
  * A valid V2 is a completed survey (no survey CTA, no bridge screen, normal financial flow)
  * but never feeds PRE.respuestas / calcularEncuesta: the legacy engine runs in its existing
@@ -407,8 +407,8 @@ async function main() {
   // withheld / rejected / absent: never survey_completed
   NO_SURVEY.forEach(function (n) {
     var b = out[n].boot;
-    check(n + ": not a completed survey — bridge screen at step 0, no survey_completed state, no page errors",
-      b.survey_v2_completed === false && b.bridge_screen && b.step === 0 && !b.miplan_started &&
+    check(n + ": not a completed survey — no bridge (handoff starts at the debts step), no survey_completed state, no page errors",
+      b.survey_v2_completed === false && !b.bridge_screen && b.step === 1 && b.miplan_started && b.debts_screen &&
       b.recovery_state !== "survey_completed" && !b.survey_completed_at &&
       Object.keys(b.pre_respuestas).length === 0 && b.tiene_encuesta === false && !out[n].errors.length,
       { boot: legacyView(b), errors: out[n].errors });

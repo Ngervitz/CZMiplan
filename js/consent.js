@@ -152,7 +152,23 @@ function shouldShowMiPlanConsent() {
   if (c.miplan_privacy_accepted !== true)                               return true;
   if (c.miplan_tc_version      !== LEGAL_VERSION_TC)                   return true;
   if (c.miplan_privacy_version !== LEGAL_VERSION_PRIVACY)              return true;
+  if (c.consent_source === "credizona_gracias") {
+    var jid = window.CZHandoffEntry ? window.CZHandoffEntry.getCurrentJourneyId() : "";
+    if (!c.journey_id || String(c.journey_id) !== String(jid))          return true;
+  }
   return false;
+}
+
+// Consent given by explicit click on the Credizona thank-you page, verified by the Mi Plan
+// backend for this handoff journey (see CZHandoffEntry.verifyGraciasConsent).
+function buildGraciasConsentRecord(evidence) {
+  return Object.assign(buildMiPlanConsentRecord(), {
+    miplan_tc_version:        evidence.tc_version,
+    miplan_privacy_version:   evidence.privacy_version,
+    miplan_consent_timestamp: evidence.accepted_at,
+    consent_source:           "credizona_gracias",
+    journey_id:               evidence.journey_id,
+  });
 }
 
 // Builds the consent record written to CZState.consent on acceptance.

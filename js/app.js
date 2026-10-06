@@ -2452,6 +2452,17 @@ async function init() {
   }
   ensureFinancialStepBeforeDashboard(st);
 
+  if (st._handoffConsent && typeof buildGraciasConsentRecord === "function" && shouldShowMiPlanConsent()) {
+    st.consent = buildGraciasConsentRecord(st._handoffConsent);
+  }
+  // A Credizona handoff already left the Credizona survey: start Mi Plan where the bridge CTA would.
+  if (st._handoffPrefill === true && st.step === 0 && !st.miplan_started && SEGMENTO !== 1
+      && !hasBehavioralSurveyData(st, st.diag)) {
+    st.miplan_started = true;
+    st.step = 1;
+    st.temporal.miplan_started_at = st.temporal.miplan_started_at || now;
+  }
+
   st.user_intent = normalizeUserIntent(st.user_intent);
 
   if (window.CredizonaUI && typeof window.CredizonaUI.renderAll === "function") {

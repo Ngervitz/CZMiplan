@@ -19,6 +19,10 @@ var createMemoryJourneyRepository = require("./modules/journey/repository").crea
 var createJourneyService = require("./modules/journey/service").createJourneyService;
 var createUserChoiceRepository = require("./modules/userChoice/repository").createUserChoiceRepository;
 var createUserChoiceService = require("./modules/userChoice/service").createUserChoiceService;
+var createHandoffConsentRepository = require("./modules/handoffConsent/repository").createHandoffConsentRepository;
+var createMemoryHandoffConsentRepository =
+  require("./modules/handoffConsent/repository").createMemoryHandoffConsentRepository;
+var createHandoffConsentService = require("./modules/handoffConsent/service").createHandoffConsentService;
 
 /**
  * @param {ReturnType<typeof import('./config').loadConfig>} config
@@ -55,6 +59,7 @@ function createApp(config, overrides) {
   var diagnosisService = overrides.diagnosisService;
   var journeyService = overrides.journeyService;
   var sharedClient = null;
+  var memoryJourneyRepository = null;
 
   if (!journeyService) {
     if (config.persistenceConfigured) {
@@ -69,8 +74,9 @@ function createApp(config, overrides) {
       });
     } else if (config.nodeEnv !== "production") {
       // Local/unit tests without Supabase: in-memory durable-within-process store.
+      memoryJourneyRepository = createMemoryJourneyRepository();
       journeyService = createJourneyService({
-        repository: createMemoryJourneyRepository(),
+        repository: memoryJourneyRepository,
         tenantId: config.defaultTenantId,
       });
     }
@@ -129,6 +135,22 @@ function createApp(config, overrides) {
     }
   }
 
+  var handoffConsentService = overrides.handoffConsentService || null;
+  if (!handoffConsentService) {
+    if (config.persistenceConfigured) {
+      handoffConsentService = createHandoffConsentService({
+        repository: createHandoffConsentRepository({
+          client: sharedClient || createSupabaseClient(config),
+          backendSecret: config.backendSecret,
+        }),
+      });
+    } else if (memoryJourneyRepository) {
+      handoffConsentService = createHandoffConsentService({
+        repository: createMemoryHandoffConsentRepository(memoryJourneyRepository),
+      });
+    }
+  }
+
   app.use(createHealthRouter(config));
   app.use(createDiagnosesRouter({ diagnosisService: diagnosisService }));
   app.use(createUserChoicesRouter({ userChoiceService: userChoiceService }));
@@ -136,6 +158,7 @@ function createApp(config, overrides) {
     createHandoffRouter({
       config: config,
       journeyService: journeyService,
+      handoffConsentService: handoffConsentService,
     })
   );
 

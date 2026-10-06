@@ -2,6 +2,8 @@
  * server/http/routes/handoff.js
  * POST /v1/handoff/redeem — browser sends only opaque code; BE redeems with JANUS;
  * creates/resolves durable journey_id (MIPLAN-JOURNEY-01).
+ * POST /v1/handoff/consent — Credizona thank-you CTA records Mi Plan T&C/Privacy acceptance
+ * for a handoff code before it is redeemed (MIPLAN-HANDOFF-CONSENT-01).
  */
 "use strict";
 
@@ -9,12 +11,34 @@ var express = require("express");
 var resolveAnonymousId = require("../../modules/identity/anonymousId").resolveAnonymousId;
 var createJanusHandoffClient = require("../../modules/handoff/janusClient").createJanusHandoffClient;
 
+var CONSENT_RATE_WINDOW_MS = 60 * 1000;
+var CONSENT_RATE_MAX = 20;
+
+function createRateLimiter(windowMs, max) {
+  var hits = new Map();
+  return function allow(key) {
+    var t = Date.now();
+    var entry = hits.get(key);
+    if (!entry || entry.reset <= t) {
+      if (hits.size > 10000) hits.clear();
+      entry = { count: 0, reset: t + windowMs };
+      hits.set(key, entry);
+    }
+    entry.count += 1;
+    return entry.count <= max;
+  };
+}
+
 /**
  * @param {{
  *   config: object,
  *   journeyService: {
  *     lookupByHandoffCode: Function,
  *     createFromHandoffRedeem: Function,
+ *   },
+ *   handoffConsentService?: {
+ *     recordFromCredizona: Function,
+ *     consentForJourney: Function,
  *   }
  * }} deps
  */
@@ -22,10 +46,43 @@ function createHandoffRouter(deps) {
   var router = express.Router();
   var config = deps.config;
   var journeyService = deps.journeyService;
+  var consentService = deps.handoffConsentService || null;
+  var allowConsent = createRateLimiter(CONSENT_RATE_WINDOW_MS, CONSENT_RATE_MAX);
   var client = createJanusHandoffClient({
     janusHandoffRedeemUrl: config.janusHandoffBaseUrl,
     miplanHandoffRedeemSecret: config.miplanHandoffRedeemSecret,
   });
+
+  router.post("/v1/handoff/consent", function (req, res, next) {
+    Promise.resolve()
+      .then(function () {
+        if (!consentService) {
+          var off = new Error("HANDOFF_CONSENT_UNAVAILABLE");
+          off.status = 503;
+          off.code = "HANDOFF_CONSENT_UNAVAILABLE";
+          throw off;
+        }
+        if (!allowConsent(String(req.ip || ""))) {
+          var limited = new Error("RATE_LIMITED");
+          limited.status = 429;
+          limited.code = "RATE_LIMITED";
+          throw limited;
+        }
+        return consentService.recordFromCredizona(req.body);
+      })
+      .then(function (out) {
+        res.status(200).json(out);
+      })
+      .catch(next);
+  });
+
+  function withConsent(code, payload) {
+    if (!consentService) return payload;
+    return consentService.consentForJourney(code, payload.journey_id).then(function (consent) {
+      payload.miplan_consent = consent;
+      return payload;
+    });
+  }
 
   router.post("/v1/handoff/redeem", function (req, res, next) {
     Promise.resolve()
@@ -135,6 +192,9 @@ function createHandoffRouter(deps) {
               e.code = result.error || "redeem_failed";
               throw e;
             });
+          })
+          .then(function (payload) {
+            return withConsent(code, payload);
           });
       })
       .then(function (payload) {

@@ -10,6 +10,7 @@
   var STORAGE_CTX = "cz_handoff_context_v1";
   var STORAGE_CODE_HASH = "cz_handoff_code_hash_v1";
   var STORAGE_JOURNEY = "cz_journey_id_v1";
+  var STORAGE_CONSENT = "cz_handoff_consent_v1";
   var SURVEY_V2_ANSWER_KEYS = ["p1", "p2", "p3", "p4", "p5", "p6", "p8", "p9", "p10"];
   var SURVEY_V2_LOAN_PURPOSES = [
     "purchase_or_home_improvement",
@@ -278,6 +279,48 @@
     return true;
   }
 
+  /**
+   * Mi Plan T&C/Privacy accepted on the Credizona thank-you page, as returned by the backend redeem.
+   * Valid only for this exact journey and Mi Plan's current legal versions.
+   */
+  function verifyGraciasConsent(raw, journeyId) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw) || !journeyId) return null;
+    if (raw.source !== "credizona_gracias") return null;
+    if (typeof LEGAL_VERSION_TC === "undefined" || typeof LEGAL_VERSION_PRIVACY === "undefined") return null;
+    if (raw.tc_version !== LEGAL_VERSION_TC || raw.privacy_version !== LEGAL_VERSION_PRIVACY) return null;
+    if (String(raw.journey_id || "") !== String(journeyId)) return null;
+    var acceptedMs = typeof raw.accepted_at === "string" ? Date.parse(raw.accepted_at) : NaN;
+    if (!isFinite(acceptedMs)) return null;
+    return {
+      source: "credizona_gracias",
+      tc_version: raw.tc_version,
+      privacy_version: raw.privacy_version,
+      accepted_at: new Date(acceptedMs).toISOString(),
+      journey_id: String(journeyId),
+    };
+  }
+
+  function persistGraciasConsent(consent) {
+    try {
+      if (consent) sessionStorage.setItem(STORAGE_CONSENT, JSON.stringify(consent));
+      else sessionStorage.removeItem(STORAGE_CONSENT);
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function applyGraciasConsent(journeyId) {
+    var consent = null;
+    try {
+      consent = verifyGraciasConsent(JSON.parse(sessionStorage.getItem(STORAGE_CONSENT) || "null"), journeyId);
+    } catch (_e) {
+      consent = null;
+    }
+    var st = global.CZState && typeof global.CZState === "object" ? global.CZState : null;
+    if (st) st._handoffConsent = consent;
+    return consent;
+  }
+
   function restoreCachedBootstrap() {
     try {
       var prevCtx = sessionStorage.getItem(STORAGE_CTX);
@@ -286,6 +329,7 @@
       var cached = JSON.parse(prevCtx);
       if (jid) persistJourneyId(jid);
       applyHandoffContextToPrefill(cached);
+      applyGraciasConsent(jid);
       return { applied: true, reason: "session_cache", journey_id: jid || null };
     } catch (_c) {
       return { applied: false, reason: "cache_error" };
@@ -315,6 +359,7 @@
       if (prevHash === hash && prevCtx && prevJourney) {
         var cached = JSON.parse(prevCtx);
         applyHandoffContextToPrefill(cached);
+        applyGraciasConsent(prevJourney);
         stripHandoffFromUrl();
         return Promise.resolve({
           applied: true,
@@ -356,7 +401,9 @@
           /* ignore */
         }
         if (journeyId) persistJourneyId(journeyId);
+        persistGraciasConsent(verifyGraciasConsent(pack.body.miplan_consent, journeyId));
         applyHandoffContextToPrefill(pack.body.context);
+        applyGraciasConsent(journeyId);
         return {
           applied: true,
           reason: pack.body.cached ? "durable_cache" : "redeemed",
@@ -375,6 +422,7 @@
     maybeRedeemHandoffOnEntry: maybeRedeemHandoffOnEntry,
     applyHandoffContextToPrefill: applyHandoffContextToPrefill,
     isValidSurveyV2: isValidSurveyV2,
+    verifyGraciasConsent: verifyGraciasConsent,
     normalizeSurveyLetter: normalizeSurveyLetter,
     stripHandoffFromUrl: stripHandoffFromUrl,
     getCurrentJourneyId: getCurrentJourneyId,
