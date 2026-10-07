@@ -44,6 +44,9 @@ function loadConfig(env) {
   ).trim();
   // V2-CTA-INTERACTION-01 — creation of the CTA interaction choice types. Off unless exactly "true".
   var v2InteractionEnabled = String(env.MIPLAN_V2_INTERACTION_ENABLED || "").trim() === "true";
+  // MIPLAN-JANUS-EXPORT-01 — dedicated Bearer for JANUS → Mi Plan opt-in export. MUST NOT reuse
+  // MIPLAN_HANDOFF_REDEEM_SECRET / MIPLAN_BACKEND_SECRET (the route refuses a reused secret).
+  var janusExportSecret = String(env.MIPLAN_JANUS_EXPORT_SECRET || "").trim();
 
   return {
     appName: "miplan-backend",
@@ -61,6 +64,7 @@ function loadConfig(env) {
     miplanHandoffRedeemSecret: miplanHandoffRedeemSecret,
     handoffConfigured: !!(janusHandoffBaseUrl && miplanHandoffRedeemSecret),
     v2InteractionEnabled: v2InteractionEnabled,
+    janusExportSecret: janusExportSecret,
   };
 }
 

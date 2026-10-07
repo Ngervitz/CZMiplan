@@ -23,6 +23,9 @@ var createHandoffConsentRepository = require("./modules/handoffConsent/repositor
 var createMemoryHandoffConsentRepository =
   require("./modules/handoffConsent/repository").createMemoryHandoffConsentRepository;
 var createHandoffConsentService = require("./modules/handoffConsent/service").createHandoffConsentService;
+var createJanusExportRouter = require("./http/routes/janusExport").createJanusExportRouter;
+var createJanusExportRepository = require("./modules/janusExport/repository").createJanusExportRepository;
+var createJanusExportService = require("./modules/janusExport/service").createJanusExportService;
 
 /**
  * @param {ReturnType<typeof import('./config').loadConfig>} config
@@ -151,7 +154,18 @@ function createApp(config, overrides) {
     }
   }
 
+  var janusExportService = overrides.janusExportService || null;
+  if (!janusExportService && config.persistenceConfigured) {
+    janusExportService = createJanusExportService({
+      repository: createJanusExportRepository({
+        client: sharedClient || createSupabaseClient(config),
+        backendSecret: config.backendSecret,
+      }),
+    });
+  }
+
   app.use(createHealthRouter(config));
+  app.use(createJanusExportRouter({ config: config, janusExportService: janusExportService }));
   app.use(createDiagnosesRouter({ diagnosisService: diagnosisService }));
   app.use(createUserChoicesRouter({ userChoiceService: userChoiceService }));
   app.use(
